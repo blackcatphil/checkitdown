@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 
+import { STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { supabase } from '@/lib/supabase'
 
 import { CorrectionForm } from './CorrectionForm'
@@ -92,7 +93,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
   const { data } = await supabase
     .from('rooms')
     .select(
-      'id,slug,name,property,area,status,table_count,phone,website_url,hours_note,is_24h,'
+      'id,slug,name,property,area,status,is_seasonal,table_count,phone,website_url,hours_note,is_24h,'
       + 'loyalty_program,comp_rate_hourly,comp_notes,dress_code,drinks_note,'
       + 'source_url,fetched_at,verified_at,'
       + 'cash_games(stakes_label,game,min_buy_in,max_buy_in,is_uncapped,rake_type,rake_percent,'
@@ -106,6 +107,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
   if (!data) notFound()
   const room = data as unknown as {
     id: string; slug: string; name: string; property: string | null; area: string
+    status: RoomStatus; is_seasonal: boolean
     table_count: number | null; phone: string | null; website_url: string | null
     hours_note: string | null; loyalty_program: string | null; comp_rate_hourly: number | null
     comp_notes: string | null; dress_code: string | null; drinks_note: string | null
@@ -153,6 +155,21 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-8)' }}>
       <header>
+        {/* A room off the roster is still a real page — reachable, and labelled.
+            Hiding it would read as "we don't have it". */}
+        {STATUS_LABEL[room.status] && (
+          <p
+            className="num"
+            style={{
+              font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)',
+              color: 'var(--cid-accent-300)', border: '1px solid var(--cid-accent-line)',
+              borderRadius: 'var(--cid-r-sm)', padding: 'var(--cid-space-3) var(--cid-space-5)',
+              display: 'inline-block', margin: '0 0 var(--cid-space-5)',
+            }}
+          >
+            {STATUS_LABEL[room.status]} — SHOWN, NOT RANKED
+          </p>
+        )}
         <span className="cid-label">{AREA_LABEL[room.area] ?? room.area}</span>
         <h1 style={{ font: 'var(--cid-h1)', margin: 'var(--cid-space-3) 0 var(--cid-space-2)' }}>
           {room.name}

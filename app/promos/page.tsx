@@ -3,6 +3,11 @@ import Link from 'next/link'
 export const metadata = { title: 'Promotions — Check It Down' }
 
 /**
+ * When this page starts reading `promotions` it MUST filter with
+ * `isLive()` from lib/roster — `is_active` alone is not enough, because a promo
+ * whose `ends_on` has passed is over whether or not anyone cleared the flag.
+ * Same for `tournament_instances.is_cancelled` when that surface reads.
+ *
  * Promos is the one surface that is honestly not built. It differs from
  * Tournaments (which has a schema and no data) and from amenities (which has
  * real facts and a home): there is nothing behind this at all, so the page says

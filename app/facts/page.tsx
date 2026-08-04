@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { exclusionLine, exclusions, rank, type RoomFacts } from '@/lib/ranking'
+import { inRoster, isRankable, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { supabase } from '@/lib/supabase'
 
 export const metadata = { title: 'Just the facts — Check It Down' }
@@ -23,6 +24,8 @@ type RoomRow = {
   slug: string
   name: string
   area: string
+  status: RoomStatus
+  is_seasonal: boolean
   table_count: number | null
   verified_at: string | null
   cash_games: GameJoin[]
@@ -151,7 +154,7 @@ export default async function JustTheFacts() {
   const { data, error } = await supabase
     .from('rooms')
     .select(
-      'slug,name,area,table_count,verified_at,'
+      'slug,name,area,status,is_seasonal,table_count,verified_at,'
       + 'cash_games(rake_type,rake_percent,rake_cap,jackpot_drop,verified_at,rake_verified_at),'
       + 'room_amenities(available,verified_at,amenity_types(slug,label,grp))',
     )
@@ -165,7 +168,9 @@ export default async function JustTheFacts() {
     )
   }
 
-  const rooms = (data ?? []) as unknown as RoomRow[]
+  /* Roster filter applied in the read path, not assumed from the seed. A closed
+     room is not a row here and a seasonal one is off by default. */
+  const rooms = ((data ?? []) as unknown as RoomRow[]).filter(inRoster)
   const total = rooms.length
 
   const derived = rooms.map((r) => {
@@ -197,15 +202,15 @@ export default async function JustTheFacts() {
        rake_verified_at to sit on, so it gates on the room instead. Otherwise a
        confirmed room with no rake reports as "not checked", which is false and
        would keep Horseshoe permanently in the wrong exclusion bucket. */
-    verified: d.rake.cap != null ? d.rake.verified : d.room.verified_at != null,
+    verified: isRankable(d.room) && (d.rake.cap != null ? d.rake.verified : d.room.verified_at != null),
   }))
   const tableFacts: RoomFacts[] = derived.map((d) => ({
     slug: d.room.slug, name: d.room.name, value: d.room.table_count,
-    verified: d.room.verified_at != null,
+    verified: isRankable(d.room) && d.room.verified_at != null,
   }))
   const foodFacts: RoomFacts[] = derived.map((d) => ({
     slug: d.room.slug, name: d.room.name,
-    value: d.foodCount > 0 ? d.foodCount : null, verified: d.foodVerified,
+    value: d.foodCount > 0 ? d.foodCount : null, verified: isRankable(d.room) && d.foodVerified,
   }))
 
   const rakeRanked = rank(rakeFacts, 'asc')
@@ -325,7 +330,11 @@ export default async function JustTheFacts() {
               <Cell value={d.parking} checked={verified} />
               <Cell value={d.food} checked={verified} />
               <Cell value={r.table_count != null ? String(r.table_count) : null} checked={verified} />
-              {verified ? (
+              {STATUS_LABEL[r.status] ? (
+                <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-accent-300)' }}>
+                  {STATUS_LABEL[r.status]}
+                </span>
+              ) : verified ? (
                 <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-text-3)' }}>
                   {new Date(r.verified_at!).toISOString().slice(0, 10)}
                 </span>

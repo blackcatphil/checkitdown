@@ -29,8 +29,14 @@ const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 
+const resetStatus = () =>
+  sql(`update rooms set status = 'open', is_seasonal = false;
+       update room_amenities set available = true;`)
+
 const reset = () =>
-  sql(`update rooms set verified_at = null;
+  sql(`update rooms set status = 'open', is_seasonal = false;
+       update room_amenities set available = true;
+       update rooms set verified_at = null;
        update cash_games set verified_at = null, rake_verified_at = null;
        update room_amenities set verified_at = null;`)
 
@@ -150,6 +156,50 @@ try {
     check('no unverified exclusion', !/not confirmed on site yet/.test(text))
     check('unpublished exclusion still names Horseshoe', /Horseshoe is confirmed but publish/.test(text))
   })
+  // ---- STATE COLUMNS THE SCHEMA CARRIES AND THE READ PATH MUST INTERROGATE ----
+  // Each is dormant only while the seed writes one value. `available` proved
+  // the shape; these are the same bug waiting for real data.
+
+  await scenario('CLOSED room leaves the roster', [], async () => {
+    sql("update rooms set status = 'closed' where slug = 'skyline'")
+    const { text, ranks } = await facts()
+    check('roster drops to 16', /16 valley rooms/.test(text), 'closed room must not be a row')
+    check('closed room is gone from the table', !/Skyline/.test(text))
+    check('ranks unaffected', ranks.length === 0)
+    resetStatus()
+  })
+
+  await scenario('SEASONAL room is off the roster by default', [], async () => {
+    sql("update rooms set is_seasonal = true where slug = 'skyline'")
+    const { text } = await facts()
+    check('roster drops to 16', /16 valley rooms/.test(text), 'locked decision, now enforced in the read path')
+    check('seasonal room not counted', !/Skyline/.test(text))
+    resetStatus()
+  })
+
+  await scenario('TEMPORARILY CLOSED shows but cannot rank', ['bellagio'], async () => {
+    sql("update rooms set status = 'temporarily_closed' where slug = 'bellagio'")
+    const { text, ranks } = await facts()
+    check('still on the roster', /17 valley rooms/.test(text))
+    check('still listed', /Bellagio/.test(text))
+    check('flagged on the row', /TEMPORARILY CLOSED/.test(text))
+    check('verified but NOT ranked', ranks.length === 0, `ranks=[${ranks}] — cannot be best if you cannot play there`)
+    resetStatus()
+  })
+
+  await scenario('CONFIRMED-ABSENT amenity never renders as present', ['wynn-encore'], async () => {
+    sql(`update room_amenities set available = false
+          where room_id = (select id from rooms where slug = 'wynn-encore')`)
+    const { rows } = await facts()
+    // Scope to the Wynn row — ARIA and Bellagio legitimately still show it.
+    const wynnRow = rows.find((r) => /Wynn\/Encore/.test(r))
+    check('absent amenity not listed on THAT room', !!wynnRow && !/Cocktail service/.test(wynnRow))
+    const t = await roomPage('wynn-encore')
+    check('room page does not list it either', !/Cocktail service/.test(t))
+    check('room page reports confirmed absence', /Checked on site — no amenities/.test(t))
+    resetStatus()
+  })
+
   // Horseshoe: no amenities, no house rules, and no rake figure. It is the room
   // where "checked" and "has nothing" have to be told apart.
   await scenario('HORSESHOE UNCHECKED — empty blocks are gaps', [], async () => {

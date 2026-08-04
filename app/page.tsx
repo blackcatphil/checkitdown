@@ -11,7 +11,13 @@ export const revalidate = 300
  */
 export default async function Home() {
   const [{ count: roomCount }, { count: gameCount }] = await Promise.all([
-    supabase.from('rooms').select('*', { count: 'exact', head: true }),
+    /* Roster count, not a raw row count — closed and seasonal rooms are off it. */
+    supabase
+      .from('rooms')
+      .select('*', { count: 'exact', head: true })
+      .neq('status', 'closed')
+      .neq('status', 'seasonal')
+      .eq('is_seasonal', false),
     supabase.from('cash_games').select('*', { count: 'exact', head: true }),
   ])
 

@@ -140,6 +140,21 @@ therefore about *host accessibility*, not about how stable the page is.
 - **Provenance:** two states only — verified (date shown) and unverified
   (tilde'd, dotted rule, never ranked). When an unverified figure is excluded
   from a "best" column, **name the room and the reason**, never "1 room skipped".
+- **The schema encodes more states than a naive read interrogates — filter them
+  or write down why not.** `room_amenities.available` sat as `boolean not null`
+  for days, harmless only because the seed never wrote `false`; it would have
+  gone live as a display bug the day the floor visit recorded its first
+  confirmed absence. That is a *shape*, not a one-off. Every state-bearing
+  column on a public read path is now either filtered in
+  [`lib/roster.ts`](../lib/roster.ts) or listed there under
+  `UNFILTERED_BY_DESIGN` with its reason, so a later sweep can tell "considered
+  and rejected" from "never looked at". The rules: `closed` leaves the roster
+  entirely; `is_seasonal` is off the roster and every count by default (a locked
+  decision that until now lived only in prose and no read path enforced);
+  `temporarily_closed` **stays listed but cannot rank**, because a room you
+  cannot enter cannot be the city's best anything; and a dated thing needs
+  `is_active` **and** its date window — a promotion whose `ends_on` has passed is
+  over whether or not anyone cleared the flag.
 - **Confirmed absence is a FACT, and the floor visit must record it.** "Verified"
   means we have confirmed the state of a fact **including confirming its
   absence**. Walk Horseshoe, find no tableside food: that is captured as

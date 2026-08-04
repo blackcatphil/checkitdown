@@ -16,6 +16,8 @@ export default async function Tournaments() {
     .select('slug,name,start_time,total_buy_in,fee_percent,reliability,verified_at,rooms(name,slug)', {
       count: 'exact',
     })
+    /* is_active is dormant only while the table is empty. */
+    .eq('is_active', true)
     .order('start_time')
 
   const events = data ?? []
