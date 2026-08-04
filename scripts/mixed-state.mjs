@@ -138,6 +138,13 @@ try {
     check('exactly one ranked row', ranks.length === 1 && ranks[0] === 1, `ranks=[${ranks}]`)
     check('lede reports 1 of 17 confirmed', /1 of 17 rooms are confirmed on site/.test(text))
     check('exclusion SUMMARISES at 16', /16 rooms are not confirmed on site yet/.test(text))
+    /* Added after a CI self-test: hardcoding winner={null} — the ORIGINAL bug —
+       was caught only incidentally, by the caption assertion, because the
+       caption renders inside the winner branch. ZERO/ONE/THREE all passed with
+       LOWEST RAKE permanently empty. This asserts the thing directly. */
+    check('LOWEST RAKE card shows a winner once one is rankable',
+      !/Nothing rankable on rake/.test(text),
+      'a rankable room exists, so the card must not still show its zero state')
     check('no name-list leaked at 16', !/[^.;—]{0,80} and [^.;—]{0,80} are not confirmed on site yet/.test(text))
     const leaderRow = rows.find((r) => />#1</.test(r))
     check('teal on the true #1 row', !!leaderRow && leaderRow.includes('--cid-value'))
@@ -150,6 +157,8 @@ try {
     check('ranks ascend and start at 1', ranks[0] === 1 && ranks.every((r, i) => i === 0 || r >= ranks[i - 1]))
     check('tie shares a position', new Set(ranks).size < ranks.length, `ranks=[${ranks}]`)
     check('exactly one leader', ranks.filter((r) => r === 1).length === 1)
+    check('LOWEST RAKE still shows a winner at three verified',
+      !/Nothing rankable on rake/.test(text))
     const tealRows = rows.filter((r) => r.includes('--cid-value'))
     check('teal on exactly one row', tealRows.length === 1, `${tealRows.length} rows`)
     check('exclusion still summarises at 14', /14 rooms are not confirmed on site yet/.test(text))

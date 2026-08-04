@@ -187,6 +187,15 @@ failing check without evidence costs more than no check**, because it consumes
 the time it was meant to save. Same lesson as the spike's inventory panel,
 arriving in CI.
 
+*Corollary 3b — red is not enough; it must be red FOR THE RIGHT REASON.* All
+three CI self-tests failed at the correct step. But the hardcoded
+`winner={null}` — the original bug — was caught only **incidentally**, by the
+sort-caption assertion, because the caption renders inside the winner branch.
+The ZERO, ONE and THREE scenarios all passed with LOWEST RAKE permanently empty:
+**the suite never asserted that a card shows its winner.** Checking *which* step
+failed proved the gate; checking *which assertion* failed exposed a hole in it.
+Direct assertions added, verified to fail on the regression.
+
 *Corollary 4 — test the GUARD, not just the thing guarded.* That same step was
 written to catch "a suite that ran nothing", and it could never pass: it grepped
 for `# pass` where Node prints `ℹ pass`. The suite had been tested; the assertion
