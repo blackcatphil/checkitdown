@@ -1,12 +1,12 @@
 import Link from 'next/link'
 
+import { exclusionLine, exclusions, rank, type RoomFacts } from '@/lib/ranking'
 import { supabase } from '@/lib/supabase'
 
 export const metadata = { title: 'Just the facts — Check It Down' }
 export const revalidate = 300
 
 type AmenityJoin = {
-  detail: string | null
   verified_at: string | null
   amenity_types: { slug: string; label: string; grp: string } | null
 }
@@ -30,68 +30,70 @@ type RoomRow = {
 
 const EMDASH = '—'
 
-/** Rake is only a claim if a source states it. `rake_type` NULL means the room
- *  publishes no figure at all — that is different from a cap with no percent. */
-function rakeLabel(games: GameJoin[]): string | null {
+/** The room's headline rake: the lowest published cap across the games it
+ *  spreads. `rake_type` NULL means the room publishes no figure at all, which
+ *  is a different claim from a cap with no percentage. */
+function headlineRake(games: GameJoin[]) {
   const priced = games.filter((g) => g.rake_type === 'pot' && g.rake_cap != null)
-  if (!priced.length) return null
+  if (!priced.length) return { cap: null as number | null, label: null as string | null, verified: false }
   const cap = Math.min(...priced.map((g) => Number(g.rake_cap)))
   const at = priced.filter((g) => Number(g.rake_cap) === cap)
   const pct = at.find((g) => g.rake_percent != null)?.rake_percent
-  return pct != null ? `${Number(pct)}% to $${cap}` : `to $${cap}`
+  return {
+    cap,
+    label: pct != null ? `${Number(pct)}% to $${cap}` : `to $${cap}`,
+    /* Rake ranking gates on rake_verified_at, not the row's verified_at —
+       rake and stakes routinely come from different pages. */
+    verified: at.some((g) => g.rake_verified_at != null),
+  }
 }
 
-function dropLabel(games: GameJoin[]): string | null {
+function dropLabel(games: GameJoin[]) {
   const drops = games.map((g) => g.jackpot_drop).filter((d): d is number => d != null)
-  if (!drops.length) return null
-  return `$${Math.max(...drops.map(Number))}`
+  return drops.length ? `$${Math.max(...drops.map(Number))}` : null
 }
 
-function amenityLabel(a: AmenityJoin[], groups: string[]): string | null {
-  const hits = a.filter((x) => x.amenity_types && groups.includes(x.amenity_types.grp))
-  if (!hits.length) return null
-  return hits.map((x) => x.amenity_types!.label).join(', ')
+function amenityLabel(a: AmenityJoin[], grp: string) {
+  const hits = a.filter((x) => x.amenity_types?.grp === grp)
+  return hits.length ? hits.map((x) => x.amenity_types!.label).join(', ') : null
 }
 
-/* The unverified treatment. Shown, never hidden, never quietly rounded — and
-   it cannot win a ranking. */
-function Cell({ value }: { value: string | null }) {
+function Cell({ value, leader }: { value: string | null; leader?: boolean }) {
   if (value == null) {
     return (
-      <span
-        className="num"
-        style={{ color: 'var(--cid-disabled)' }}
-        title="Not yet checked on site"
-      >
+      <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title="Not yet checked on site">
         {EMDASH}
       </span>
     )
+  }
+  if (leader) {
+    /* Teal marks the true #1. Verified, so no tilde and no dotted rule. */
+    return <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-value)' }}>{value}</span>
   }
   return <span className="num cid-unverified" style={{ font: 'var(--cid-num)' }}>~{value}</span>
 }
 
 /**
- * The zero-verified state of a superlative card.
+ * A superlative card in every state it will actually occupy.
  *
- * This is the state that exists on day one, so it is designed rather than
- * fallen back to. It cannot render blank and it cannot show a placeholder
- * winner — the same discipline as the exclusion line: say what is missing and
- * why. The card keeps its full shape so the page reads as intentional.
- *
- * The "name the room, never a count" rule is about a hedge hiding one or two
- * exclusions. When the whole set is excluded the honest statement IS the set,
- * so it names the total and the reason rather than listing seventeen rooms.
+ * The zero-verified state is not a fallback — on day one it is the only state
+ * that exists, and during the floor visit the card holds a winner AND an
+ * exclusion line at the same time. Both are designed here.
  */
 function Superlative({
   label,
   winner,
+  caption,
+  exclusion,
   metric,
-  sourcedCount,
+  total,
 }: {
   label: string
   winner: { name: string; value: string } | null
+  caption: string
+  exclusion: string | null
   metric: string
-  sourcedCount: number
+  total: number
 }) {
   return (
     <div
@@ -103,7 +105,7 @@ function Superlative({
         display: 'flex',
         flexDirection: 'column',
         gap: 'var(--cid-space-3)',
-        minHeight: 148,
+        minHeight: 168,
       }}
     >
       <span className="cid-label">{label}</span>
@@ -114,20 +116,22 @@ function Superlative({
           <span className="num" style={{ font: 'var(--cid-num-lg)', color: 'var(--cid-text-2)' }}>
             {winner.value}
           </span>
+          <span style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)' }}>{caption}</span>
         </>
       ) : (
         <>
-          <span
-            className="num"
-            style={{ font: 'var(--cid-h2)', color: 'var(--cid-unverified)' }}
-          >
-            {EMDASH}
-          </span>
+          <span className="num" style={{ font: 'var(--cid-h2)', color: 'var(--cid-unverified)' }}>{EMDASH}</span>
           <span style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)' }}>
-            No room can be ranked on {metric} yet. All {sourcedCount} are sourced and
-            none is confirmed on site, and an unverified figure is never ranked.
+            No room can be ranked on {metric} yet. All {total} are sourced and none is
+            confirmed on site, and an unverified figure is never ranked.
           </span>
         </>
+      )}
+
+      {exclusion && (
+        <span style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', borderTop: '1px solid var(--cid-line-1)', paddingTop: 'var(--cid-space-3)' }}>
+          {exclusion}
+        </span>
       )}
     </div>
   )
@@ -139,7 +143,7 @@ export default async function JustTheFacts() {
     .select(
       'slug,name,area,table_count,verified_at,'
       + 'cash_games(rake_type,rake_percent,rake_cap,jackpot_drop,verified_at,rake_verified_at),'
-      + 'room_amenities(detail,verified_at,amenity_types(slug,label,grp))',
+      + 'room_amenities(verified_at,amenity_types(slug,label,grp))',
     )
     .order('name')
 
@@ -152,18 +156,72 @@ export default async function JustTheFacts() {
   }
 
   const rooms = (data ?? []) as unknown as RoomRow[]
+  const total = rooms.length
 
-  /* Verified is the ONLY thing that can be ranked. Today this is zero, which is
-     exactly the state the page has to hold without looking broken. */
-  const rankable = rooms.filter((r) => r.verified_at != null)
+  const derived = rooms.map((r) => {
+    const rk = headlineRake(r.cash_games)
+    const food = r.room_amenities.filter((a) => a.amenity_types?.grp === 'food_drink')
+    return {
+      room: r,
+      rake: rk,
+      drop: dropLabel(r.cash_games),
+      parking: amenityLabel(r.room_amenities, 'parking'),
+      food: amenityLabel(r.room_amenities, 'food_drink'),
+      foodCount: food.length,
+      /* Gate on the ROOM being confirmed, not on amenity rows existing. A room
+         with no food amenity is "confirmed and publishes none" — an unpublished
+         exclusion — not an unverified one. Conflating the two would report a
+         confirmed room as unchecked. */
+      foodVerified: r.verified_at != null,
+    }
+  })
+
+  /* Each superlative gates on the verification of the FACT it ranks, not on
+     the room row generally. */
+  const rakeFacts: RoomFacts[] = derived.map((d) => ({
+    slug: d.room.slug,
+    name: d.room.name,
+    value: d.rake.cap,
+    /* "Verified" means we have confirmed the state of this fact — INCLUDING
+       confirming its absence. A room that publishes no rake has nothing for
+       rake_verified_at to sit on, so it gates on the room instead. Otherwise a
+       confirmed room with no rake reports as "not checked", which is false and
+       would keep Horseshoe permanently in the wrong exclusion bucket. */
+    verified: d.rake.cap != null ? d.rake.verified : d.room.verified_at != null,
+  }))
+  const tableFacts: RoomFacts[] = derived.map((d) => ({
+    slug: d.room.slug, name: d.room.name, value: d.room.table_count,
+    verified: d.room.verified_at != null,
+  }))
+  const foodFacts: RoomFacts[] = derived.map((d) => ({
+    slug: d.room.slug, name: d.room.name,
+    value: d.foodCount > 0 ? d.foodCount : null, verified: d.foodVerified,
+  }))
+
+  const rakeRanked = rank(rakeFacts, 'asc')
+  const tableRanked = rank(tableFacts, 'desc')
+  const foodRanked = rank(foodFacts, 'desc')
+
+  const rakeLeader = rakeRanked.find((r) => r.isLeader) ?? null
+  const tableLeader = tableRanked.find((r) => r.isLeader) ?? null
+  const foodLeader = foodRanked.find((r) => r.isLeader) ?? null
+
+  /* The table is ranked by rake — the head says so and the order agrees. */
+  const rankBySlug = new Map(rakeRanked.map((r) => [r.slug, r]))
+  const bySlug = new Map(derived.map((d) => [d.room.slug, d]))
+  const ordered = rakeRanked.map((r) => bySlug.get(r.slug)!)
+  /* CONFIRMED and RANKABLE are different counts and must never be conflated.
+     A room can be confirmed on site and still be unrankable here — Horseshoe
+     publishes no rake figure at all, so it holds a verified date and a dash. */
+  const confirmedCount = rooms.filter((r) => r.verified_at != null).length
+  const rankedCount = rakeRanked.filter((r) => r.rank != null).length
+  const confirmedNotRankable = confirmedCount - rankedCount
 
   const HEADS = ['# BY RAKE', 'ROOM', 'RAKE', 'DROP', 'PARKING', 'FOOD', 'TABLES', 'VERIFIED']
 
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)' }}>
-      <h1 style={{ font: 'var(--cid-statement)', margin: '0 0 var(--cid-space-4)' }}>
-        Just the facts
-      </h1>
+      <h1 style={{ font: 'var(--cid-statement)', margin: '0 0 var(--cid-space-4)' }}>Just the facts</h1>
       <p
         style={{
           font: 'var(--cid-lede)',
@@ -172,9 +230,14 @@ export default async function JustTheFacts() {
           margin: '0 0 var(--cid-space-8)',
         }}
       >
-        Every published fact we hold on {rooms.length} valley rooms, ranked cheapest rake
-        first. Nothing here has been confirmed on site yet, so every figure is shown
-        tilde&rsquo;d and nothing is ranked — the ranks fill in as rooms are checked.
+        Every published fact we hold on {total} valley rooms, ranked by rake with the
+        cheapest first. {confirmedCount === 0
+          ? 'Nothing here has been confirmed on site yet, so every figure is shown tilde’d and nothing is ranked — the ranks fill in as rooms are checked.'
+          : `${confirmedCount} of ${total} rooms are confirmed on site${
+              confirmedNotRankable > 0
+                ? `, and ${rankedCount} of those can be ranked on rake — the rest publish no rake figure to rank`
+                : ' and can be ranked'
+            }. Unconfirmed rooms are shown tilde’d and sort below the ranking.`}
       </p>
 
       <section
@@ -185,56 +248,85 @@ export default async function JustTheFacts() {
           marginBottom: 'var(--cid-space-8)',
         }}
       >
-        <Superlative label="LOWEST RAKE" winner={null} metric="rake" sourcedCount={rooms.length} />
-        <Superlative label="BEST FOOD" winner={null} metric="food" sourcedCount={rooms.length} />
-        <Superlative label="MOST TABLES" winner={null} metric="table count" sourcedCount={rooms.length} />
+        <Superlative
+          label="LOWEST RAKE"
+          metric="rake"
+          total={total}
+          winner={rakeLeader ? { name: rakeLeader.name, value: bySlug.get(rakeLeader.slug)!.rake.label! } : null}
+          caption="Lowest published cap, cheapest first."
+          exclusion={exclusionLine(exclusions(rakeFacts), 'rake figure')}
+        />
+        <Superlative
+          label="BEST FOOD"
+          metric="food"
+          total={total}
+          winner={foodLeader ? { name: foodLeader.name, value: bySlug.get(foodLeader.slug)!.food! } : null}
+          caption="Most confirmed food and drink amenities."
+          exclusion={exclusionLine(exclusions(foodFacts), 'food amenity')}
+        />
+        <Superlative
+          label="MOST TABLES"
+          metric="table count"
+          total={total}
+          winner={tableLeader ? { name: tableLeader.name, value: `${tableLeader.value} tables` } : null}
+          caption="Most tables, largest first."
+          exclusion={exclusionLine(exclusions(tableFacts), 'table count')}
+        />
       </section>
 
       <div style={{ border: '1px solid var(--cid-line-1)' }}>
         <div className="cid-trow cid-thead">
           {HEADS.map((h) => (
-            <span
-              key={h}
-              className="cid-label"
-              style={{ letterSpacing: 'var(--cid-track-nav)' }}
-            >
-              {h}
-            </span>
+            <span key={h} className="cid-label" style={{ letterSpacing: 'var(--cid-track-nav)' }}>{h}</span>
           ))}
         </div>
 
-        {rooms.map((r) => (
-          <div className="cid-trow" key={r.slug}>
-            {/* Rank belongs to a sort, and an unverified row cannot hold one. */}
-            <span className="num" style={{ font: 'var(--cid-rank)', color: 'var(--cid-disabled)' }}>
-              {EMDASH}
-            </span>
-            <Link
-              href={`/rooms/${r.slug}`}
-              style={{
-                font: 'var(--cid-room-name)',
-                color: 'var(--cid-text)',
-                borderBottom: 'none',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {r.name}
-            </Link>
-            <Cell value={rakeLabel(r.cash_games)} />
-            <Cell value={dropLabel(r.cash_games)} />
-            <Cell value={amenityLabel(r.room_amenities, ['parking'])} />
-            <Cell value={amenityLabel(r.room_amenities, ['food_drink'])} />
-            <Cell value={r.table_count != null ? String(r.table_count) : null} />
-            <span
-              className="num cid-unverified"
-              style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)' }}
-            >
-              UNVERIFIED
-            </span>
-          </div>
-        ))}
+        {ordered.map((d) => {
+          const r = d.room
+          const rk = rankBySlug.get(r.slug)!
+          const verified = r.verified_at != null
+          return (
+            <div className="cid-trow" key={r.slug}>
+              <span
+                className="num"
+                style={{
+                  font: 'var(--cid-rank)',
+                  color: rk.isLeader ? 'var(--cid-value)' : rk.rank != null ? 'var(--cid-text-2)' : 'var(--cid-disabled)',
+                }}
+                title={rk.rank == null ? 'Not ranked — not confirmed on site' : undefined}
+              >
+                {rk.rank != null ? `#${rk.rank}` : EMDASH}
+              </span>
+              <Link
+                href={`/rooms/${r.slug}`}
+                style={{
+                  font: 'var(--cid-room-name)',
+                  color: 'var(--cid-text)',
+                  borderBottom: 'none',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {r.name}
+              </Link>
+              <Cell value={d.rake.label} leader={rk.isLeader} />
+              <Cell value={d.drop} />
+              <Cell value={d.parking} />
+              <Cell value={d.food} />
+              <Cell value={r.table_count != null ? String(r.table_count) : null} />
+              {verified ? (
+                <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-text-3)' }}>
+                  {new Date(r.verified_at!).toISOString().slice(0, 10)}
+                </span>
+              ) : (
+                <span className="num cid-unverified" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)' }}>
+                  UNVERIFIED
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       <p
@@ -245,10 +337,11 @@ export default async function JustTheFacts() {
           marginTop: 'var(--cid-space-6)',
         }}
       >
-        {rankable.length} of {rooms.length} rooms are confirmed on site. A dash means we have
-        not checked, not that the room lacks it. Rake is the lowest published cap across the
-        games a room spreads; where a room publishes a cap but no percentage, only the cap is
-        shown, and where it publishes nothing at all the cell is a dash.
+        {confirmedCount} of {total} rooms are confirmed on site; {rankedCount} carry a rake
+        figure that can be ranked. A dash means we have not checked, not that the room
+        lacks it. Rake is the lowest published cap across the
+        games a room spreads; where a room publishes a cap but no percentage, only the cap
+        is shown, and where it publishes nothing at all the cell is a dash.
       </p>
     </main>
   )

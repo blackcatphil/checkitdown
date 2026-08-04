@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:mixed": "node scripts/mixed-state.mjs",
+    "test:rls": "supabase test db"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
