@@ -45,6 +45,18 @@ schema looked flawless, and a superlative card was hardcoded to its empty state
 while every test passed. Each suite has been **verified to fail** on an injected
 regression — a suite that has never been red is a suite nobody has tested.
 
+## A note on the `ci-selftest/*` branches
+
+They contain **deliberately broken code** and are kept on purpose. Each injects
+one regression — a revoked `GRANT`, a hardcoded empty superlative, a filter key
+that should have been dropped — to prove the matching CI gate goes red, and red
+*for the right reason*. A pipeline that has never been red is a pipeline nobody
+has tested, and that failure is invisible for months because green is what you
+expect to see.
+
+**Nothing on `main` is broken.** If you landed on one of those branches, that is
+the branch doing its job.
+
 ## Licence
 
 Not yet licensed. All rights reserved pending a decision.

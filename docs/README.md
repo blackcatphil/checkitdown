@@ -187,7 +187,8 @@ failing check without evidence costs more than no check**, because it consumes
 the time it was meant to save. Same lesson as the spike's inventory panel,
 arriving in CI.
 
-*Corollary 3b — red is not enough; it must be red FOR THE RIGHT REASON.* All
+*Corollary 3b — red is not enough; it must be red FOR THE RIGHT REASON, and the
+practical form is: check WHICH ASSERTION caught it, not just that CI went red.* All
 three CI self-tests failed at the correct step. But the hardcoded
 `winner={null}` — the original bug — was caught only **incidentally**, by the
 sort-caption assertion, because the caption renders inside the winner branch.
@@ -594,6 +595,22 @@ rule added first means the drift never gets written.
   yet* (a gap in our checking) and *checked, none present* (a finding). Reporting
   a completed check as a gap is the same unknown-as-negative error inverted, and
   it is covered by `npm run test:mixed`.
+- **Room pages invalidate ON WRITE; the `revalidate` window is a safety net, not
+  a staleness budget.** `/rooms/<slug>` is prerendered with `revalidate = 300`,
+  which is what makes those pages cheap — and they are the SEO long tail, so the
+  window stays. The problem is not the window, it is that a *change* waits five
+  minutes. **And the moment it is wrong is the moment someone verifies a room —
+  the single event this product exists to reflect.** A page reading UNVERIFIED
+  for five minutes after a floor visit confirmed it is the product contradicting
+  itself on its own core claim.
+  So: call `revalidatePath('/rooms/<slug>')` when a verification lands or a
+  correction is approved. Then 300s never fires in the normal case.
+  **The obvious wrong fix is lowering the interval** — it trades the cheapness of
+  the long tail for a shorter wrong-window, and still leaves one. Invalidate on
+  the event; do not shorten the guess.
+  *Not yet wired, because nothing writes verification yet.* The hook points are
+  the admin review queue (build-order step 5) and whatever records a floor
+  visit — both must call it, and this entry exists so neither ships without it.
 - **Enumerate while exclusions are the exception; summarise once they are the
   norm.** "Name the room and the reason, never a count" exists because *"1 room
   skipped"* is a hedge — it hides *which* room and denies the reader the chance
