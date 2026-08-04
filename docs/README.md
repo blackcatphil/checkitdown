@@ -435,31 +435,119 @@ no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
 
-## Map load time — one waste removed, cause NOT confirmed
+## Map load time — ANSWERED. The map was never drawing. (2026-08-04)
 
-The style was being recoloured after `load` with **83 `setPaintProperty` calls
-across 55 layers**, each against a live map, each a style diff and a repaint.
-That is now done once, before the constructor, via a pure transform in
-`lib/map-style.ts`.
+**The map had no worker, so it never requested a single tile.** MapLibre v6
+builds its worker from a Blob that imports `import.meta.url`; Turbopack rewrites
+that to the **page** url, so the worker fetched the HTML document as its own
+source and died. Vector tiles are fetched **inside the worker**. Everything on
+the main thread kept working perfectly: style `200`, TileJSON `200`, sprites
+`200`, `transformRequest` firing for all 12 tiles — and **zero network
+requests**, no exception, no console output, forever.
 
-**Do not read this as "load time fixed."** We measured the *count*; **nobody
-measured the elapsed time**. 83 redundant calls is certainly wasteful and worth
-removing on its own terms — it is not plausibly sixty seconds. So this is an
-improvement **pending confirmation**, and if the map is still slow the cause is
-elsewhere: tile fetch concurrency, the inlined footprint geometry, or something
-unexamined. Logging this as resolved would make the real cause harder to find,
-which is the whole reason the distinction is written down.
+Fixed by serving the worker ourselves (`setWorkerUrl`), from a **generated**
+copy: `scripts/sync-map-worker.mjs` walks the worker's import closure out of
+`node_modules` into `public/`, and `npm run check:worker` fails the build if it
+drifts from the installed package.
 
-The cold-load measurement is still owed and still needs a browser: fresh
-profile, n>1, cold vs warm and bundled vs CDN separated, time-to-first-paint at
-the landing zoom.
+**Measured, in a browser, n=3 each** (production build, self-hosted worker):
+
+| | time to first tile |
+|---|---|
+| cold cache | **1168 ms** |
+| warm cache | **457 ms** |
+
+So: not 26–46 seconds. Not tiles, not throttling, not the restyle.
+
+### What this retires
+
+- **"83 `setPaintProperty` calls" was not the cause.** That entry sat here as an
+  improvement *pending confirmation*; it is now confirmed **not** to have been
+  the problem. The style-object transform stays — doing the work once instead of
+  55 times against a live map is better on its own terms — but it fixed a map
+  that was never going to draw, and this file said it was fixed when it wasn't.
+- **The tile building layer was not the cause.** Also removed for real reasons.
+- **The throttled tab was not the cause.**
+- **The loading state was correct the entire time.** It said the ground map had
+  not arrived. It had not, and never would.
+
+### A subsystem that works off the main thread fails silently on it
+
+Every signal available on the main thread said the map was healthy. The failure
+lived one boundary away, where nothing was watching. **When work is delegated —
+worker, iframe, service worker, background job — the delegating side succeeding
+is not evidence the work happened.** Watch the thing that does the work.
+
+### One silent failure hid another
+
+With the worker dead, `load` never fired, so our own layers were never added, so
+`fill-extrusion-opacity: ['case', ['feature-state', 'hover'], ...]` never raised
+`data expressions not supported`. It surfaced the instant tiles started flowing.
+**Fixing the outer failure is how you find the inner one** — expect a second
+defect after a long-masked one clears, rather than reading first-green as done.
+
+### Ask what your observable cannot distinguish — THREE times in one session
+
+1. **Tile count.** The only signal that separates "slow map" from "dead map".
+   Style status, console output and canvas appearance are all identical between
+   them. A dark empty canvas looks exactly like a dark map.
+2. **`canvas.clientWidth`.** Used to test the resize path; it tracks the
+   container by CSS alone, so it passed with the guard ablated. It measured the
+   browser's layout engine while wearing the name of a test of our code.
+   `canvas.width` — the GL drawing buffer — is the number only `resize()` moves.
+3. **Window resize vs container resize.** MapLibre installs its own window
+   listener, so resizing the viewport tested the library, not us.
+
+The pattern each time was reaching for the number that is **easy to read** over
+the number that **can be wrong**.
+
+### A guard you did not ablate is not a guard
+
+A `ResizeObserver` was diagnosed as the fix for a 0x0 container. Direct
+measurement disagreed: the container was **1138x836 on the first probe, before
+any change**, and MapLibre v6 already observes its own container — with ours
+ablated, everything still passed. It is **not** in the code, and
+`app/MapShell.tsx` says why, because "add an observer" is a plausible-sounding
+fix someone will propose again. `scripts/map-probe.mjs` keeps the assertion:
+the behaviour matters whoever provides it.
+
+The diagnosis was wrong; the **method** was right, and it is what found the real
+cause — read the network log, notice the style loaded and no tile followed,
+refuse to accept a clean console as evidence of health.
+
+### A checked-in copy of someone else's file goes stale silently
+
+`public/maplibre-gl-worker.mjs` is exactly the hazard this project keeps
+relearning, so it is generated and hash-checked rather than copied by hand. The
+first attempt copied the worker **alone**; it 404'd on its sibling module and
+died just as quietly as the bug it was fixing — same zero tiles, same clean
+console. The script now walks the import closure and **hard-fails on a
+non-relative specifier** instead of discovering it in a browser.
 
 **A failed palette degrades visibly rather than blanking.** Moving construction
-behind a fetch introduced a failure whose symptom is identical to the slow-load
-problem — no map either way. So if the fetch or transform throws, MapLibre is
-handed the style URL directly: a correctly-rendered map in the **wrong colours**,
-with `PALETTE FAILED` in the badge. A blank map tells you nothing; a
+behind a fetch introduced a failure whose symptom is identical to the blank map —
+no map either way. So if the fetch or transform throws, MapLibre is handed the
+style URL directly: a correctly-rendered map in the **wrong colours**, with
+`PALETTE FAILED` in the badge. A blank map tells you nothing; a
 Positron-coloured one tells you exactly which step failed.
+
+## The map instrument (`NEXT_PUBLIC_MAP_DEBUG=1`)
+
+Three numbers in the badge: **tiles requested / loaded**, **errors**, and **time
+since the last rendered frame**. `tiles 0 · frame NEVER` states this whole
+investigation in one reading, which is why it exists.
+
+Flag-gated, but the **counters always run** — an instrument you switch on after
+noticing a problem has already missed the first seconds, and load failures live
+there. Two things it does deliberately: it counts **distinct tiles** rather than
+`data` events (event-counting reported 48 loaded against 12 requested, and a
+badge that overstates is one you would trust while chasing something else), and
+its `error` handler **logs**, because registering one silences MapLibre's own
+console reporting.
+
+`window.__cid_map` is exposed under the same flag. Diagnosing this took far too
+long on inference because nothing could ask the map what it thought its own
+camera and sources were.
 
 ## Building groups, and 13 seeded heights (2026-08-04)
 

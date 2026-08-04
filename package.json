@@ -9,7 +9,11 @@
     "lint": "eslint",
     "test:mixed": "node scripts/mixed-state.mjs",
     "test:rls": "supabase test db",
-    "test:unit": "node --test lib/*.test.mjs"
+    "test:unit": "node --test lib/*.test.mjs",
+    "sync:worker": "node scripts/sync-map-worker.mjs",
+    "check:worker": "node scripts/sync-map-worker.mjs --check",
+    "prebuild": "node scripts/sync-map-worker.mjs",
+    "test:map": "node scripts/map-probe.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -25,6 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "playwright": "^1.62.1",
     "supercluster": "^8.0.1",
     "typescript": "^5"
   }

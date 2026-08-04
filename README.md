@@ -34,16 +34,25 @@ npm run dev
 ## Tests
 
 ```bash
-npm run test:unit     # pure logic, no services              (6 assertions)
+npm run test:unit     # pure logic, no services              (13 assertions)
 npm run test:rls      # pgTAP: RLS + grants, needs the stack (10 assertions)
-npm run test:mixed    # rendered output, needs stack + server (63 across 15 scenarios)
+npm run test:mixed    # rendered output, needs stack + server (65 across 15 scenarios)
+npm run test:map      # the map IN A BROWSER: tile requests   (8, or 10 w/ debug)
 ```
 
-All three are **behavioural**, because structural checks have twice passed here
-while behaviour was broken: RLS policies were inert without `GRANT`s while the
-schema looked flawless, and a superlative card was hardcoded to its empty state
-while every test passed. Each suite has been **verified to fail** on an injected
-regression — a suite that has never been red is a suite nobody has tested.
+All four are **behavioural**, because structural checks have three times passed
+here while behaviour was broken: RLS policies were inert without `GRANT`s while
+the schema looked flawless, a superlative card was hardcoded to its empty state
+while every test passed, and **the map drew nothing for weeks** while the markup,
+the canvas element and the console were all exactly what a working map produces.
+Each suite has been **verified to fail** on an injected regression — a suite that
+has never been red is a suite nobody has tested.
+
+`test:map` needs a browser (`npx playwright install chromium`) and asserts the
+one signal that separates a working map from a dead one: **did it request
+tiles.** Two further assertions — that the sourced buildings are actually
+*rendered*, not merely present in the data — need a build with
+`NEXT_PUBLIC_MAP_DEBUG=1`; CI probes the shipping configuration instead.
 
 ## A note on the `ci-selftest/*` branches
 
