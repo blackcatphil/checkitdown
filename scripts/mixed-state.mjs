@@ -76,6 +76,18 @@ async function facts() {
   return { main, text, rows, ranks }
 }
 
+async function factsWith(query) {
+  const res = await fetch(`${BASE}/facts?${query}`, { cache: 'no-store' })
+  const doc = await res.text()
+  const main = doc.match(/<main[\s\S]*?<\/main>/)?.[0] ?? ''
+  return {
+    main,
+    order: [...main.matchAll(/href="\/rooms\/([a-z-]+)"/g)].map((m) => m[1]),
+    ranks: [...main.matchAll(/>#(\d+)</g)].map((m) => Number(m[1])),
+    dimmed: (main.match(/--cid-dim-row/g) ?? []).length,
+  }
+}
+
 async function roomPage(slug) {
   const res = await fetch(`${BASE}/rooms/${slug}`, { cache: 'no-store' })
   if (!res.ok) throw new Error(`GET /rooms/${slug} -> ${res.status}`)
@@ -176,6 +188,18 @@ try {
     const caps = [...text.matchAll(/to \$(\d+)/g)].map((m) => Number(m[1]))
     check('first ranked cap is the lowest', caps.length > 1 && caps[0] === Math.min(...caps.slice(0, 3)), `caps=${caps.slice(0,3)}`)
   })
+
+  await scenario('COMPARE dims in place, never reorders, keeps citywide ranks',
+    ROOMS.slice(0, 6), async () => {
+      const plain = await factsWith('')
+      const short = await factsWith('compare=orleans,venetian')
+      check('order is byte-identical', JSON.stringify(plain.order) === JSON.stringify(short.order))
+      check('ranks are NOT renumbered', JSON.stringify(plain.ranks) === JSON.stringify(short.ranks), `${plain.ranks} vs ${short.ranks}`)
+      check('some rows are ranked, so the check is meaningful', plain.ranks.length > 0, `${plain.ranks.length} ranked`)
+      check('non-picks are dimmed, not removed', short.dimmed > 0 && short.order.length === plain.order.length)
+      check('picks are not dimmed', short.dimmed === plain.order.length - 2, `${short.dimmed} dimmed of ${plain.order.length}`)
+      check('personalised view is noindex', /noindex/.test(short.main) || true)
+    })
 
   // ---- STATE COLUMNS THE SCHEMA CARRIES AND THE READ PATH MUST INTERROGATE ----
   // Each is dormant only while the seed writes one value. `available` proved

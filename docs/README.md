@@ -173,12 +173,13 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 | Zero-verified is the primary state | test | `test:mixed` ZERO scenario |
 | Floor visit records absences explicitly | prose | a capture-process rule — nothing in the app can enforce what a person writes down |
 | Palette / no raw colour | code | `no-restricted-syntax` in `eslint.config.mjs` — hex, `rgb()`/`hsl()` and template-literal forms all error on `app/`, `lib/`, `components/`. Exemptions written down in that file; `readToken()` in `lib/tokens.ts` is the sanctioned path for canvas |
-| Compare dims in place and never reorders | **GAP** | not built yet — belongs with the landing map |
+| Compare dims in place and never reorders | code + test | map collects into `?compare=`; `/facts` dims non-picks and **never reorders or renumbers**; `test:mixed` asserts byte-identical order and identical ranks |
 | Editorial content is labelled as editorial | **GAP** | `reliability` is display-only by convention; nothing stops a future surface sorting it |
 | Mobile: no interaction without a touch equivalent | prose | a design review rule |
 
-Two GAPs remain, both surfaces not yet built (`compare`, editorial labelling),
-so they close when those are built. The palette gap is **closed** — deliberately
+One GAP remains — editorial labelling, which needs the tournaments surface that
+has no data yet. `compare` closed with the landing map pass, updated here as
+part of that pass rather than after it, so the audit never lags the code. The palette gap is **closed** — deliberately
 before the landing map rather than after, because the map is the surface most
 likely to acquire ad-hoc colour, and a rule added afterwards is a cleanup while a
 rule added first means the drift never gets written.

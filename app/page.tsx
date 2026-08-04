@@ -1,63 +1,55 @@
-import Link from 'next/link'
+import { MapClient } from './MapClient'
+import type { MapRoom } from './MapShell'
 
 import { supabase } from '@/lib/supabase'
 
 export const revalidate = 300
 
-/**
- * Landing map — the 3D module is not wired in yet, so this states what it is
- * and what is behind it rather than pretending. "Unbuilt surfaces admit it and
- * say what they will do" is a content rule, not just a courtesy.
- */
+/** game_kind -> the four filter keys the panel ships with. `stud` and `other`
+ *  map to none of them: a room that only spreads stud matches no game filter,
+ *  which is correct — there is no STUD checkbox to claim otherwise. */
+const GAME_KEY: Record<string, string> = {
+  nlh: 'nlh', plo: 'plo', plo5: 'plo', lhe: 'limit', mixed: 'mixed',
+}
+
 export default async function Home() {
-  const [{ count: roomCount }, { count: gameCount }] = await Promise.all([
-    /* Roster count, not a raw row count — closed and seasonal rooms are off it. */
-    supabase
-      .from('rooms')
-      .select('*', { count: 'exact', head: true })
-      .neq('status', 'closed')
-      .neq('status', 'seasonal')
-      .eq('is_seasonal', false),
-    supabase.from('cash_games').select('*', { count: 'exact', head: true }),
-  ])
+  /* Closed rooms are excluded here — they never get a pin. Seasonal rooms ARE
+     fetched, because the panel toggle restores them; inRoster() on the client
+     keeps them off by default. */
+  const { data } = await supabase
+    .from('rooms')
+    /* One string literal, not a concatenation: `'a' + 'b'` widens to `string`
+       and supabase-js can then only infer GenericStringError, which a cast
+       would hide rather than fix. */
+    .select(
+      'slug,name,area,status,is_seasonal,latitude,longitude,table_count,verified_at,cash_games(game,stakes_label,big_blind)',
+    )
+    .neq('status', 'closed')
+    .order('name')
 
-  return (
-    <main className="cid-page" style={{ padding: 'var(--cid-space-9) 0' }}>
-      <h1 style={{ font: 'var(--cid-statement)', margin: '0 0 var(--cid-space-5)' }}>
-        Every poker room in the valley
-      </h1>
-      <p
-        style={{
-          font: 'var(--cid-lede)',
-          color: 'var(--cid-text-3)',
-          maxWidth: 'var(--cid-measure)',
-          margin: '0 0 var(--cid-space-7)',
-        }}
-      >
-        {roomCount ?? 0} rooms and {gameCount ?? 0} cash games are in the database, each
-        carrying a source and a fetch date. None is confirmed on site yet, so nothing is
-        ranked and every figure is shown tilde&rsquo;d.
-      </p>
+  const rooms: MapRoom[] = (data ?? []).map((r) => {
+    const games = r.cash_games as Array<{ game: string; stakes_label: string; big_blind: number | null }>
+    const nlh = games
+      .filter((g) => g.game === 'nlh' && g.big_blind != null)
+      .sort((a, b) => Number(a.big_blind) - Number(b.big_blind))
+    return {
+      slug: r.slug,
+      name: r.name,
+      area: r.area,
+      status: r.status,
+      is_seasonal: r.is_seasonal,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      table_count: r.table_count,
+      verified_at: r.verified_at,
+      games: [...new Set(games.map((g) => GAME_KEY[g.game]).filter(Boolean))],
+      stakes: nlh.length
+        ? nlh.length > 1
+          ? `${nlh[0].stakes_label} – ${nlh[nlh.length - 1].stakes_label}`
+          : nlh[0].stakes_label
+        : null,
+    }
+  })
 
-      <div
-        style={{
-          border: '1px solid var(--cid-line-1)',
-          background: 'var(--cid-ink-700)',
-          padding: 'var(--cid-space-7)',
-          maxWidth: 'var(--cid-measure)',
-        }}
-      >
-        <span className="cid-label">MAP — NOT WIRED IN YET</span>
-        <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-3)', margin: 'var(--cid-space-4) 0 0' }}>
-          The 3D map module exists as a built surface and the room coordinates are seeded.
-          Wiring it to live data is the next step. The filter panel ships with the GAMES
-          group only: a dim on the map means a room does not have the feature, and amenity
-          coverage is not yet complete enough for that to be a claim we can stand behind.
-        </p>
-        <p style={{ font: 'var(--cid-body)', margin: 'var(--cid-space-5) 0 0' }}>
-          <Link href="/facts">Just the facts</Link> is live against the database.
-        </p>
-      </div>
-    </main>
-  )
+  return <MapClient rooms={rooms} />
 }

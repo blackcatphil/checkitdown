@@ -73,3 +73,76 @@ a:hover { color: var(--cid-accent-200); }
   min-height: var(--cid-target);
   z-index: 2;
 }
+
+/* ---------------------------------------------------------------------
+   MAP — pins, clusters, popup. Every colour is a --cid-* token, so the
+   palette tracks colors.css and the no-raw-colour lint rule needs no
+   exemption here. OSM tiles are light by default; the filter darkens them
+   to sit under an ink palette without shipping a second tile set.
+   --------------------------------------------------------------------- */
+.cid-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.86) contrast(0.92) saturate(0.55);
+}
+.leaflet-container { background: var(--cid-ink-800); outline: none; }
+.leaflet-control-attribution { display: none; }
+
+.cid-pin {
+  width: 32px; height: 32px;
+  border-radius: var(--cid-r-pill);
+  display: grid; place-items: center;
+  font: var(--cid-tag);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: transform .12s ease;
+}
+.cid-pin:hover { transform: scale(1.08); }
+
+.cid-single {
+  background: var(--cid-pin);
+  border: 1px solid var(--cid-accent-300);
+  box-shadow: var(--cid-shadow-pop);
+}
+/* Filtering DIMS, never removes — a room that vanishes reads as "we don't
+   have it" rather than "it doesn't match". */
+.cid-out { background: var(--cid-pin-dim); border-color: transparent; box-shadow: none; }
+
+/* A room you cannot enter is on the roster but flagged, the same way it is
+   badged in the table. Outline rather than fill: it is still a real room. */
+.cid-flagged { background: transparent; border: 2px dashed var(--cid-accent-300); }
+
+.cid-cluster { color: var(--cid-paper); }
+.cid-all  { background: var(--cid-accent-700); border: 1px solid var(--cid-accent-300); }
+/* The number does the work dimming cannot: "some of these match" has no shade. */
+.cid-part { background: var(--cid-ink-700); border: 1px solid var(--cid-cluster-partial); color: var(--cid-cluster-partial); }
+.cid-none { background: var(--cid-ink-700); border: 1px solid var(--cid-line-2); color: var(--cid-disabled); }
+
+.cid-popup .leaflet-popup-content-wrapper {
+  background: var(--cid-ink-600);
+  border: 1px solid var(--cid-line-2);
+  border-radius: var(--cid-r-md);
+  box-shadow: var(--cid-shadow-pop);
+  color: var(--cid-text);
+}
+.cid-popup .leaflet-popup-tip { background: var(--cid-ink-600); }
+.cid-popup .leaflet-popup-content { margin: var(--cid-space-5); }
+.cid-pop { display: flex; flex-direction: column; gap: var(--cid-space-3); }
+.cid-pop-name { font: var(--cid-room-name); color: var(--cid-text); border-bottom: none; }
+.cid-pop-meta { font: var(--cid-caption); color: var(--cid-text-3); }
+.cid-pop-ver {
+  font: var(--cid-tag); letter-spacing: var(--cid-track-nav);
+  color: var(--cid-unverified); border-bottom: 1px dotted var(--cid-unverified-rule);
+  align-self: flex-start;
+}
+.cid-pop-flag {
+  font: var(--cid-tag); letter-spacing: var(--cid-track-nav);
+  color: var(--cid-accent-300); align-self: flex-start;
+}
+/* Double-click has no touch equivalent, so the popup always carries an
+   explicit affordance and nothing depends on hover alone. */
+.cid-pop-cta {
+  font: var(--cid-tag); letter-spacing: var(--cid-track-action);
+  color: var(--cid-paper); background: var(--cid-accent-700);
+  border-top: 1px solid var(--cid-accent-300); border-radius: var(--cid-r-sm);
+  min-height: var(--cid-target); display: grid; place-items: center;
+  border-bottom: none;
+}

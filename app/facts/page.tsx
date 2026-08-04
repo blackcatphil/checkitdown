@@ -4,7 +4,19 @@ import { applySort, exclusionLine, exclusions, type RoomFacts, type SortSpec } f
 import { inRoster, isRankable, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { supabase } from '@/lib/supabase'
 
-export const metadata = { title: 'Just the facts — Check It Down' }
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ compare?: string }>
+}) {
+  const sp = await searchParams
+  const personalised = Boolean((sp.compare ?? '').split(',').filter(Boolean).length)
+  return {
+    title: 'Just the facts — Check It Down',
+    alternates: { canonical: '/facts' },
+    robots: personalised ? { index: false, follow: true } : undefined,
+  }
+}
 export const revalidate = 300
 
 type AmenityJoin = {
@@ -150,7 +162,18 @@ function Superlative({
   )
 }
 
-export default async function JustTheFacts() {
+export default async function JustTheFacts({
+  searchParams,
+}: {
+  searchParams: Promise<{ compare?: string }>
+}) {
+  const sp = await searchParams
+  /* URL is the source of truth for shareable state. A non-empty set is a
+     personalised view, so it is noindex,follow with a canonical back to the
+     clean path — a crawlable ?compare= permutation would mint unbounded thin
+     duplicates of one page. */
+  const compare = (sp.compare ?? '').split(',').filter(Boolean)
+  const compareSet = new Set(compare)
   const { data, error } = await supabase
     .from('rooms')
     .select(
@@ -264,6 +287,21 @@ export default async function JustTheFacts() {
             }. Unconfirmed rooms are shown tilde’d and sort below the ranking.`}
       </p>
 
+      {compareSet.size > 0 && (
+        <p
+          style={{
+            font: 'var(--cid-caption)', color: 'var(--cid-dim)',
+            border: '1px solid var(--cid-line-2)', borderRadius: 'var(--cid-r-md)',
+            padding: 'var(--cid-space-5)', maxWidth: 'var(--cid-measure)',
+            margin: '0 0 var(--cid-space-7)',
+          }}
+        >
+          Showing your {compareSet.size}-room shortlist lit and the rest dimmed. Nothing is
+          reordered and no rank is renumbered — the numbers are citywide positions, which is
+          the point of a shortlist. <Link href="/facts">Clear</Link>
+        </p>
+      )}
+
       <section
         style={{
           display: 'grid',
@@ -309,8 +347,17 @@ export default async function JustTheFacts() {
           const r = d.room
           const rk = rankBySlug.get(r.slug)!
           const verified = r.verified_at != null
-          return (
-            <div className="cid-trow" key={r.slug}>
+            /* COMPARE DIMS IN PLACE AND NEVER REORDERS. The citywide rank is
+               the point of the shortlist — renumbering it #1,#2,#3 would
+               invent a ranking that does not exist, so the row keeps the
+               position it holds in the whole city. */
+            const dimmed = compareSet.size > 0 && !compareSet.has(r.slug)
+            return (
+            <div
+              className="cid-trow"
+              key={r.slug}
+              style={dimmed ? { opacity: 'var(--cid-dim-row)' } : undefined}
+            >
               <span
                 className="num"
                 style={{

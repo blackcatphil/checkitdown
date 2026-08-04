@@ -621,6 +621,7 @@ export type Database = {
       rooms: {
         Row: {
           area: Database["public"]["Enums"]["area_kind"]
+          closed_on: string | null
           comp_notes: string | null
           comp_rate_hourly: number | null
           created_at: string
@@ -652,6 +653,7 @@ export type Database = {
         }
         Insert: {
           area: Database["public"]["Enums"]["area_kind"]
+          closed_on?: string | null
           comp_notes?: string | null
           comp_rate_hourly?: number | null
           created_at?: string
@@ -683,6 +685,7 @@ export type Database = {
         }
         Update: {
           area?: Database["public"]["Enums"]["area_kind"]
+          closed_on?: string | null
           comp_notes?: string | null
           comp_rate_hourly?: number | null
           created_at?: string
