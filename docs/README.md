@@ -406,6 +406,32 @@ no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
 
+## Map load time — one waste removed, cause NOT confirmed
+
+The style was being recoloured after `load` with **83 `setPaintProperty` calls
+across 55 layers**, each against a live map, each a style diff and a repaint.
+That is now done once, before the constructor, via a pure transform in
+`lib/map-style.ts`.
+
+**Do not read this as "load time fixed."** We measured the *count*; **nobody
+measured the elapsed time**. 83 redundant calls is certainly wasteful and worth
+removing on its own terms — it is not plausibly sixty seconds. So this is an
+improvement **pending confirmation**, and if the map is still slow the cause is
+elsewhere: tile fetch concurrency, the inlined footprint geometry, or something
+unexamined. Logging this as resolved would make the real cause harder to find,
+which is the whole reason the distinction is written down.
+
+The cold-load measurement is still owed and still needs a browser: fresh
+profile, n>1, cold vs warm and bundled vs CDN separated, time-to-first-paint at
+the landing zoom.
+
+**A failed palette degrades visibly rather than blanking.** Moving construction
+behind a fetch introduced a failure whose symptom is identical to the slow-load
+problem — no map either way. So if the fetch or transform throws, MapLibre is
+handed the style URL directly: a correctly-rendered map in the **wrong colours**,
+with `PALETTE FAILED` in the badge. A blank map tells you nothing; a
+Positron-coloured one tells you exactly which step failed.
+
 ## Extruding only our own 17 casinos — and the height debt that blocks it
 
 The tile building layer is **dropped**. Only the 17 footprints extrude, and only

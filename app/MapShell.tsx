@@ -74,6 +74,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const [zoom, setZoom] = useState(STRIP_Z)
   const [ready, setReady] = useState(false)
   const [tilesIn, setTilesIn] = useState(false)
+  const [paletteOk, setPaletteOk] = useState(true)
   const [inView, setInView] = useState<number | null>(null)
 
   const roster = useMemo(
@@ -123,11 +124,29 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
        JSON anyway — fetching it ourselves costs the same request and does the
        work once. */
     void (async () => {
-      const raw: MapStyle = await fetch(STYLE_URL).then((r) => r.json())
+      /* FALLBACK, because this step introduced a failure whose symptom is
+         IDENTICAL to the one we already cannot diagnose: if the fetch or the
+         transform throws, the map never constructs and the blank canvas looks
+         exactly like the slow-load problem.
+         So a failed palette hands MapLibre the style URL directly. The result
+         is a correctly-rendered map in the WRONG COLOURS — visibly degraded,
+         obviously diagnosable, still usable. A blank map tells you nothing; a
+         Positron-coloured map tells you precisely which step failed. */
+      let style: MapStyle | string = STYLE_URL
+      try {
+        const raw: MapStyle = await fetch(STYLE_URL).then((r) => {
+          if (!r.ok) throw new Error(`style ${r.status}`)
+          return r.json()
+        })
+        style = applyPalette(raw, T)
+      } catch {
+        style = STYLE_URL
+        if (!cancelled) setPaletteOk(false)
+      }
       if (cancelled || !holder.current) return
       map = new MLMap({
         container: holder.current,
-        style: applyPalette(raw, T) as never,
+        style: style as never,
         center: STRIP,
         zoom: STRIP_Z,
         pitch: PITCH,
@@ -424,7 +443,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         )}
 
         <div className="num cid-mapbadge">
-          z{zoom} · {roster.length} ROOMS · {in3d ? '3D' : `FLAT · 3D AT z${MIN_3D_ZOOM}`}{tilesIn ? '' : ' · LOADING'}
+          z{zoom} · {roster.length} ROOMS · {in3d ? '3D' : `FLAT · 3D AT z${MIN_3D_ZOOM}`}
+          {tilesIn ? '' : ' · LOADING'}
+          {/* Degraded, not broken — and it says which. */}
+          {paletteOk ? '' : ' · PALETTE FAILED'}
         </div>
       </div>
     </div>
