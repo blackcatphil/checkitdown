@@ -180,7 +180,42 @@ commit after that behaviour was removed. Code has a compiler, a linter and a
 test suite arguing with it; a comment has nothing, so it is the part of a
 codebase most exposed to going stale and the least likely to announce it.
 
-*Corollary 3 — a 200 checks the TRANSPORT, not the CONTENT.* Removing
+*Corollary 3 — a check must show WHAT IT SAW, not only its verdict.* The first
+CI run captured each suite's output into a variable and never echoed it, so when
+the assertion failed the log showed the complaint and not the evidence. **A
+failing check without evidence costs more than no check**, because it consumes
+the time it was meant to save. Same lesson as the spike's inventory panel,
+arriving in CI.
+
+*Corollary 3b — red is not enough; it must be red FOR THE RIGHT REASON, and the
+practical form is: check WHICH ASSERTION caught it, not just that CI went red.* All
+three CI self-tests failed at the correct step. But the hardcoded
+`winner={null}` — the original bug — was caught only **incidentally**, by the
+sort-caption assertion, because the caption renders inside the winner branch.
+The ZERO, ONE and THREE scenarios all passed with LOWEST RAKE permanently empty:
+**the suite never asserted that a card shows its winner.** Checking *which* step
+failed proved the gate; checking *which assertion* failed exposed a hole in it.
+Direct assertions added, verified to fail on the regression.
+
+*Corollary 4 — test the GUARD, not just the thing guarded.* That same step was
+written to catch "a suite that ran nothing", and it could never pass: it grepped
+for `# pass` where Node prints `ℹ pass`. The suite had been tested; the assertion
+about the suite never had. One level above "a test that has never failed has not
+been tested".
+
+*Corollary 5 — two runs that can disagree are a flake generator, not redundancy.*
+The first version ran each suite twice, once for the exit code and once to grep.
+Each gate now runs once, tees to a log, and asserts against that.
+
+*Corollary 6 — a suite can be correct by accident of its ENVIRONMENT.*
+`test:mixed` mutates the database then reads rendered output. That premise holds
+under `next dev`, which re-renders every request, and fails under `next start`,
+which serves a build-time snapshot for `revalidate = 300`. Locally it passed for
+five months' worth of reasons that were never about the code. **Note the product
+consequence, separate from CI: a verified room keeps showing UNVERIFIED for up to
+five minutes after the fact changes.**
+
+*Corollary 7 — a 200 checks the TRANSPORT, not the CONTENT.* Removing
 `setHover()` left orphaned statements outside any function; the JS was broken
 and the page still served **200**. Checking the parse rather than the status code
 is the same move as checking whether a source *supports* a claim rather than
@@ -560,6 +595,22 @@ rule added first means the drift never gets written.
   yet* (a gap in our checking) and *checked, none present* (a finding). Reporting
   a completed check as a gap is the same unknown-as-negative error inverted, and
   it is covered by `npm run test:mixed`.
+- **Room pages invalidate ON WRITE; the `revalidate` window is a safety net, not
+  a staleness budget.** `/rooms/<slug>` is prerendered with `revalidate = 300`,
+  which is what makes those pages cheap — and they are the SEO long tail, so the
+  window stays. The problem is not the window, it is that a *change* waits five
+  minutes. **And the moment it is wrong is the moment someone verifies a room —
+  the single event this product exists to reflect.** A page reading UNVERIFIED
+  for five minutes after a floor visit confirmed it is the product contradicting
+  itself on its own core claim.
+  So: call `revalidatePath('/rooms/<slug>')` when a verification lands or a
+  correction is approved. Then 300s never fires in the normal case.
+  **The obvious wrong fix is lowering the interval** — it trades the cheapness of
+  the long tail for a shorter wrong-window, and still leaves one. Invalidate on
+  the event; do not shorten the guess.
+  *Not yet wired, because nothing writes verification yet.* The hook points are
+  the admin review queue (build-order step 5) and whatever records a floor
+  visit — both must call it, and this entry exists so neither ships without it.
 - **Enumerate while exclusions are the exception; summarise once they are the
   norm.** "Name the room and the reason, never a count" exists because *"1 room
   skipped"* is a hedge — it hides *which* room and denies the reader the chance

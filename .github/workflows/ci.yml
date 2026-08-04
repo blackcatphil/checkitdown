@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# One run per ref; a superseded push should not keep burning a runner.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # EVERY STEP'S ABSENCE MUST BE LOUD.
+    #
+    # The trap this guards against: a workflow that silently skips a step still
+    # reports success. If `supabase start` fails and the suite is conditional,
+    # the job goes green having run nothing — and that failure is invisible for
+    # months, because green is exactly what you expect to see.
+    #
+    # So: no `continue-on-error`, no `if:` guards on any test step, and each
+    # precondition is ASSERTED before the suite that depends on it rather than
+    # assumed. A missing database fails at the assertion, not silently inside a
+    # suite that then reports 0 passed.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # --- GATE 1: pure logic. Cheapest, so it runs first and fails fastest. ---
+      #
+      # Each gate RUNS ONCE, ECHOES, then asserts. The first version ran each
+      # suite twice — once for the exit code, once to grep — which doubles the
+      # work and lets the two runs disagree. It also captured output into a
+      # variable and never printed it, so when the assertion failed the log
+      # showed the complaint and not the evidence. Both fixed here.
+      - name: "test:unit (6 assertions)"
+        run: |
+          set -euo pipefail
+          npm run --silent test:unit 2>&1 | tee /tmp/unit.log
+          grep -qE '^. fail 0' /tmp/unit.log \
+            || { echo "::error::test:unit reported failures"; exit 1; }
+          n=$(grep -oE '^. tests [0-9]+' /tmp/unit.log | grep -oE '[0-9]+')
+          echo "unit assertions: $n"
+          [ "${n:-0}" -ge 6 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 6) — a suite that shrinks to nothing still exits 0"; exit 1; }
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: supabase start
+        run: supabase start
+
+      # Assert the stack is genuinely up. `supabase start` exiting 0 is not the
+      # same as Postgres accepting connections.
+      - name: Assert database is reachable and seeded
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          export PGPASSWORD=postgres
+          rooms=$(psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -c 'select count(*) from rooms')
+          games=$(psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -c 'select count(*) from cash_games')
+          echo "rooms=$rooms games=$games"
+          [ "$rooms" = "17" ] || { echo "::error::expected 17 seeded rooms, got '$rooms' — migration or seed did not run"; exit 1; }
+          [ "$games" = "75" ] || { echo "::error::expected 75 seeded cash games, got '$games'"; exit 1; }
+
+      # --- GATE 2: RLS + grants, against the real roles. ---
+      - name: "test:rls (10 pgTAP assertions)"
+        run: |
+          set -euo pipefail
+          supabase test db 2>&1 | tee /tmp/rls.log
+          grep -q 'All tests successful' /tmp/rls.log \
+            || { echo "::error::pgTAP did not report success"; exit 1; }
+          n=$(grep -oE 'Tests=[0-9]+' /tmp/rls.log | head -1 | cut -d= -f2)
+          echo "pgTAP assertions: $n"
+          [ "${n:-0}" -ge 10 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 10) — a shrinking suite is a silent regression"; exit 1; }
+
+      # The anon key is generated per-stack, so it is read from the running
+      # stack rather than hardcoded — a stale key would fail at request time,
+      # inside a suite, looking like a product bug.
+      - name: Capture stack env
+        run: |
+          set -euo pipefail
+          key=$(supabase status -o json | jq -r '.ANON_KEY')
+          [ -n "$key" ] && [ "$key" != "null" ] \
+            || { echo "::error::could not read ANON_KEY from the running stack"; exit 1; }
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$key"
+          } >> "$GITHUB_ENV"
+
+      - name: next build
+        run: npm run build
+
+      # test:mixed reads RENDERED OUTPUT after mutating the database, so it
+      # requires a server that re-renders per request. /rooms/[slug] is
+      # prerendered with revalidate=300, so `next start` serves a build-time
+      # snapshot and the mutations are invisible for five minutes — every
+      # room-page assertion failed here while every /facts one passed.
+      #
+      # The suite was correct locally only because `npm run dev` re-renders
+      # every request: true by accident of environment, not by construction.
+      # `next build` above still gates the production build; the suite runs
+      # against dev, which is the mode its premise actually holds in.
+      - name: next dev
+        run: |
+          set -euo pipefail
+          npm run dev &
+          for i in $(seq 1 90); do
+            curl -sf -o /dev/null http://127.0.0.1:3000/facts && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:3000/facts \
+            || { echo "::error::the app never became reachable — test:mixed reads rendered output and would otherwise pass vacuously"; exit 1; }
+          curl -sf -o /dev/null http://127.0.0.1:3000/rooms/horseshoe \
+            || { echo "::error::room pages unreachable — the suite's room-page scenarios would fail for the wrong reason"; exit 1; }
+
+      - name: "test:mixed (63 assertions, 15 scenarios)"
+        env:
+          PSQL: psql
+          BASE_URL: http://127.0.0.1:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:mixed 2>&1 | tee /tmp/mixed.log
+          grep -q 'All mixed-state checks passed' /tmp/mixed.log \
+            || { echo "::error::mixed-state suite did not pass"; exit 1; }
+          n=$(grep -c '^   PASS' /tmp/mixed.log || true)
+          echo "assertions passed: $n"
+          [ "$n" -ge 60 ] || { echo "::error::only $n assertions ran (expected >= 60) — the suite shrank, which is a silent regression"; exit 1; }
+
+      - name: Assert the database was left clean
+        run: |
+          set -euo pipefail
+          export PGPASSWORD=postgres
+          left=$(psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -c 'select count(*) from rooms where verified_at is not null')
+          [ "$left" = "0" ] || { echo "::error::test:mixed left $left verified rows behind; its rollback is broken"; exit 1; }
+
+      - name: lint
+        run: npm run lint
