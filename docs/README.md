@@ -140,6 +140,18 @@ therefore about *host accessibility*, not about how stable the page is.
 - **Provenance:** two states only — verified (date shown) and unverified
   (tilde'd, dotted rule, never ranked). When an unverified figure is excluded
   from a "best" column, **name the room and the reason**, never "1 room skipped".
+- **Enumerate while exclusions are the exception; summarise once they are the
+  norm.** "Name the room and the reason, never a count" exists because *"1 room
+  skipped"* is a hedge — it hides *which* room and denies the reader the chance
+  to correct it. When every row is excluded there is nothing hidden: the reason
+  is uniform, and listing seventeen rooms gives a reader nothing to act on.
+  *"0 of 17 rooms are confirmed on site"* **is** the reason, fully stated.
+  **Practical cutoff: if you can name them in one line, name them; past that,
+  state the count and the reason.**
+- **The zero-verified state is the PRIMARY state, not an edge case.** It is what
+  the first real visitors see, on every surface. Design it first and make it look
+  intentional; a surface that only looks right when full is a surface that will
+  look broken on launch day.
 - **`area` is a CLASSIFICATION field, not a fact field — same category as
   `slug`.** It is wayfinding, not a finding: nobody reads "STRIP" as a
   measurement. It therefore does **not** carry fact-provenance, even though it
