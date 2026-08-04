@@ -9,6 +9,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
 
+import { drawMassing, MIN_3D_ZOOM, type Palette } from './massing-layer'
+
 export type MapRoom = {
   slug: string
   name: string
@@ -34,7 +36,10 @@ const HOME_Z = 11
 /** Pin footprint. Two pins inside this distance collide, so one absorbs the other. */
 const PIN = 32
 
-/** The panel ships with GAMES only — see the coverage-gate decision. */
+/** The panel ships with GAMES only — see the coverage-gate decision. The SAME
+ *  gate applies one level down, within GAMES: a checkbox no room can satisfy is
+ *  a broken control, not an honest one. No room currently spreads `mixed`, so
+ *  "Mixed games" is filtered out below rather than shipped reading 0. */
 const GAME_FILTERS: Array<[string, string]> = [
   ['nlh', "No-Limit Hold'em"],
   ['plo', 'Pot-Limit Omaha'],
@@ -53,6 +58,12 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(HOME_Z)
   const [tick, setTick] = useState(0)
+  const [want3d, setWant3d] = useState(true)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const paletteRef = useRef<Palette | null>(null)
+  /* Tier B engages only when zoomed in. Below MIN_3D_ZOOM the pin layer owns
+     the view unchanged — wiring 3D must not regress the measured Tier A fit. */
+  const on3d = want3d && zoom >= MIN_3D_ZOOM
 
   /* Seasonal rooms are OFF the roster by default and restored by this toggle —
      a locked decision that lived only in prose until the read paths enforced it. */
@@ -72,11 +83,12 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   useEffect(() => {
     if (!mapEl.current || mapRef.current) return
     const t = readTokens(MAP_TOKENS)
+    paletteRef.current = t
     const map = L.map(mapEl.current, {
       center: HOME,
       zoom: HOME_Z,
       zoomControl: false,
-      attributionControl: false,
+      attributionControl: true,
       zoomSnap: 0.5,
       zoomDelta: 0.5,
       minZoom: 9.5,
@@ -85,9 +97,13 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     // Leaflet paints the container background itself, so this one genuinely
     // needs a JS colour string — the sanctioned path rather than a typed hex.
     mapEl.current.style.background = t.base
+    /* OSM's tile usage policy REQUIRES visible attribution. The mock hid it and
+       this app inherited that — restored, styled to the palette rather than
+       removed. */
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       className: 'cid-tiles',
+      attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map)
     layerRef.current = L.layerGroup().addTo(map)
     map.on('zoomend moveend', () => {
@@ -160,10 +176,22 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     }
   }, [roster, matched, checked.length, tick])
 
+  useEffect(() => {
+    const map = mapRef.current
+    const cv = canvasRef.current
+    const palette = paletteRef.current
+    if (!map || !cv || !palette) return
+    drawMassing(map, cv, roster, {
+      lit: matched,
+      selected: null,
+      palette,
+      enabled: on3d,
+    })
+  }, [roster, matched, on3d, tick])
+
   const toggle = (k: string) =>
     setChecked((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]))
 
-  const inCompare = (slug: string) => compare.includes(slug)
   const toggleCompare = (slug: string) =>
     setCompare((c) => (c.includes(slug) ? c.filter((x) => x !== slug) : [...c, slug]))
 
@@ -193,7 +221,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
           <span className="cid-label">GAMES</span>
-          {GAME_FILTERS.map(([k, label]) => {
+          {GAME_FILTERS.filter(([k]) => roster.some((r) => r.games.includes(k))).map(([k, label]) => {
             const n = matches.filter((r) => r.games.includes(k)).length
             const on = checked.includes(k)
             return (
@@ -263,7 +291,31 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       </aside>
 
       <div style={{ position: 'relative' }}>
-        <div ref={mapEl} style={{ position: 'absolute', inset: 0 }} />
+        <div ref={mapEl} className={on3d ? 'cid-3d' : ''} style={{ position: 'absolute', inset: 0 }} />
+        {/* Above the tiles, below the pins: massing must never swallow the
+            affordance you click. */}
+        <canvas
+          ref={canvasRef}
+          style={{ position: 'absolute', inset: 0, zIndex: 401, pointerEvents: 'none' }}
+        />
+        <div style={{ position: 'absolute', left: 'var(--cid-space-5)', top: 'var(--cid-space-5)', zIndex: 500, display: 'flex', gap: 2, background: 'var(--cid-ink-700)', border: '1px solid var(--cid-line-2)', borderRadius: 'var(--cid-r-sm)', padding: 2 }}>
+          {([['3D', true], ['FLAT', false]] as const).map(([label, v]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setWant3d(v)}
+              style={{
+                font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)',
+                minHeight: 'var(--cid-target)', padding: '0 var(--cid-space-5)',
+                border: 'none', borderRadius: 'var(--cid-r-sm)', cursor: 'pointer',
+                background: want3d === v ? 'var(--cid-accent-700)' : 'transparent',
+                color: want3d === v ? 'var(--cid-paper)' : 'var(--cid-dim)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div
           className="num"
           style={{
@@ -273,7 +325,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
             borderRadius: 'var(--cid-r-sm)', padding: 'var(--cid-space-2) var(--cid-space-4)',
           }}
         >
-          z{zoom} · {roster.length} ROOMS · OSM
+          z{zoom} · {roster.length} ROOMS · {want3d ? (on3d ? '3D' : `3D AT z${MIN_3D_ZOOM}`) : 'FLAT'}
         </div>
       </div>
     </div>

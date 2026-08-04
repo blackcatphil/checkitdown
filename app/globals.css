@@ -84,7 +84,14 @@ a:hover { color: var(--cid-accent-200); }
   filter: invert(1) hue-rotate(180deg) brightness(0.86) contrast(0.92) saturate(0.55);
 }
 .leaflet-container { background: var(--cid-ink-800); outline: none; }
-.leaflet-control-attribution { display: none; }
+.leaflet-control-attribution {
+  background: var(--cid-ink-700);
+  color: var(--cid-dim);
+  font: var(--cid-caption);
+  padding: 2px var(--cid-space-3);
+  border-top-left-radius: var(--cid-r-sm);
+}
+.leaflet-control-attribution a { color: var(--cid-accent-300); border-bottom: none; }
 
 .cid-pin {
   width: 32px; height: 32px;
@@ -146,3 +153,9 @@ a:hover { color: var(--cid-accent-200); }
   min-height: var(--cid-target); display: grid; place-items: center;
   border-bottom: none;
 }
+
+/* In 3D the massing is tilted but the tiles are not, so a lit ground plane
+   under a leaning skyline reads as broken. Damping the tiles lets the massing
+   carry the depth cue instead — the mock dropped tiles entirely for the same
+   reason. */
+.cid-3d .cid-tiles { opacity: .38; }

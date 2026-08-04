@@ -125,6 +125,43 @@ no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
 
+## The 3D massing — what it is, and what it cannot be
+
+Tier B extrudes building massing over the Strip. Two limits are structural, not
+todo items, and belong here rather than being discovered by a viewer:
+
+- **Only 18 venues and 5 landmarks extrude. Every other block stays flat.**
+  Overpass building footprints were unreachable from this environment, so the
+  masses are hand-modelled approximations in `lib/massing.ts`, keyed by room
+  slug and hung off the real OSM centroids. It is a skyline of the rooms we
+  cover, not a model of the city. (The count is 5 landmarks — Luxor, Excalibur,
+  New York-New York, Stratosphere, T-Mobile Arena — not 6.)
+- **Tilt is applied to the massing, not to the ground.** Leaflet renders tiles
+  flat; only the canvas overlay is tilted, so in 3D the tiles are damped to .38
+  and the massing carries the depth cue. The mock avoided the mismatch by
+  dropping tiles entirely.
+
+**Measured against real centroids** (`node scripts/map-tilt.mjs`), because the
+tilt geometry was tuned on mock ones:
+
+| zoom | px/m | flat closest | tilted closest | tilt penalty |
+|---|---|---|---|---|
+| 13.5 | 0.092 | 35.9px | 22.4px | **−37%** |
+| 14 | 0.130 | 50.7px | 31.1px | −39% |
+| 15 | 0.259 | 101.5px | 58.5px | −42% |
+
+**Tilt costs 37–48% of pin separation** — it compresses toward the horizon
+exactly as predicted, and at z13.5 it turns 0 flat collisions into 1. Two
+consequences worth knowing:
+
+1. **3D barely reads until z15.** A 186 m tower leans **9px** at z13.5, 12px at
+   z14, 24px at z15. The module's own fine-footprint threshold (ppm ≥ 0.12) is
+   not met until **z14**, so at the z13.5 activation floor masses are still
+   being inflated to stay visible.
+2. Below `MIN_3D_ZOOM` the pin layer owns the view untouched, so **Tier A's
+   measured fit is unchanged**: home z11, 10 rendered pins for 17/17 rooms,
+   closest rendered pair 34.6px.
+
 ## The migration is still a draft — and the exact day it stops being one
 
 `00000000000001_initial_schema.sql` is edited **in place**, not fixed forward.

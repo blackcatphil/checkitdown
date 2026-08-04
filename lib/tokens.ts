@@ -40,6 +40,7 @@ export function readTokens<K extends string>(names: Record<K, string>): Record<K
  */
 export const MAP_TOKENS = {
   pin: '--cid-pin',
+  accentDeep: '--cid-accent-900',
   pinDim: '--cid-pin-dim',
   clusterPartial: '--cid-cluster-partial',
   scrim: '--cid-scrim',
