@@ -89,6 +89,13 @@ create table rooms (
   season_start      date,
   season_end        date,
 
+  -- A closed room keeps its page: /rooms/<slug> stays linked from search for
+  -- months after a closure, and a 404 tells that visitor nothing. The page
+  -- carries a DATED notice and points at the nearest open rooms, so the closure
+  -- itself is a fact with provenance like any other. Undated closure is
+  -- unrepresentable — see closure_is_dated below.
+  closed_on         date,
+
   latitude          numeric(9,6) not null,
   longitude         numeric(9,6) not null,
 
@@ -116,7 +123,12 @@ create table rooms (
   verified_at       timestamptz,                 -- NULL = unverified => never ranked
 
   created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
+  updated_at        timestamptz not null default now(),
+
+  -- "Closed" without a date is the same failure as a fact without a source:
+  -- the reader cannot tell a closure last week from one in 2021. The constraint
+  -- makes the undated version impossible rather than merely discouraged.
+  constraint closure_is_dated check (status <> 'closed' or closed_on is not null)
 );
 
 alter table sources

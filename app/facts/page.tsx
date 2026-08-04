@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { exclusionLine, exclusions, rank, type RoomFacts } from '@/lib/ranking'
+import { applySort, exclusionLine, exclusions, type RoomFacts, type SortSpec } from '@/lib/ranking'
 import { inRoster, isRankable, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { supabase } from '@/lib/supabase'
 
@@ -213,9 +213,18 @@ export default async function JustTheFacts() {
     value: d.foodCount > 0 ? d.foodCount : null, verified: isRankable(d.room) && d.foodVerified,
   }))
 
-  const rakeRanked = rank(rakeFacts, 'asc')
-  const tableRanked = rank(tableFacts, 'desc')
-  const foodRanked = rank(foodFacts, 'desc')
+  /* One spec per sort: head, caption and comparator all derive from it, so a
+     caption can no longer describe a formula the comparator abandoned. */
+  const RAKE: SortSpec = { key: 'rake', metric: 'Lowest published rake cap', direction: 'asc' }
+  const TABLES: SortSpec = { key: 'tables', metric: 'Table count', direction: 'desc' }
+  const FOOD: SortSpec = { key: 'food', metric: 'Confirmed food and drink amenities', direction: 'desc' }
+
+  const rake = applySort(rakeFacts, RAKE)
+  const tables = applySort(tableFacts, TABLES)
+  const food = applySort(foodFacts, FOOD)
+  const rakeRanked = rake.ranked
+  const tableRanked = tables.ranked
+  const foodRanked = food.ranked
 
   const rakeLeader = rakeRanked.find((r) => r.isLeader) ?? null
   const tableLeader = tableRanked.find((r) => r.isLeader) ?? null
@@ -232,7 +241,7 @@ export default async function JustTheFacts() {
   const rankedCount = rakeRanked.filter((r) => r.rank != null).length
   const confirmedNotRankable = confirmedCount - rankedCount
 
-  const HEADS = ['# BY RAKE', 'ROOM', 'RAKE', 'DROP', 'PARKING', 'FOOD', 'TABLES', 'VERIFIED']
+  const HEADS = [rake.head, 'ROOM', 'RAKE', 'DROP', 'PARKING', 'FOOD', 'TABLES', 'VERIFIED']
 
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)' }}>
@@ -268,7 +277,7 @@ export default async function JustTheFacts() {
           metric="rake"
           total={total}
           winner={rakeLeader ? { name: rakeLeader.name, value: bySlug.get(rakeLeader.slug)!.rake.label! } : null}
-          caption="Lowest published cap, cheapest first."
+          caption={rake.caption}
           exclusion={exclusionLine(exclusions(rakeFacts), 'rake figure')}
         />
         <Superlative
@@ -276,7 +285,7 @@ export default async function JustTheFacts() {
           metric="food"
           total={total}
           winner={foodLeader ? { name: foodLeader.name, value: bySlug.get(foodLeader.slug)!.food! } : null}
-          caption="Most confirmed food and drink amenities."
+          caption={food.caption}
           exclusion={exclusionLine(exclusions(foodFacts), 'food amenity')}
         />
         <Superlative
@@ -284,7 +293,7 @@ export default async function JustTheFacts() {
           metric="table count"
           total={total}
           winner={tableLeader ? { name: tableLeader.name, value: `${tableLeader.value} tables` } : null}
-          caption="Most tables, largest first."
+          caption={tables.caption}
           exclusion={exclusionLine(exclusions(tableFacts), 'table count')}
         />
       </section>

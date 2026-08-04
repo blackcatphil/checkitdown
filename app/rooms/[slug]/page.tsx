@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { STATUS_LABEL, type RoomStatus } from '@/lib/roster'
@@ -6,6 +7,18 @@ import { supabase } from '@/lib/supabase'
 import { CorrectionForm } from './CorrectionForm'
 
 export const revalidate = 300
+
+/** Straight-line km between two property centroids. A guide, not a route. */
+function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number) {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const R = 6371
+  const dLat = toRad(bLat - aLat)
+  const dLon = toRad(bLon - aLon)
+  const h =
+    Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
 
 const EMDASH = '—'
 const AREA_LABEL: Record<string, string> = {
@@ -93,7 +106,8 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
   const { data } = await supabase
     .from('rooms')
     .select(
-      'id,slug,name,property,area,status,is_seasonal,table_count,phone,website_url,hours_note,is_24h,'
+      'id,slug,name,property,area,status,is_seasonal,closed_on,latitude,longitude,'
+      + 'table_count,phone,website_url,hours_note,is_24h,'
       + 'loyalty_program,comp_rate_hourly,comp_notes,dress_code,drinks_note,'
       + 'source_url,fetched_at,verified_at,'
       + 'cash_games(stakes_label,game,min_buy_in,max_buy_in,is_uncapped,rake_type,rake_percent,'
@@ -107,7 +121,8 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
   if (!data) notFound()
   const room = data as unknown as {
     id: string; slug: string; name: string; property: string | null; area: string
-    status: RoomStatus; is_seasonal: boolean
+    status: RoomStatus; is_seasonal: boolean; closed_on: string | null
+    latitude: number; longitude: number
     table_count: number | null; phone: string | null; website_url: string | null
     hours_note: string | null; loyalty_program: string | null; comp_rate_hourly: number | null
     comp_notes: string | null; dress_code: string | null; drinks_note: string | null
@@ -124,6 +139,81 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       amenity_types: { slug: string; label: string; grp: string } | null
     }>
     house_rules: Array<{ label: string; value: string }>
+  }
+
+
+  /* A CLOSED room keeps its page. /rooms/<slug> stays linked from search for
+     months after a closure, and a 404 tells that visitor nothing — not that the
+     room shut, not when, not where to go instead. So the page becomes a dated
+     closure notice that answers all three. Resorts World in March 2026 is
+     exactly this case. */
+  if (room.status === 'closed') {
+    const { data: openRooms } = await supabase
+      .from('rooms')
+      .select('slug,name,area,latitude,longitude,table_count')
+      .eq('status', 'open')
+      .eq('is_seasonal', false)
+    const nearest = (openRooms ?? [])
+      .map((o) => ({ ...o, km: haversineKm(room.latitude, room.longitude, o.latitude, o.longitude) }))
+      .sort((a, b) => a.km - b.km)
+      .slice(0, 3)
+
+    return (
+      <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-7)' }}>
+        <header>
+          <p
+            className="num"
+            style={{
+              font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)',
+              color: 'var(--cid-accent-300)', border: '1px solid var(--cid-accent-line)',
+              borderRadius: 'var(--cid-r-sm)', padding: 'var(--cid-space-3) var(--cid-space-5)',
+              display: 'inline-block', margin: '0 0 var(--cid-space-5)',
+            }}
+          >
+            CLOSED{room.closed_on ? ` ${new Date(room.closed_on).toISOString().slice(0, 10)}` : ''}
+          </p>
+          <h1 style={{ font: 'var(--cid-h1)', margin: '0 0 var(--cid-space-4)' }}>{room.name}</h1>
+          <p style={{ font: 'var(--cid-lede)', color: 'var(--cid-text-3)', maxWidth: 'var(--cid-measure)', margin: 0 }}>
+            This poker room closed{room.closed_on ? ` on ${new Date(room.closed_on).toISOString().slice(0, 10)}` : ''} and
+            is off the roster, so it is not counted or ranked anywhere on the site. The page
+            stays up because a dead link tells you nothing — this at least tells you what
+            happened and where to go instead.
+          </p>
+        </header>
+
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
+          <span className="cid-label">NEAREST OPEN ROOMS</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
+            {nearest.map((n) => (
+              <Link
+                key={n.slug}
+                href={`/rooms/${n.slug}`}
+                style={{
+                  background: 'var(--cid-ink-700)', padding: 'var(--cid-space-5)',
+                  display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto auto',
+                  gap: 'var(--cid-space-5)', alignItems: 'baseline',
+                  borderBottom: 'none', color: 'var(--cid-text)', minHeight: 'var(--cid-target)',
+                }}
+              >
+                <span style={{ font: 'var(--cid-room-name)' }}>{n.name}</span>
+                <span className="cid-label">{AREA_LABEL[n.area] ?? n.area}</span>
+                <span className="num cid-unverified" style={{ font: 'var(--cid-num)' }}>
+                  ~{n.km.toFixed(1)} km
+                </span>
+              </Link>
+            ))}
+          </div>
+          <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
+            Straight-line distance from property centroid to property centroid — a guide,
+            not a route. Those rooms are unverified like everything else here.
+          </p>
+        </section>
+
+        <p style={{ font: 'var(--cid-body)', margin: 0 }}>
+          <Link href="/facts">See every open room</Link>
+        </p>
+      </main>
+    )
   }
 
   /* available=false is a CONFIRMED ABSENCE, not a listing. */

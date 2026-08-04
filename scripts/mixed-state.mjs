@@ -30,11 +30,11 @@ const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 
 const resetStatus = () =>
-  sql(`update rooms set status = 'open', is_seasonal = false;
+  sql(`update rooms set status = 'open', is_seasonal = false, closed_on = null;
        update room_amenities set available = true;`)
 
 const reset = () =>
-  sql(`update rooms set status = 'open', is_seasonal = false;
+  sql(`update rooms set status = 'open', is_seasonal = false, closed_on = null;
        update room_amenities set available = true;
        update rooms set verified_at = null;
        update cash_games set verified_at = null, rake_verified_at = null;
@@ -156,12 +156,33 @@ try {
     check('no unverified exclusion', !/not confirmed on site yet/.test(text))
     check('unpublished exclusion still names Horseshoe', /Horseshoe is confirmed but publish/.test(text))
   })
+  await scenario('CLOSED room keeps a dated page, not a 404', [], async () => {
+    sql(`update rooms set status = 'closed', closed_on = date '2026-03-30' where slug = 'skyline'`)
+    const res = await fetch(`${BASE}/rooms/skyline`, { cache: 'no-store' })
+    check('page still resolves (not 404)', res.status === 200, `HTTP ${res.status}`)
+    const t = (await res.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+    check('closure is DATED', /CLOSED 2026-03-30/.test(t))
+    check('says it is off the roster', /off the roster/.test(t))
+    check('points at nearest open rooms', /NEAREST OPEN ROOMS/.test(t))
+    check('lists three alternatives with distance', (t.match(/~\s*[\d.]+\s*km/g) ?? []).length === 3)
+    sql(`update rooms set status = 'open', closed_on = null where slug = 'skyline'`)
+  })
+
+  await scenario('SORT captions derive from the comparator', ['bellagio', 'aria', 'boulder-station'], async ({ text }) => {
+    check('rake head re-qualifies the rank column', /# BY RAKE/.test(text))
+    check('rake caption names metric AND end', /Lowest published rake cap, lowest first/.test(text))
+    check('tables caption is the OTHER direction', /Table count, highest first/.test(text))
+    // the claim must match the data: cheapest cap really is first
+    const caps = [...text.matchAll(/to \$(\d+)/g)].map((m) => Number(m[1]))
+    check('first ranked cap is the lowest', caps.length > 1 && caps[0] === Math.min(...caps.slice(0, 3)), `caps=${caps.slice(0,3)}`)
+  })
+
   // ---- STATE COLUMNS THE SCHEMA CARRIES AND THE READ PATH MUST INTERROGATE ----
   // Each is dormant only while the seed writes one value. `available` proved
   // the shape; these are the same bug waiting for real data.
 
   await scenario('CLOSED room leaves the roster', [], async () => {
-    sql("update rooms set status = 'closed' where slug = 'skyline'")
+    sql(`update rooms set status = 'closed', closed_on = date '2026-03-30' where slug = 'skyline'`)
     const { text, ranks } = await facts()
     check('roster drops to 16', /16 valley rooms/.test(text), 'closed room must not be a row')
     check('closed room is gone from the table', !/Skyline/.test(text))

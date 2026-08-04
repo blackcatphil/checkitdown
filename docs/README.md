@@ -125,6 +125,45 @@ no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
 
+## Enforcement audit — which decisions have something behind them
+
+A locked decision can sit in this list for days with nothing enforcing it.
+`is_seasonal` proved that: "off the roster and all counts by default" was
+written here, agreed, and implemented nowhere. The point of this table is not to
+enforce everything — process rules belong in prose — but to make **prose-only a
+decision rather than an oversight**.
+
+Legend: **code** = enforced in the read path · **test** = enforced by a failing
+test · **prose** = correctly prose-only · **GAP** = should be enforced, is not.
+
+| Decision | Status | Where |
+|---|---|---|
+| Roster: 17 rooms, WSOP·Paris seasonal and off all counts | code + test | `inRoster()`; `test:mixed` seasonal scenario |
+| Closed room leaves the roster but keeps a dated page | code + test | `inRoster()`, `closure_is_dated` constraint, `test:mixed` |
+| Temporarily closed is shown but never ranked | code + test | `isRankable()`; `test:mixed` |
+| Provenance: verified or tilde'd, never a third state | code + test | `Cell`, `EmptyBlock`; `test:mixed` |
+| Unverified figures are never ranked | code + test | `rank()` gates on `verified`; `test:mixed` |
+| Confirmed absence is a fact, not a gap | code + test | `EmptyBlock`, `available` filters; `test:mixed` |
+| Enumerate vs summarise past `ENUMERATE_MAX` | code + test | `exclusionLine()`; `test:mixed` boundary scenarios |
+| Any sortable column has a real number behind it | code | `SortSpec.value` typed `number \| null` — a string sort is a **compile error** |
+| A sort's direction and metric are part of the claim | code + test | `sortCaption()` derives from `direction`; `test:mixed` |
+| Rank is tied to the active sort and says so | code | `sortHead()` — `# BY RAKE` derives from the same spec |
+| RLS needs explicit GRANTs | test | `supabase test db`, 10 assertions |
+| A row cites its own source, never its parent's | prose | **no automated check is possible** — a correct pointer to the wrong document is indistinguishable from a correct one |
+| Games have exactly one source of truth | code | `amenity_types` holds no game rows; GAMES group queries `cash_games` |
+| Amenity filters are coverage-gated | code | `shipped` flag on `GROUPS` |
+| `area` is a classification, not a fact | prose | naming convention; no runtime meaning |
+| Zero-verified is the primary state | test | `test:mixed` ZERO scenario |
+| Floor visit records absences explicitly | prose | a capture-process rule — nothing in the app can enforce what a person writes down |
+| Palette / type / logo / no gold | **GAP** | design-system tokens exist, but nothing fails if a raw hex is used. A lint rule banning non-token colours would close it |
+| Compare dims in place and never reorders | **GAP** | not built yet — belongs with the landing map |
+| Editorial content is labelled as editorial | **GAP** | `reliability` is display-only by convention; nothing stops a future surface sorting it |
+| Mobile: no interaction without a touch equivalent | prose | a design review rule |
+
+The three GAPs are known and unclosed. Two of them (`compare`, editorial
+labelling) are surfaces not yet built, so they close when those are built. The
+palette one is real today and worth a lint rule.
+
 ## Locked decisions worth not relitigating
 
 - **Palette:** aubergine on ink. Accent `#5E3A93` (+1px `#A98CE8` lit top edge),

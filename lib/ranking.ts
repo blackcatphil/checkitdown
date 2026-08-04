@@ -42,8 +42,48 @@ export type Exclusion = {
 export const ENUMERATE_MAX = 3
 
 /**
+ * A sort, defined once so the claim and the comparator cannot drift apart.
+ *
+ * This is the guard for two rules that were prose-only and had already been
+ * broken once each — the freshness column shipped sorting on array position
+ * while labelling itself "# BY FRESHNESS":
+ *
+ *   1. "Any column offered as a sort must have a number behind it."
+ *      `value` is typed `number | null`. A string-valued sort is a compile
+ *      error, not a review catch.
+ *   2. "A sort's direction is part of the claim."
+ *      The caption is DERIVED from `direction` below, so a caption describing a
+ *      superseded formula cannot survive a change to the comparator.
+ */
+export type SortSpec = {
+  /** re-qualifies the rank column: "# BY RAKE" */
+  key: string
+  /** the metric actually ranked on, in words */
+  metric: string
+  direction: 'asc' | 'desc'
+}
+
+export function sortHead(spec: SortSpec): string {
+  return `# BY ${spec.key.toUpperCase()}`
+}
+
+/** Names which end is best AND the metric it ranks on — both from one source. */
+export function sortCaption(spec: SortSpec): string {
+  return `${spec.metric}, ${spec.direction === 'asc' ? 'lowest first' : 'highest first'}.`
+}
+
+/** Rank and caption from the same spec, so they cannot disagree. */
+export function applySort(rooms: RoomFacts[], spec: SortSpec) {
+  return {
+    ranked: rank(rooms, spec.direction),
+    head: sortHead(spec),
+    caption: sortCaption(spec),
+  }
+}
+
+/**
  * Ascending = lower is better (rake). Descending = higher is better (tables).
- * The caller names the direction in the caption; the comparator must agree.
+ * Prefer `applySort` — calling this directly reopens the caption/comparator gap.
  */
 export function rank(rooms: RoomFacts[], direction: 'asc' | 'desc'): Ranked[] {
   const eligible = rooms.filter((r) => r.verified && r.value != null)
