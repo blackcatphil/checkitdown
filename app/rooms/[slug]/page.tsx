@@ -68,7 +68,17 @@ function Block({
  * are current; we show a dated gap, with the correction link turning it into an
  * input.
  */
-function EmptyBlock({ what, checkedAt }: { what: string; checkedAt: string | null }) {
+function EmptyBlock({
+  what,
+  checkedAt,
+  plural = true,
+}: {
+  what: string
+  checkedAt: string | null
+  /* One templated sentence cannot serve both "amenities are" and "a rake
+     figure is" — the earlier version read "amenities IS the kind of thing". */
+  plural?: boolean
+}) {
   const checked = checkedAt != null
   return (
     <div
@@ -91,8 +101,9 @@ function EmptyBlock({ what, checkedAt }: { what: string; checkedAt: string | nul
         ) : (
           <>
             We have no source for {what} at this room. That is a gap in our checking, not a
-            statement that the room lacks it — {what} is the kind of thing a person in the
-            room can confirm in seconds and no casino publishes reliably.
+            statement that the room lacks {plural ? 'them' : 'it'} — {what}{' '}
+            {plural ? 'are' : 'is'} the kind of thing a person in the room can confirm in
+            seconds and no casino publishes reliably.
           </>
         )}
       </p>

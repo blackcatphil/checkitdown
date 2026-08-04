@@ -53,8 +53,17 @@ console.log(`bbox  lat ${bbox.s.toFixed(4)} .. ${bbox.n.toFixed(4)}  (${((bbox.n
 console.log(`      lon ${bbox.w.toFixed(4)} .. ${bbox.e.toFixed(4)}  (${((bbox.e - bbox.w) * 111 * Math.cos((centre.lat * Math.PI) / 180)).toFixed(1)} km wide)`)
 console.log(`centre ${centre.lat.toFixed(4)}, ${centre.lon.toFixed(4)}`)
 
-/** Pin footprint: the design's pin is 32px, so two pins collide inside 32px. */
-const PIN = 32
+/**
+ * Footprints differ by kind, so absorption has to clear the WIDEST pair.
+ * A cluster is stepped up from a single so "7 rooms, tap to open" reads as a
+ * different object rather than a labelled pin — clustering is forced by the
+ * geography here, so clusters are permanent furniture, not an edge case.
+ * Clearance needed = clusterRadius + singleRadius = 22 + 16 = 38, so absorb at
+ * 40 for a visible gap.
+ */
+const SINGLE = 32
+const CLUSTER = 44
+const PIN = 40
 
 console.log('\nzoom | fits 938x760 | closest pair | overlapping pairs | clusters@32px | biggest')
 for (const z of [10, 10.5, 11, 11.5, 11.6, 12, 12.5, 13]) {
@@ -119,9 +128,17 @@ console.log(`\nHOME VIEW  centre ${HOME.lat.toFixed(4)}, ${HOME.lon.toFixed(4)} 
 console.log(`  rendered pins: ${placed.length}  (singles ${placed.filter((p) => p.members.length === 1).length}, clusters ${placed.filter((p) => p.members.length > 1).length})`)
 console.log(`  rooms represented: ${placed.reduce((a, p) => a + p.members.length, 0)}/${rows.length}`)
 let worst = Infinity
-for (let i = 0; i < placed.length; i++)
-  for (let j = i + 1; j < placed.length; j++)
-    worst = Math.min(worst, Math.hypot(placed[i].x - placed[j].x, placed[i].y - placed[j].y))
-console.log(`  closest RENDERED pair: ${worst.toFixed(1)}px (>= ${PIN} means zero overlap)`)
+let overlap = 0
+for (let i = 0; i < placed.length; i++) {
+  for (let j = i + 1; j < placed.length; j++) {
+    const d = Math.hypot(placed[i].x - placed[j].x, placed[i].y - placed[j].y)
+    const need = (placed[i].members.length > 1 ? CLUSTER : SINGLE) / 2
+      + (placed[j].members.length > 1 ? CLUSTER : SINGLE) / 2
+    if (d < need) overlap++
+    worst = Math.min(worst, d - need)
+  }
+}
+console.log(`  tightest gap between RENDERED pin EDGES: ${worst.toFixed(1)}px`)
+console.log(`  overlapping rendered pairs: ${overlap}`)
 placed.filter((p) => p.members.length > 1).sort((a, b) => b.members.length - a.members.length)
   .forEach((p) => console.log(`  cluster of ${p.members.length}: ${p.members.join(', ')}`))

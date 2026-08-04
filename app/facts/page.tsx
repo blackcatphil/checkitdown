@@ -57,7 +57,9 @@ function headlineRake(games: GameJoin[]) {
   const pct = at.find((g) => g.rake_percent != null)?.rake_percent
   return {
     cap,
-    label: pct != null ? `${Number(pct)}% to $${cap}` : `to $${cap}`,
+    /* "~to $6" is not English. A cap with no published percentage reads as
+       "cap ~$6"; the tilde sits on the NUMBER, which is what it qualifies. */
+    label: pct != null ? `${Number(pct)}% to $${cap}` : `cap $${cap}`,
     /* Rake ranking gates on rake_verified_at, not the row's verified_at —
        rake and stakes routinely come from different pages. */
     verified: at.some((g) => g.rake_verified_at != null),
@@ -76,7 +78,14 @@ function amenityLabel(a: AmenityJoin[], grp: string) {
   return hits.length ? hits.map((x) => x.amenity_types!.label).join(', ') : null
 }
 
-function Cell({ value, leader, checked }: { value: string | null; leader?: boolean; checked?: boolean }) {
+/**
+ * The tilde means "approximate quantity". On a string like "Cocktail service"
+ * it reads as a typo, so it is scoped to numerics; an unverified string carries
+ * the dotted rule alone, which already says unverified.
+ */
+function Cell({
+  value, leader, checked, numeric = true,
+}: { value: string | null; leader?: boolean; checked?: boolean; numeric?: boolean }) {
   if (value == null) {
     /* On a CHECKED room a dash means the room does not publish it — not that we
        skipped it. Saying "not yet checked" there reports a completed check as a
@@ -95,7 +104,14 @@ function Cell({ value, leader, checked }: { value: string | null; leader?: boole
     /* Teal marks the true #1. Verified, so no tilde and no dotted rule. */
     return <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-value)' }}>{value}</span>
   }
-  return <span className="num cid-unverified" style={{ font: 'var(--cid-num)' }}>~{value}</span>
+  return (
+    <span
+      className={numeric ? 'num cid-unverified' : 'cid-unverified'}
+      style={{ font: numeric ? 'var(--cid-num)' : 'var(--cid-caption)' }}
+    >
+      {numeric ? `~${value}` : value}
+    </span>
+  )
 }
 
 /**
@@ -146,9 +162,12 @@ function Superlative({
       ) : (
         <>
           <span className="num" style={{ font: 'var(--cid-h2)', color: 'var(--cid-unverified)' }}>{EMDASH}</span>
+          {/* ONE line. The screen's job is "the best is obvious"; three copies of
+              the same two paragraphs bury it. The explanation lives once, below
+              the row — and only collapses there when all three cards would say
+              the same thing. */}
           <span style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)' }}>
-            No room can be ranked on {metric} yet. All {total} are sourced and none is
-            confirmed on site, and an unverified figure is never ranked.
+            Nothing rankable on {metric} yet
           </span>
         </>
       )}
@@ -264,6 +283,14 @@ export default async function JustTheFacts({
   const rankedCount = rakeRanked.filter((r) => r.rank != null).length
   const confirmedNotRankable = confirmedCount - rankedCount
 
+  /* If all three cards would print the same exclusion, print it once. They
+     diverge as verification lands — rake, food and tables get confirmed at
+     different times — so this collapses only while they genuinely agree. */
+  const exRake = exclusionLine(exclusions(rakeFacts), 'rake figure')
+  const exFood = exclusionLine(exclusions(foodFacts), 'food amenity')
+  const exTables = exclusionLine(exclusions(tableFacts), 'table count')
+  const sharedExclusion = exRake && exRake === exFood && exRake === exTables ? exRake : null
+
   const HEADS = [rake.head, 'ROOM', 'RAKE', 'DROP', 'PARKING', 'FOOD', 'TABLES', 'VERIFIED']
 
   return (
@@ -316,7 +343,7 @@ export default async function JustTheFacts({
           total={total}
           winner={rakeLeader ? { name: rakeLeader.name, value: bySlug.get(rakeLeader.slug)!.rake.label! } : null}
           caption={rake.caption}
-          exclusion={exclusionLine(exclusions(rakeFacts), 'rake figure')}
+          exclusion={sharedExclusion ? null : exRake}
         />
         <Superlative
           label="BEST FOOD"
@@ -324,7 +351,7 @@ export default async function JustTheFacts({
           total={total}
           winner={foodLeader ? { name: foodLeader.name, value: bySlug.get(foodLeader.slug)!.food! } : null}
           caption={food.caption}
-          exclusion={exclusionLine(exclusions(foodFacts), 'food amenity')}
+          exclusion={sharedExclusion ? null : exFood}
         />
         <Superlative
           label="MOST TABLES"
@@ -332,9 +359,16 @@ export default async function JustTheFacts({
           total={total}
           winner={tableLeader ? { name: tableLeader.name, value: `${tableLeader.value} tables` } : null}
           caption={tables.caption}
-          exclusion={exclusionLine(exclusions(tableFacts), 'table count')}
+          exclusion={sharedExclusion ? null : exTables}
         />
       </section>
+
+      {sharedExclusion && (
+        <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', maxWidth: 'var(--cid-measure)', margin: '0 0 var(--cid-space-8)' }}>
+          {sharedExclusion} An unverified figure is shown but never ranked, so the
+          superlatives fill in as rooms are checked on site.
+        </p>
+      )}
 
       <div style={{ border: '1px solid var(--cid-line-1)' }}>
         <div className="cid-trow cid-thead">
@@ -383,8 +417,8 @@ export default async function JustTheFacts({
               </Link>
               <Cell value={d.rake.label} leader={rk.isLeader} checked={verified} />
               <Cell value={d.drop} checked={verified} />
-              <Cell value={d.parking} checked={verified} />
-              <Cell value={d.food} checked={verified} />
+              <Cell value={d.parking} checked={verified} numeric={false} />
+              <Cell value={d.food} checked={verified} numeric={false} />
               <Cell value={r.table_count != null ? String(r.table_count) : null} checked={verified} />
               {STATUS_LABEL[r.status] ? (
                 <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-accent-300)' }}>

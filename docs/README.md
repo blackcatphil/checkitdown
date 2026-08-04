@@ -37,9 +37,12 @@ library rebuilt as `--cid-*`; components replaced with what actually shipped.
 clean to local Postgres 17.10 (database `checkitdown`), verified by 20
 behavioural assertions rather than structure alone.
 
-Baseline: 15 tables · 1 view · 10 enums · 219 columns (3 generated) · 41 indexes ·
-15 PK / 8 unique / 23 FK / 2 check constraints · 4 triggers · 15/15 tables
-RLS-enabled · 12 policies.
+Baseline (re-counted 2026-08-04, not carried forward): 15 tables · 1 view ·
+10 enums · **225 columns** · 41 indexes · **3 check constraints** · 4 triggers ·
+15/15 tables RLS-enabled · 12 policies. The earlier figures here said 219
+columns and 2 checks — stale from before `small_bet`/`big_bet`, the three
+`rake_*` provenance columns, `closed_on` and `closure_is_dated`. Re-count rather
+than copy; a baseline nobody re-derives is a claim, not a measurement.
 
 **Environment: resolved.** OrbStack is installed and `supabase start` runs the
 full local stack — PostgREST, Studio, Auth, and the real `anon` /
@@ -79,15 +82,19 @@ like `service_role` was broken when the grants were fine.
 **No hosted Supabase project yet** — deliberate. Local first; create the hosted
 project when there is something to deploy, and verify current pricing first.
 
-**Data: none yet.** Every figure in the design files is a researched placeholder.
+**Data: seeded as candidate data.** 17 rooms · 75 cash games · 12 amenity types ·
+8 room-amenity links · 42 sources, every row carrying `source_url` and
+`fetched_at` with `verified_at` NULL. Figures in the *design comps* remain
+placeholders; the database behind the app does not.
 
 ## Build order
 
 1. ~~Apply the schema~~ ✅ done, locally
-2. **Seed data — 17 rooms, researched by hand.** ← current step. The real
-   bottleneck; no scraper writes the first dataset
-3. Next.js app reading from the DB (the six surfaces) — *needs the container
-   runtime first, so RLS gets exercised*
+2. ~~Seed data — 17 rooms, researched by hand~~ ✅ done — candidate data, all
+   unverified. The floor visit is what promotes it
+3. **Next.js app reading from the DB** ← current step. Landing map (Tier A pins
+   + Tier B massing), Just the Facts, room detail, tournaments and promos are
+   built; the compare tray and the six surfaces' polish continue
 4. Tier-1 scrapers for stable published sources — *but see the blocked-hosts
    constraint below; a third of the Strip can never have one*
 5. Admin review queue (the `pending_changes` surface)
@@ -141,6 +148,14 @@ todo items, and belong here rather than being discovered by a viewer:
   and the massing carries the depth cue. The mock avoided the mismatch by
   dropping tiles entirely.
 
+**3D activates at z14, not z13.5** — the module's own fine-footprint threshold
+(ppm ≥ 0.12), not an aesthetic pick. Below it the original code *inflated*
+masses to a floor size so they stayed visible, which is fabricating a fact about
+how big a building is: the same class of error as inventing a rake figure, on
+the surface where this product's honesty is most visible. **That inflation path
+is deleted**, and `drawMassing` now returns rather than drawing if ppm ever
+falls below the threshold.
+
 **Measured against real centroids** (`node scripts/map-tilt.mjs`), because the
 tilt geometry was tuned on mock ones:
 
@@ -158,9 +173,12 @@ consequences worth knowing:
    z14, 24px at z15. The module's own fine-footprint threshold (ppm ≥ 0.12) is
    not met until **z14**, so at the z13.5 activation floor masses are still
    being inflated to stay visible.
-2. Below `MIN_3D_ZOOM` the pin layer owns the view untouched, so **Tier A's
-   measured fit is unchanged**: home z11, 10 rendered pins for 17/17 rooms,
-   closest rendered pair 34.6px.
+2. Below `MIN_3D_ZOOM` the pin layer owns the view untouched. **Tier A re-measured
+   after the cluster size step**: clusters render at 44px with a ring so they read
+   as a different object, absorption widened to 40px to clear the widest pair
+   (22 + 16), giving home z11 → **9 rendered pins for 17/17 rooms, 0 overlapping
+   pairs, tightest edge gap 20.6px**. The step costs one room: The Orleans is
+   absorbed into the Strip cluster, which becomes 8.
 
 ## The migration is still a draft — and the exact day it stops being one
 

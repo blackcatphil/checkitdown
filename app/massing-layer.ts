@@ -17,10 +17,18 @@ import { LANDMARKS, type Mass, ROOM_MASSES } from '@/lib/massing'
 
 export const TILT = 60
 export const PERSP = 820
-/** Below this the pin layer owns the view. Measured: at z13.5 ppm is 0.092, so
- *  footprints are still coarse and a 186 m tower leans only 9 px — 3D barely
- *  reads until z15. See scripts/map-tilt.mjs. */
-export const MIN_3D_ZOOM = 13.5
+/**
+ * Below this the pin layer owns the view.
+ *
+ * Set to 14 because that is where the module's OWN fine-footprint threshold
+ * (ppm >= 0.12) is met — not an aesthetic choice. At 13.5 ppm is 0.092 and the
+ * original code compensated by INFLATING masses to a floor size so they stayed
+ * visible. That is fabricating a fact about how big a building is, on the
+ * surface where this product's honesty is most visible — the same class of
+ * error as inventing a rake figure. The inflation path is gone entirely; above
+ * this zoom every footprint is drawn at its modelled size.
+ */
+export const MIN_3D_ZOOM = 14
 const FINE_PPM = 0.12
 
 export type Palette = Record<string, string>
@@ -110,7 +118,9 @@ export function drawMassing(
   if (!opts.enabled) return
 
   const ppm = pxPerMetre(map)
-  const coarse = ppm < FINE_PPM
+  /* MIN_3D_ZOOM guarantees this; if it is ever lowered, drawing stops rather
+     than silently resizing buildings to look better than the data supports. */
+  if (ppm < FINE_PPM) return
   const T = (TILT * Math.PI) / 180
   const ox = size.x * 0.5
   const oy = size.y * 0.62
@@ -127,13 +137,6 @@ export function drawMassing(
     const s = PERSP / Math.max(80, PERSP - z)
     return { x: px0 + (ox + vx - px0) * s, y: py0 + (oy + y - py0) * s, z }
   }
-
-  /* Below fine resolution a real footprint is a few pixels, so plan and height
-     are floored to stay legible — the module's trick, kept. */
-  const floors = (m: Mass): Mass =>
-    coarse
-      ? { ...m, w: Math.max(m.w, 15 / ppm), d: Math.max(m.d, 15 / ppm), h: Math.max(m.h, 30 / ppm) }
-      : m
 
   const vols: Vol[] = []
   const push = (base: { lat: number; lon: number }, m: Mass, kind: Vol['kind']) => {
@@ -160,13 +163,10 @@ export function drawMassing(
   for (const r of rooms) {
     const masses = ROOM_MASSES[r.slug]
     if (!masses) continue
-    const use = coarse ? [[...masses].sort((a, b) => b.h - a.h)[0]] : masses
     const kind: Vol['kind'] = r.slug === opts.selected ? 'sel' : opts.lit.has(r.slug) ? 'room' : 'out'
-    for (const m of use) push({ lat: r.latitude, lon: r.longitude }, floors(m), kind)
+    for (const m of masses) push({ lat: r.latitude, lon: r.longitude }, m, kind)
   }
-  if (!coarse) {
-    for (const l of LANDMARKS) for (const m of l.masses) push({ lat: l.lat, lon: l.lon }, m, 'land')
-  }
+  for (const l of LANDMARKS) for (const m of l.masses) push({ lat: l.lat, lon: l.lon }, m, 'land')
 
   vols.sort((a, b) => a.depth - b.depth)
 

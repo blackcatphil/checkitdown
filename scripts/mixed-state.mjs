@@ -120,7 +120,11 @@ try {
   console.log(`rooms=${ROOMS.length} rakeable=${RAKEABLE.length}`)
 
   await scenario('ZERO — day one', [], ({ text, ranks }) => {
-    check('three zero-state cards', (text.match(/No room can be ranked on/g) ?? []).length === 3)
+    check('three zero-state cards, ONE line each', (text.match(/Nothing rankable on/g) ?? []).length === 3)
+    // The three cards said the same two paragraphs six times; the explanation
+    // now lives once below the row, and only collapses while they agree.
+    check('shared explanation printed once', (text.match(/An unverified figure is shown but never ranked/g) ?? []).length === 1)
+    check('no tilde on non-numeric cells', !/~Cocktail service|~Validated|~Free self-park/.test(text))
     check('no rank badges at all', ranks.length === 0, `${ranks.length} found`)
     check('lede admits nothing is confirmed', /Nothing here has been confirmed on site yet/.test(text))
     check('footer says 0 of 17', /0 of 17 rooms are confirmed on site/.test(text))

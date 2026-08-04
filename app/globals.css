@@ -117,7 +117,24 @@ a:hover { color: var(--cid-accent-200); }
    badged in the table. Outline rather than fill: it is still a real room. */
 .cid-flagged { background: transparent; border: 2px dashed var(--cid-accent-300); }
 
-.cid-cluster { color: var(--cid-paper); }
+/* A cluster is a different OBJECT, not a pin with a digit on it: bigger, and
+   ringed so the count reads as "n rooms, tap to open". Absorption is widened to
+   40px to match, so the larger footprint still cannot overlap a neighbour. */
+.cid-cluster {
+  width: 44px; height: 44px;
+  color: var(--cid-paper);
+  font: var(--cid-num);
+  box-shadow: 0 0 0 3px var(--cid-accent-wash);
+}
+.cid-cluster::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: var(--cid-r-pill);
+  border: 1px solid var(--cid-accent-line);
+  pointer-events: none;
+}
+.cid-pin { position: relative; }
 .cid-all  { background: var(--cid-accent-700); border: 1px solid var(--cid-accent-300); }
 /* The number does the work dimming cannot: "some of these match" has no shade. */
 .cid-part { background: var(--cid-ink-700); border: 1px solid var(--cid-cluster-partial); color: var(--cid-cluster-partial); }

@@ -33,8 +33,20 @@ export type MapRoom = {
  */
 const HOME: [number, number] = [36.1309, -115.1709]
 const HOME_Z = 11
-/** Pin footprint. Two pins inside this distance collide, so one absorbs the other. */
-const PIN = 32
+/**
+ * Clustering is FORCED by the geography here, so clusters are permanent
+ * furniture rather than an edge case — they get their own size and a ring so
+ * "8 rooms, tap to open" reads as a different object, not a labelled pin.
+ *
+ * Absorption must clear the widest pair: clusterR + singleR = 22 + 16 = 38, so
+ * 40 for a visible gap. Re-measured after the size step (scripts/map-fit.mjs):
+ * home z11 now yields 9 rendered pins for 17/17 rooms, 0 overlapping pairs,
+ * tightest edge gap 20.6px. The step costs one room — The Orleans is absorbed
+ * into the Strip cluster, which becomes 8.
+ */
+const SINGLE = 32
+const CLUSTER = 44
+const PIN = 40
 
 /** The panel ships with GAMES only — see the coverage-gate decision. The SAME
  *  gate applies one level down, within GAMES: a checkbox no room can satisfy is
@@ -154,8 +166,8 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
               : state === 'part' ? `${hit} of ${n} rooms here match — zoom in`
               : `${n} rooms here — zoom in`
           }">${label}</div>`,
-          iconSize: [PIN, PIN],
-          iconAnchor: [PIN / 2, PIN / 2],
+          iconSize: [CLUSTER, CLUSTER],
+          iconAnchor: [CLUSTER / 2, CLUSTER / 2],
         })
         L.marker([anchor.latitude, anchor.longitude], { icon })
           .on('click', () => map.setView([anchor.latitude, anchor.longitude], Math.min(15, map.getZoom() + 2.5)))
@@ -167,8 +179,8 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         const icon = L.divIcon({
           className: '',
           html: `<div class="cid-pin cid-single${lit ? '' : ' cid-out'}${badge ? ' cid-flagged' : ''}"></div>`,
-          iconSize: [PIN, PIN],
-          iconAnchor: [PIN / 2, PIN / 2],
+          iconSize: [SINGLE, SINGLE],
+          iconAnchor: [SINGLE / 2, SINGLE / 2],
         })
         const m = L.marker([r.latitude, r.longitude], { icon }).addTo(layer)
         m.bindPopup(popupHtml(r), { className: 'cid-popup', closeButton: false, minWidth: 240 })
