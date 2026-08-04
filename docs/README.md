@@ -140,6 +140,24 @@ therefore about *host accessibility*, not about how stable the page is.
 - **Provenance:** two states only — verified (date shown) and unverified
   (tilde'd, dotted rule, never ranked). When an unverified figure is excluded
   from a "best" column, **name the room and the reason**, never "1 room skipped".
+- **Confirmed absence is a FACT, and the floor visit must record it.** "Verified"
+  means we have confirmed the state of a fact **including confirming its
+  absence**. Walk Horseshoe, find no tableside food: that is captured as
+  *tableside food — confirmed absent*, never left blank. **A blank is
+  indistinguishable from never having looked**, and the distinction collapses at
+  the point of capture — no amount of care downstream can recover it, because
+  the information was never written down. So the floor-visit checklist walks all
+  twelve amenity slugs per room and records a yes or a no for each; skipping the
+  no's silently converts a completed check into a permanent gap.
+  The schema already carries this: `room_amenities.available` is
+  `boolean not null`, so an absence is a row with `available = false` and a
+  `verified_at`, not a missing row. **Never filter amenities without filtering on
+  `available`** — a confirmed absence would otherwise render as a feature the
+  room has.
+  Downstream, every empty block therefore has two distinct states: *not checked
+  yet* (a gap in our checking) and *checked, none present* (a finding). Reporting
+  a completed check as a gap is the same unknown-as-negative error inverted, and
+  it is covered by `npm run test:mixed`.
 - **Enumerate while exclusions are the exception; summarise once they are the
   norm.** "Name the room and the reason, never a count" exists because *"1 room
   skipped"* is a hedge — it hides *which* room and denies the reader the chance

@@ -7,6 +7,7 @@ export const metadata = { title: 'Just the facts — Check It Down' }
 export const revalidate = 300
 
 type AmenityJoin = {
+  available: boolean
   verified_at: string | null
   amenity_types: { slug: string; label: string; grp: string } | null
 }
@@ -53,15 +54,24 @@ function dropLabel(games: GameJoin[]) {
   return drops.length ? `$${Math.max(...drops.map(Number))}` : null
 }
 
+/* available=false records a CONFIRMED ABSENCE — it must never render as a
+   feature the room has. */
 function amenityLabel(a: AmenityJoin[], grp: string) {
-  const hits = a.filter((x) => x.amenity_types?.grp === grp)
+  const hits = a.filter((x) => x.available && x.amenity_types?.grp === grp)
   return hits.length ? hits.map((x) => x.amenity_types!.label).join(', ') : null
 }
 
-function Cell({ value, leader }: { value: string | null; leader?: boolean }) {
+function Cell({ value, leader, checked }: { value: string | null; leader?: boolean; checked?: boolean }) {
   if (value == null) {
+    /* On a CHECKED room a dash means the room does not publish it — not that we
+       skipped it. Saying "not yet checked" there reports a completed check as a
+       gap, the same conflation the exclusion buckets fix. */
     return (
-      <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title="Not yet checked on site">
+      <span
+        className="num"
+        style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }}
+        title={checked ? 'Checked on site — not published for this room' : 'Not yet checked on site'}
+      >
         {EMDASH}
       </span>
     )
@@ -143,7 +153,7 @@ export default async function JustTheFacts() {
     .select(
       'slug,name,area,table_count,verified_at,'
       + 'cash_games(rake_type,rake_percent,rake_cap,jackpot_drop,verified_at,rake_verified_at),'
-      + 'room_amenities(verified_at,amenity_types(slug,label,grp))',
+      + 'room_amenities(available,verified_at,amenity_types(slug,label,grp))',
     )
     .order('name')
 
@@ -160,7 +170,7 @@ export default async function JustTheFacts() {
 
   const derived = rooms.map((r) => {
     const rk = headlineRake(r.cash_games)
-    const food = r.room_amenities.filter((a) => a.amenity_types?.grp === 'food_drink')
+    const food = r.room_amenities.filter((a) => a.available && a.amenity_types?.grp === 'food_drink')
     return {
       room: r,
       rake: rk,
@@ -310,11 +320,11 @@ export default async function JustTheFacts() {
               >
                 {r.name}
               </Link>
-              <Cell value={d.rake.label} leader={rk.isLeader} />
-              <Cell value={d.drop} />
-              <Cell value={d.parking} />
-              <Cell value={d.food} />
-              <Cell value={r.table_count != null ? String(r.table_count) : null} />
+              <Cell value={d.rake.label} leader={rk.isLeader} checked={verified} />
+              <Cell value={d.drop} checked={verified} />
+              <Cell value={d.parking} checked={verified} />
+              <Cell value={d.food} checked={verified} />
+              <Cell value={r.table_count != null ? String(r.table_count) : null} checked={verified} />
               {verified ? (
                 <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-text-3)' }}>
                   {new Date(r.verified_at!).toISOString().slice(0, 10)}

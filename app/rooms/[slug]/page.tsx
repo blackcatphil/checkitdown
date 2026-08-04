@@ -39,28 +39,48 @@ function Block({
 }
 
 /**
- * The empty state. Not damage control — this is the clearest statement of what
- * makes the product different: other guides show undated facts and let you
- * assume they are current; we show a DATED GAP. The correction link turns the
- * gap into an input, and it doubles as a visible pipeline to-do.
+ * An empty block has TWO states and they are not interchangeable.
+ *
+ *   NOT CHECKED YET  — no source, a gap in our checking
+ *   CHECKED, NONE    — someone stood here and confirmed there are none
+ *
+ * Collapsing them reports a completed check as a gap, which is the same
+ * unknown-as-negative error inverted: once a person has walked Horseshoe and
+ * confirmed it has none of the twelve, "we have no source for amenities" is
+ * simply false. Confirmed absence is a FACT and reads as one.
+ *
+ * The not-checked state is still the clearest statement of what makes this
+ * product different — other guides show undated facts and let you assume they
+ * are current; we show a dated gap, with the correction link turning it into an
+ * input.
  */
-function NotChecked({ what }: { what: string }) {
+function EmptyBlock({ what, checkedAt }: { what: string; checkedAt: string | null }) {
+  const checked = checkedAt != null
   return (
     <div
       style={{
-        border: '1px dotted var(--cid-unverified-rule)',
+        border: checked ? '1px solid var(--cid-line-2)' : '1px dotted var(--cid-unverified-rule)',
         borderRadius: 'var(--cid-r-md)',
         padding: 'var(--cid-space-6)',
         background: 'var(--cid-fill-1)',
       }}
     >
       <p style={{ font: 'var(--cid-body-strong)', color: 'var(--cid-text-2)', margin: 0 }}>
-        Not yet checked on site.
+        {checked ? `Checked on site — no ${what}.` : 'Not yet checked on site.'}
       </p>
       <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 'var(--cid-space-2) 0 0' }}>
-        We have no source for {what} at this room. That is a gap in our checking, not a
-        statement that the room lacks it — {what} is the kind of thing a person in the room
-        can confirm in seconds and no casino publishes reliably.
+        {checked ? (
+          <>
+            Someone confirmed on {new Date(checkedAt!).toISOString().slice(0, 10)} that this
+            room has no {what}. That is a finding, not a gap — the absence is the fact.
+          </>
+        ) : (
+          <>
+            We have no source for {what} at this room. That is a gap in our checking, not a
+            statement that the room lacks it — {what} is the kind of thing a person in the
+            room can confirm in seconds and no casino publishes reliably.
+          </>
+        )}
       </p>
     </div>
   )
@@ -77,7 +97,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       + 'source_url,fetched_at,verified_at,'
       + 'cash_games(stakes_label,game,min_buy_in,max_buy_in,is_uncapped,rake_type,rake_percent,'
       + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet),'
-      + 'room_amenities(detail,menu_url,source_url,amenity_types(slug,label,grp)),'
+      + 'room_amenities(available,detail,menu_url,source_url,verified_at,amenity_types(slug,label,grp)),'
       + 'house_rules(label,value)',
     )
     .eq('slug', slug)
@@ -97,12 +117,15 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       big_blind: number | null; big_bet: number | null
     }>
     room_amenities: Array<{
-      detail: string | null; menu_url: string | null; source_url: string | null
+      available: boolean; detail: string | null; menu_url: string | null
+      source_url: string | null; verified_at: string | null
       amenity_types: { slug: string; label: string; grp: string } | null
     }>
     house_rules: Array<{ label: string; value: string }>
   }
 
+  /* available=false is a CONFIRMED ABSENCE, not a listing. */
+  const present = room.room_amenities.filter((a) => a.available)
   const games = [...room.cash_games].sort(
     (a, b) => (Number(a.big_blind ?? a.big_bet ?? 0)) - (Number(b.big_blind ?? b.big_bet ?? 0)),
   )
@@ -115,6 +138,10 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     ['DRESS CODE', room.dress_code],
     ['DRINKS', room.drinks_note],
   ]
+
+  const notCheckedTitle = room.verified_at
+    ? 'Checked on site — not published for this room'
+    : 'Not yet checked on site'
 
   function rake(g: (typeof games)[number]) {
     if (g.rake_type == null) return null
@@ -133,12 +160,21 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
         {room.property && room.property !== room.name && (
           <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-3)', margin: 0 }}>{room.property}</p>
         )}
-        <p
-          className="num cid-unverified"
-          style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', marginTop: 'var(--cid-space-5)', display: 'inline-block' }}
-        >
-          UNVERIFIED · SOURCED {room.fetched_at ? new Date(room.fetched_at).toISOString().slice(0, 10) : EMDASH}
-        </p>
+        {room.verified_at ? (
+          <p
+            className="num"
+            style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', marginTop: 'var(--cid-space-5)', display: 'inline-block', color: 'var(--cid-value)' }}
+          >
+            VERIFIED ON SITE {new Date(room.verified_at).toISOString().slice(0, 10)}
+          </p>
+        ) : (
+          <p
+            className="num cid-unverified"
+            style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', marginTop: 'var(--cid-space-5)', display: 'inline-block' }}
+          >
+            UNVERIFIED · SOURCED {room.fetched_at ? new Date(room.fetched_at).toISOString().slice(0, 10) : EMDASH}
+          </p>
+        )}
       </header>
 
       <Block label="THE FACTS">
@@ -147,7 +183,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
             <div key={label} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-2)' }}>
               <span className="cid-label">{label}</span>
               {value == null ? (
-                <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title="Not yet checked on site">
+                <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title={notCheckedTitle}>
                   {EMDASH}
                 </span>
               ) : (
@@ -160,7 +196,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
 
       <Block
         label={`CASH GAMES · ${games.length}`}
-        empty={games.length === 0 ? <NotChecked what="the games spread" /> : undefined}
+        empty={games.length === 0 ? <EmptyBlock what="cash games" checkedAt={room.verified_at} /> : undefined}
       >
         <div style={{ border: '1px solid var(--cid-line-1)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) repeat(4, minmax(0,1fr))', gap: 'var(--cid-space-4)', padding: 'var(--cid-space-4) var(--cid-space-5)', background: 'var(--cid-fill-1)', borderBottom: '1px solid var(--cid-line-2)' }}>
@@ -180,7 +216,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                 g.jackpot_drop != null ? `$${Number(g.jackpot_drop)}` : null,
               ].map((v, j) =>
                 v == null ? (
-                  <span key={j} className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title="Not yet checked on site">{EMDASH}</span>
+                  <span key={j} className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title={notCheckedTitle}>{EMDASH}</span>
                 ) : (
                   <span key={j} className="num cid-unverified" style={{ font: 'var(--cid-num)', justifySelf: 'start' }}>~{v}</span>
                 ),
@@ -193,10 +229,10 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.15fr) minmax(0,1fr)', gap: 'var(--cid-space-7)' }}>
         <Block
           label="AMENITIES"
-          empty={room.room_amenities.length === 0 ? <NotChecked what="amenities" /> : undefined}
+          empty={present.length === 0 ? <EmptyBlock what="amenities" checkedAt={room.verified_at} /> : undefined}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
-            {room.room_amenities.map((a) => (
+            {present.map((a) => (
               <div key={a.amenity_types?.slug} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-4) var(--cid-space-5)', display: 'grid', gridTemplateColumns: '120px minmax(0,1fr)', gap: 'var(--cid-space-5)', alignItems: 'baseline' }}>
                 <span className="cid-label">{a.amenity_types?.label}</span>
                 <span className="cid-unverified" style={{ font: 'var(--cid-body)' }}>
@@ -209,7 +245,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
 
         <Block
           label="HOUSE RULES"
-          empty={room.house_rules.length === 0 ? <NotChecked what="house rules" /> : undefined}
+          empty={room.house_rules.length === 0 ? <EmptyBlock what="house rules" checkedAt={room.verified_at} /> : undefined}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
             {room.house_rules.map((r) => (
@@ -225,9 +261,9 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       <section style={{ borderTop: '1px solid var(--cid-line-1)', paddingTop: 'var(--cid-space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-5)' }}>
         <span className="cid-label">WHERE THIS CAME FROM</span>
         <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
-          Every figure on this page is sourced and none is verified — we read it from a
-          published page, we have not stood in the room. Ranked columns elsewhere exclude
-          this room until someone does.
+          {room.verified_at
+            ? 'Someone has stood in this room and confirmed what is here — including what is not. A dash on a checked room means the room does not publish it, not that we skipped it.'
+            : 'Every figure on this page is sourced and none is verified — we read it from a published page, we have not stood in the room. Ranked columns elsewhere exclude this room until someone does.'}
           {room.source_url && (
             <>
               {' '}

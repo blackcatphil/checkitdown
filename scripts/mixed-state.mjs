@@ -70,6 +70,14 @@ async function facts() {
   return { main, text, rows, ranks }
 }
 
+async function roomPage(slug) {
+  const res = await fetch(`${BASE}/rooms/${slug}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`GET /rooms/${slug} -> ${res.status}`)
+  const doc = await res.text()
+  const main = doc.match(/<main[\s\S]*?<\/main>/)?.[0] ?? ''
+  return main.replace(/<[^>]+>/g, ' ').replace(/&#x27;|&rsquo;/g, "'").replace(/\s+/g, ' ')
+}
+
 let failures = 0
 const check = (name, ok, detail = '') => {
   console.log(`   ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`)
@@ -142,6 +150,25 @@ try {
     check('no unverified exclusion', !/not confirmed on site yet/.test(text))
     check('unpublished exclusion still names Horseshoe', /Horseshoe is confirmed but publish/.test(text))
   })
+  // Horseshoe: no amenities, no house rules, and no rake figure. It is the room
+  // where "checked" and "has nothing" have to be told apart.
+  await scenario('HORSESHOE UNCHECKED — empty blocks are gaps', [], async () => {
+    const t = await roomPage('horseshoe')
+    check('amenities read as NOT CHECKED', /Not yet checked on site/.test(t))
+    check('does not claim a completed check', !/Checked on site — no amenities/.test(t))
+    check('header says UNVERIFIED', /UNVERIFIED . SOURCED/.test(t))
+  })
+
+  await scenario('HORSESHOE CHECKED — empty blocks are findings', ['horseshoe'], async () => {
+    const t = await roomPage('horseshoe')
+    check('amenities read as CONFIRMED ABSENT', /Checked on site — no amenities/.test(t))
+    check('house rules read as CONFIRMED ABSENT', /Checked on site — no house rules/.test(t))
+    check('no stale "not yet checked" anywhere', !/Not yet checked on site/.test(t))
+    check('absence framed as a finding', /the absence is the fact/.test(t))
+    check('header flips to VERIFIED ON SITE', /VERIFIED ON SITE \d{4}-\d{2}-\d{2}/.test(t))
+    check('provenance no longer claims nothing is verified', !/none is verified/.test(t))
+  })
+
 } finally {
   reset()
   const left = sql('select count(*) from rooms where verified_at is not null')
