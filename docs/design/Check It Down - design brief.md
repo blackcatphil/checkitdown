@@ -448,6 +448,55 @@ argument for testing a constraint BEFORE it shapes an architecture rather than
 after, which is exactly what this measurement was — and the hand-modelled
 massing is what it costs when you don't.
 
+### SPIKE PASS 2 — dark theme, and hover on OUR OWN footprints
+
+**Hover highlights only the 17 rooms.** Built the robust version, not the quick
+one: `scripts/room-footprints.mjs` fetches each room's building polygon from
+Overpass once and emits `spike/room-footprints.geojson`, rendered as our own
+layer. That removes all three fragilities of highlighting a tile feature — no
+feature-id dependency, no per-tile splitting, no podium ambiguity — because the
+right polygon is chosen once, deliberately, and kept.
+
+**It also reopens selected-room-lights-its-own-mass**, which the tiles' missing
+`name` property appeared to have closed. With our own polygons we never needed
+the tiles' names.
+
+**17/17 matched, and the method is recorded per room** because "matched by name"
+and "fell back to geometry" are different claims:
+
+| method | rooms | strength |
+|---|---|---|
+| `contains+name` | **13** | room's coordinate is inside a building named for the property |
+| `contains` | 3 | inside an unnamed polygon — strong, but nothing corroborates it |
+| `name-only` | **1** (Venetian → "Venetian Expo") | **the room is NOT inside it.** Related, not resolved |
+| `nearest` | 0 | would have been a guess, flagged as one |
+
+**Two bugs found by building it, both the project's recurring shapes:**
+
+1. **"Largest polygon whose name matches" picked the wrong buildings** — Bellagio
+   *Self Parking Garage*, Mandalay Bay *Convention Center*, Venetian *Expo*. All
+   genuinely named for the property, all bigger than the hotel, none of them the
+   building the poker room is in. Fixed by ranking **containment above name**: a
+   name says *related to*, containment says *the room is inside this*. Same class
+   as tallest-picks-the-neighbour.
+2. **Caesars Palace reported "0 candidates" when Overpass had simply not
+   answered** — a failed fetch rendered as an absence, in the very script written
+   to keep those apart. Now reported as `FETCH FAILED`, distinct from "no
+   buildings here".
+
+**Dark theme:** the spike restyles every style layer individually from the locked
+palette and prints how many it touched. That count is the argument — the Leaflet
+map tones raster tiles with one CSS filter, a blunt instrument applied to a
+picture; MapLibre gives water, roads, labels and fills each their own token.
+
+**Not yet looked at.** JS parses, tags balance, 17 polygons inlined (44 KB, so it
+works from `file://` with no CORS fetch) — but no browser here. The panel reports
+the match method per room *before* anyone judges the highlight.
+
+**Footprints belong in the database eventually**, with `source_url`,
+`fetched_at`, `verified_at` like every other fact. A fetched file is fine for a
+spike; hardcoded geometry with no provenance is not fine for production.
+
 ### SPIKE RESULT (2026-08-04) — `spike/maplibre-spike.html`
 
 **The spike answered both questions, and killed one of our decisions.**
@@ -468,12 +517,71 @@ levels-only, and the podium cases really are wrong. What evaporated is the
 above 60 m, tallest 235 / 206 / 196 / 195 / 184 / 183 m. The whole city, not our
 eighteen shapes on a flat plane. 7 of 17 rooms in the viewport.
 
-**⚠️ One gap worth closing before this is quoted:** the spike was viewed at
-**z14.97**; the landing constant is **z14.5**. So "it reads as a skyline" is
-established at ~z15, not at the zoom we actually land on. That is the same shape
-as the earlier comparison that turned out to be against a superseded rendering —
-either the landing constant moves to ~15, or the skyline claim gets re-checked at
-14.5 before it is relied on.
+**~~Zoom gap~~ CLOSED — re-viewed at exactly z14.50 / pitch 51, untouched from
+the landing constant.** The claim holds and holds *stronger* than at 14.97:
+**208 of 208 features extruded, 84 at 60 m+, 8 of 17 rooms in view** — against
+112 / 52 / 7. Pulling back puts more corridor in frame. The landing constant
+stays at 14.5; nothing moves.
+
+**⚠️ NEW, AND IT IS A LAUNCH ISSUE: the buildings take a long time to arrive.**
+Base map and room markers render in seconds; the extrusions appeared between
+roughly **26 s and 46 s** on a cold load. Until then the view is **exactly the
+flat sparse state we spent a week deciding not to ship** — not because anything
+filtered it, but because the tiles had not landed.
+
+> ### ⚠️ 26–46 s IS THE LEAST-TESTED NUMBER IN THIS PROJECT — do not inherit it
+>
+> **n = 1.** One load, reported as a range rather than a value. It is currently
+> the weakest evidence in the repo, and it is being asked to justify a design
+> requirement — exactly the shape this project keeps finding wanting.
+>
+> **And the reassuring caveat was probably backwards.** The original note said
+> "cold cache, MapLibre from unpkg — production bundles the library and repeat
+> visits warm the cache." But that view came from a different tab group in the
+> **same browser profile**, so unpkg was almost certainly already in the HTTP
+> cache from an earlier session. If so, the 26–46 s was **predominantly vector
+> tiles** — and **tiles are the one part production cannot bundle away**. That
+> inverts the comfort: the real number may be worse in production terms, not
+> better.
+>
+> This is an inference, not a finding. Which is the point: **nothing here is
+> established.**
+>
+> **The follow-up measurement must therefore:**
+> - define **cold** properly — fresh profile or cleared cache, **not merely a new
+>   tab**
+> - take **more than one sample**
+> - report **cold vs warm AND bundled vs CDN separately**, so the tile component
+>   is isolated from the library component
+> - measure **time-to-first-extrusion at z14.5 specifically**, not generic page
+>   load
+>
+> Until that exists, the loading state is justified by the *structural* argument
+> — a snapshot instrument cannot distinguish "none qualify" from "none arrived" —
+> and not by this number.
+
+**Why watching found this and reading did not.** The spike's inventory is
+`map.once("idle", report)` — a single snapshot with no notion of "still
+loading". It reports what had arrived when it ran and never revises. So the
+panel we built to stop the view being misread is **itself subject to the
+timestamp rule**: an observation carries when it was made, including our own
+instrument's. It cannot distinguish *0 extruded because nothing qualifies* from
+*0 extruded because nothing has downloaded yet*.
+
+**That is the same distinction as the empty-state ruling**, one layer down:
+"not yet checked on site" vs "checked, none present" is exactly "tiles not
+loaded yet" vs "loaded, nothing qualifies". Which is why a loading state is
+**required, not a nicety** — without it the front door's first impression is
+decided by network timing, and the impression it gives is the flat map.
+
+**Two things to do when the migration is greenlit — before it ships, not after:**
+
+1. **Measure load properly:** cold vs warm cache, bundled vs CDN,
+   time-to-first-extrusion at z14.5. A real launch metric, and exactly the kind
+   of number that is easy to never take.
+2. **Build the loading state**, and have it say which of the two states it is
+   in — the same discipline as the inventory panel and the exclusion line: name
+   what is happening rather than let an absence be misread.
 
 **Consequences:**
 

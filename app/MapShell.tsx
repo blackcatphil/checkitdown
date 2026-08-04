@@ -6,6 +6,7 @@ import L from 'leaflet'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
 
@@ -72,16 +73,9 @@ const SINGLE_3D = 14
 const CLUSTER = 44
 const PIN = 40
 
-/** The panel ships with GAMES only — see the coverage-gate decision. The SAME
- *  gate applies one level down, within GAMES: a checkbox no room can satisfy is
- *  a broken control, not an honest one. No room currently spreads `mixed`, so
- *  "Mixed games" is filtered out below rather than shipped reading 0. */
-const GAME_FILTERS: Array<[string, string]> = [
-  ['nlh', "No-Limit Hold'em"],
-  ['plo', 'Pot-Limit Omaha'],
-  ['limit', "Limit hold'em"],
-  ['mixed', 'Mixed games'],
-]
+/* GAME_FILTERS, the coverage gate and the matcher all live in lib/game-filter.
+   The narrowing is INSIDE the helper every caller passes through, so it cannot
+   be forgotten at a call site — and lib/game-filter.test.mjs pins it. */
 
 type Placed = { x: number; y: number; members: MapRoom[] }
 
@@ -109,10 +103,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     [rooms, season],
   )
 
-  const matches = useMemo(
-    () => (checked.length === 0
-      ? roster
-      : roster.filter((r) => checked.every((k) => r.games.includes(k)))),
+  /* One call, one derivation. A key with no coverage is dropped here rather
+     than silently narrowing the map. */
+  const { matches, activeKeys } = useMemo(
+    () => applyGameFilter(roster, checked),
     [roster, checked],
   )
   const matched = useMemo(() => new Set(matches.map((r) => r.slug)), [matches])
@@ -193,7 +187,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         /* Three cluster states. The number does the work dimming cannot: at
            entry zoom the Strip is one pin, and "some of these match" is
            unreadable as a shade. */
-        const state = checked.length === 0 || hit === n ? 'all' : hit === 0 ? 'none' : 'part'
+        const state = activeKeys.length === 0 || hit === n ? 'all' : hit === 0 ? 'none' : 'part'
         const label = state === 'all' ? String(n) : `${hit}/${n}`
         const icon = L.divIcon({
           className: '',
@@ -223,7 +217,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         m.bindPopup(popupHtml(r), { className: 'cid-popup', closeButton: false, minWidth: 240 })
       }
     }
-  }, [roster, matched, checked.length, on3d, tick])
+  }, [roster, matched, activeKeys.length, on3d, tick])
 
   useEffect(() => {
     const map = mapRef.current
@@ -264,7 +258,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       >
         <div>
           <p className="num" style={{ font: 'var(--cid-num-lg)', margin: 0 }}>
-            {checked.length ? `${matches.length} of ${roster.length} rooms match` : `${roster.length} rooms`}
+            {activeKeys.length ? `${matches.length} of ${roster.length} rooms match` : `${roster.length} rooms`}
           </p>
           {/* The landing view shows the Strip, so the roster count and the
               viewport disagree on the FIRST screen anyone sees. Saying so — with
@@ -287,7 +281,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
             </p>
           )}
           <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 'var(--cid-space-2) 0 0' }}>
-            {checked.length
+            {activeKeys.length
               ? 'Rooms without every checked game stay on the map, dimmed.'
               : 'Check a game to dim the rooms that lack it.'}
           </p>
@@ -303,7 +297,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
           <span className="cid-label">GAMES</span>
-          {GAME_FILTERS.filter(([k]) => roster.some((r) => r.games.includes(k))).map(([k, label]) => {
+          {visibleFilters(roster).map(([k, label]) => {
             const n = matches.filter((r) => r.games.includes(k)).length
             const on = checked.includes(k)
             return (

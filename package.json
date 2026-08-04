@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:mixed": "node scripts/mixed-state.mjs",
-    "test:rls": "supabase test db"
+    "test:rls": "supabase test db",
+    "test:unit": "node --test lib/*.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

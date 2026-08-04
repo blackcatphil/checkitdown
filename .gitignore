@@ -71,3 +71,7 @@ scripts/.rooms/
 scripts/.osm-heights-cache.json
 scripts/.strip-buildings.json
 scripts/.fetch-rooms.sh
+# Overpass geometry cache for scripts/room-footprints.mjs. Regenerable; the
+# script and the emitted GeoJSON are the artifacts worth keeping.
+scripts/.footprints/
+spike/.bak.html

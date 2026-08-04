@@ -154,6 +154,71 @@ So when a result looks right, that is not evidence. Ask what the method cannot
 distinguish: proximity cannot express "belongs to"; a valid FK cannot express
 "supports this claim"; a passing test cannot express "the branch was reachable".
 
+### When scoping something down, the work is REMOVING the broad path
+
+Adding the narrow one is the easy half and the half that feels like the fix.
+
+The spike highlighted **every building** on hover after the room-scoped
+highlight was added — because the generic tile-layer handlers were never
+removed. Both paths were live, both were individually correct, and
+`room-fill` worked exactly as written. **The symptom was the old behaviour still
+running, not the new one failing**, which is why reading the new code looked
+right.
+
+It is a sibling of the plausible-output class: nothing threw, nothing looked
+broken in isolation, and **no test would have caught it**, because both
+behaviours were intended — at different times.
+
+*Corollary 1 — dead code left merely uncalled is the hazard deferred.*
+`setHover()` was the removed path's driver; leaving it in place would have
+reintroduced the bug the moment someone wired it back up. Delete it, or make it
+unmistakably dead.
+
+*Corollary 2 — check the comments, because **nothing ever fails when a comment
+goes wrong**.* The comment on `a2b` still described the hover behaviour one
+commit after that behaviour was removed. Code has a compiler, a linter and a
+test suite arguing with it; a comment has nothing, so it is the part of a
+codebase most exposed to going stale and the least likely to announce it.
+
+*Corollary 3 — a 200 checks the TRANSPORT, not the CONTENT.* Removing
+`setHover()` left orphaned statements outside any function; the JS was broken
+and the page still served **200**. Checking the parse rather than the status code
+is the same move as checking whether a source *supports* a claim rather than
+whether the FK resolves.
+
+**Swept the app for the same shape (2026-08-04) — all clean, and the reasons
+differ, which is the useful part:**
+
+| narrowing | broad path |
+|---|---|
+| amenity groups gated to GAMES | unreachable — `checked` is never restored from URL or storage, so a gated slug cannot arrive |
+| Mixed games gated out | unreachable — `toggle()` only fires from a rendered button |
+| 3D narrowed to z ≥ 14 | **deleted**, not bypassed — 0 references to the inflation path remain |
+| pins narrowed to a dot in 3D | a switch, not an accumulation — one class or the other |
+| `available` filter on amenities | filtered inside `amenityLabel()` and `present`, so no caller can skip it |
+
+### Put the narrowing INSIDE the helper every caller must pass through
+
+So scoping down cannot be forgotten at a call site. **Third instance of "make it
+impossible rather than memorable"**, after `SortSpec` typing `value` as
+`number | null` (a string sort is a compile error) and the fetch helper that
+throws on an empty token rather than returning `''`.
+
+**The two "unreachable" rows above have now been hardened**, because
+*unreachable* is not *impossible*. Both held only by accident of elsewhere —
+"a gated key cannot reach `checked`, because `checked` is never restored from
+the URL or storage." That is the `is_seasonal` shape: a rule resting on a fact
+about a different file, which fails **silently** the day someone adds shareable
+filter state, with old behaviour returning as the only symptom.
+
+`lib/game-filter.ts` now owns the gate, the visible checkbox list and the
+matcher, so a key with no coverage is dropped *inside* the one function every
+caller goes through — and `dropped` is returned rather than swallowed, because a
+silently discarded filter key is the same class of thing as a silently excluded
+room. `lib/game-filter.test.mjs` pins it (`npm run test:unit`), including the
+case the old arrangement could not survive: a stale key arriving from a shared
+URL. Verified to fail on regression — reverting the drop fails 3 of 6.
+
 ### A claim that was never tested reads exactly like one that was
 
 Staleness at least has a timestamp you can interrogate. **An untested claim has
