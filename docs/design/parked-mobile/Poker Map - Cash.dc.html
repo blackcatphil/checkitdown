@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-float:rgba(13,17,14,0.94); --pm-scrim:rgba(4,6,5,0.66);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93; --pm-value:#4ECB93; --pm-caution:#D9A23F;
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#EFECE3; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(239,236,227,0.94); --pm-float:rgba(255,255,255,0.96); --pm-scrim:rgba(24,28,20,0.42);
+      --pm-ink:#171C13; --pm-ink-2:#232A1D; --pm-ink-3:rgba(23,28,19,0.86);
+      --pm-dim-1:rgba(23,28,19,0.72); --pm-dim-2:rgba(23,28,19,0.66); --pm-dim-3:rgba(23,28,19,0.5); --pm-dim-4:rgba(23,28,19,0.42);
+      --pm-line-1:rgba(23,28,19,0.1); --pm-line-2:rgba(23,28,19,0.16); --pm-line-3:rgba(23,28,19,0.28); --pm-fill-1:rgba(23,28,19,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52; --pm-value:#0F7B52; --pm-caution:#8A5B0F;
+      --pm-src-empty-line:rgba(23,28,19,0.18);
+    }
+  </style>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<div data-cash-root="1" data-screen-label="Cash" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div style="position:sticky;top:0;z-index:30;padding:58px 18px 13px;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="display:flex;align-items:center;gap:11px">
+      <div style="flex:1;min-width:0;display:flex;align-items:center;gap:7px">
+        <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass);animation:pmPing 2.6s ease-out infinite"></span></span>
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-brass)">PRICED FROM</span>
+        <span style="font:500 11px/1 Archivo,sans-serif;color:var(--pm-dim-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ location }}</span>
+      </div>
+      <div style="display:flex;gap:2px;padding:3px;border-radius:12px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1)">
+        <sc-if value="{{ isBrowse }}" hint-placeholder-val="{{ true }}"><div style="height:38px;padding:0 13px;border-radius:9px;display:flex;align-items:center;background:var(--pm-seg);border:1px solid var(--pm-line-1);font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink)">BROWSE</div></sc-if>
+        <sc-if value="{{ isCompare }}"><div onClick="{{ showBrowse }}" style="height:38px;padding:0 13px;border-radius:9px;display:flex;align-items:center;cursor:pointer;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2)">BROWSE</div></sc-if>
+        <sc-if value="{{ isCompare }}"><div style="height:38px;padding:0 13px;border-radius:9px;display:flex;align-items:center;background:var(--pm-seg);border:1px solid var(--pm-line-1);font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink)">COMPARE</div></sc-if>
+        <sc-if value="{{ isBrowse }}" hint-placeholder-val="{{ true }}"><div onClick="{{ showCompare }}" style="height:38px;padding:0 13px;border-radius:9px;display:flex;align-items:center;cursor:pointer;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2)">COMPARE</div></sc-if>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px">
+      <sc-for list="{{ stakes }}" as="s" hint-placeholder-count="5">
+        <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ s.onClick }}" style="height:48px;box-sizing:border-box;padding:0 3px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.5)">
+            <span style="font:700 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#17130A;white-space:nowrap">{{ s.label }}</span>
+            <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.7)">{{ s.count }}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ s.inactive }}">
+          <div onClick="{{ s.onClick }}" style="height:48px;box-sizing:border-box;padding:0 3px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+            <span style="font:500 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);white-space:nowrap">{{ s.label }}</span>
+            <span style="font:500 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ s.count }}</span>
+          </div>
+        </sc-if>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <h1 style="margin:0;font:400 35px/0.98 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink)">{{ heading }}</h1>
+    <span style="font:400 12.5px/1.4 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);text-wrap:pretty">{{ subheading }}</span>
+  </div>
+
+  <sc-if value="{{ isCompare }}">
+    <div style="display:flex;gap:8px;overflow-x:auto;padding:16px 18px 4px;scrollbar-width:none">
+      <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="5">
+        <sc-if value="{{ m.active }}" hint-placeholder-val="{{ true }}"><div onClick="{{ m.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;gap:7px;background:rgba(201,162,74,0.14);border:1px solid var(--pm-brass);cursor:pointer"><span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass-2);white-space:nowrap">{{ m.label }}</span><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:var(--pm-brass-2)">&#8593;</span></div></sc-if>
+        <sc-if value="{{ m.inactive }}"><div onClick="{{ m.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)"><span style="font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-1);white-space:nowrap">{{ m.label }}</span></div></sc-if>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ mixedModels }}">
+      <div style="margin:16px 18px 0;padding:11px 12px;border-radius:11px;border:1px solid rgba(201,162,74,0.28);background:rgba(201,162,74,0.06);display:flex;align-items:flex-start;gap:9px">
+        <span style="flex:none;width:6px;height:6px;margin-top:4px;background:var(--pm-brass);transform:rotate(45deg)"></span>
+        <span style="flex:1;min-width:0;font:400 11px/1.45 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">{{ mixedNote }}</span>
+      </div>
+    </sc-if>
+    <div style="padding:16px 18px 0;display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ ranked }}" as="r" hint-placeholder-count="4">
+        <div style="border-radius:17px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid {{ r.border }};box-shadow:0 10px 26px -14px rgba(0,0,0,0.85);padding:14px 15px 13px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="flex:none;width:34px;height:34px;border-radius:10px;background:{{ r.rankBg }};border:1px solid {{ r.rankLine }};display:flex;align-items:center;justify-content:center">
+              <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInk }}">{{ r.rank }}</span>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="flex:1;min-width:0;font:400 19px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.room }}</span>
+                <span style="flex:none;padding:3px 6px;border-radius:5px;border:1px solid var(--pm-line-2);font:600 7.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:{{ r.modelInk }}">{{ r.model }}</span>
+              </div>
+              <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ r.meta }}</span>
+            </div>
+            <sc-if value="{{ r.notEstimate }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                <span style="font:500 21px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;color:{{ r.costColor }}">{{ r.cost }}</span>
+                <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-2)">{{ r.costNote }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ r.isEstimate }}">
+              <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;padding:7px 9px;border-radius:10px;border:1px dotted var(--pm-line-3);background:repeating-linear-gradient(135deg,var(--pm-fill-1) 0 6px,transparent 6px 12px)">
+                <span style="font:400 16px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;color:var(--pm-dim-1)">{{ r.cost }}</span>
+                <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ r.costNote }}</span>
+              </div>
+            </sc-if>
+          </div>
+
+          <span style="font:400 10.5px/1.45 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);padding:9px 10px;border-radius:9px;background:var(--pm-fill-1);text-wrap:pretty">{{ r.working }}</span>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 12px">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">{{ r.rakeLabel }}</span>
+              <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeColor }}">{{ r.rake }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">JACKPOT DROP</span>
+              <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3)">{{ r.drop }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">COMPS</span>
+              <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3)">{{ r.comps }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">BUY-IN</span>
+              <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3)">{{ r.buyin }}</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:9px;padding-top:2px;border-top:1px solid var(--pm-line-1)">
+            <sc-if value="{{ r.verifiedOk }}" hint-placeholder-val="{{ true }}">
+              <span style="width:15px;height:15px;flex:none;border-radius:50%;background:rgba(78,203,147,0.14);display:flex;align-items:center;justify-content:center;font:600 8.5px/1 'IBM Plex Mono',monospace;color:var(--pm-live);margin-top:9px">&#10003;</span>
+              <span style="flex:1;min-width:0;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);margin-top:9px">{{ r.verified }}</span>
+            </sc-if>
+            <sc-if value="{{ r.unverified }}">
+              <span style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;margin-top:9px;padding:7px 9px;border-radius:8px;border:1px dotted var(--pm-line-3);background:repeating-linear-gradient(135deg,var(--pm-fill-1) 0 6px,transparent 6px 12px)">
+                <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1)">UNVERIFIED</span>
+                <span style="font:400 10px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">{{ r.verified }}</span>
+              </span>
+            </sc-if>
+            <div onClick="{{ r.onRoom }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 12px;border-radius:11px;border:1px solid var(--pm-line-2);display:flex;align-items:center;gap:7px;cursor:pointer;margin-top:9px" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink-2);white-space:nowrap">ROOM</span>
+              <span style="font:400 13px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&#8250;</span>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isBrowse }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;gap:8px;overflow-x:auto;padding:16px 18px 4px;scrollbar-width:none">
+      <sc-for list="{{ browseChips }}" as="c" hint-placeholder-count="4">
+        <sc-if value="{{ c.active }}"><div onClick="{{ c.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;gap:7px;background:rgba(201,162,74,0.14);border:1px solid var(--pm-brass);cursor:pointer"><span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass-2);white-space:nowrap">{{ c.label }}</span><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:var(--pm-brass-2)">&#10003;</span></div></sc-if>
+        <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ true }}"><div onClick="{{ c.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)"><span style="font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-1);white-space:nowrap">{{ c.label }}</span></div></sc-if>
+      </sc-for>
+    </div>
+
+    <div style="padding:16px 18px 0;display:flex;flex-direction:column;gap:11px">
+      <sc-for list="{{ browse }}" as="b" hint-placeholder-count="5">
+        <div style="border-radius:15px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);box-shadow:0 8px 20px -14px rgba(0,0,0,0.8);padding:13px 14px;display:flex;flex-direction:column;gap:11px">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+              <span style="font:400 18px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.room }}</span>
+              <span style="font:400 11.5px/1.2 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ b.gameLine }}</span>
+            </div>
+            <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <div style="display:flex;align-items:baseline;gap:3px"><span style="font:500 16px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ b.dist }}</span><span style="font:400 9px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">mi</span></div>
+              <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2)">{{ b.travel }}</span>
+            </div>
+          </div>
+          <sc-if value="{{ b.isCrowd }}">
+            <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;background:rgba(78,203,147,0.05);border:1px dashed rgba(78,203,147,0.36)">
+              <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:var(--pm-live);white-space:nowrap">PLAYER-REPORTED</span>
+              <span style="flex:1;min-width:0;font:500 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.liveText }}</span>
+              <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ b.liveAge }}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ b.isLowConf }}">
+            <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;border:1px dashed rgba(78,203,147,0.2)">
+              <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:rgba(78,203,147,0.62);white-space:nowrap">PLAYER-REPORTED</span>
+              <span style="flex:1;min-width:0;font:400 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.lowConfText }}</span>
+              <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ b.lowConfAge }}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ b.isCold }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 6px 6px 11px;border-radius:11px;border:1px dashed var(--pm-src-empty-line)">
+              <span style="flex:1;min-width:0;font:400 11px/1.35 Archivo,sans-serif;color:var(--pm-dim-1)">{{ b.coldText }}</span>
+              <div onClick="{{ b.onReport }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 13px;border-radius:10px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">REPORT</div>
+            </div>
+          </sc-if>
+          <div style="display:flex;align-items:center;gap:9px;min-height:44px">
+            <span style="flex:1;min-width:0;font:400 10.5px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.priceLine }}</span>
+            <div onClick="{{ b.onRoom }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 12px;border-radius:11px;border:1px solid var(--pm-line-2);display:flex;align-items:center;gap:7px;cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink-2)">ROOM</span>
+              <span style="font:400 13px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&#8250;</span>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEmpty }}">
+    <div style="margin:18px;display:flex;flex-direction:column;align-items:center;gap:13px;padding:34px 20px;border-radius:17px;border:1px dashed var(--pm-src-empty-line)">
+      <span style="font:400 21px/1.2 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">No room spreads that</span>
+      <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:250px">{{ emptyText }}</span>
+      <div onClick="{{ clearFilters }}" style="height:44px;padding:0 17px;border-radius:12px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">CLEAR FILTERS</div>
+    </div>
+  </sc-if>
+
+  <div style="padding:24px 18px 0;display:flex;flex-direction:column;gap:8px">
+    <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-dim-1)">HOW WE PRICE IT</span>
+    <span style="font:400 11px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ methodology }}</span>
+  </div>
+
+  <div style="height:150px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ sheetOpen }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;height:{{ frameH }}px;z-index:60;display:flex;flex-direction:column;justify-content:flex-end;background:var(--pm-scrim);animation:pmFade .18s ease both">
+        <div onClick="{{ closeSheet }}" style="flex:1"></div>
+        <div style="border-radius:22px 22px 0 0;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border-top:1px solid rgba(201,162,74,0.28);box-shadow:0 -20px 44px -14px rgba(0,0,0,0.95);padding:16px 16px 30px;display:flex;flex-direction:column;gap:15px">
+          <sc-if value="{{ sheetAsk }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass)">REPORT STATUS · ANONYMOUS</span>
+                <span style="font:400 25px/1.1 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ sheetTitle }}</span>
+                <span style="font:400 11px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ sheetSub }}</span>
+              </div>
+              <div onClick="{{ closeSheet }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 16px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&times;</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+              <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="8">
+                <div onClick="{{ b.onClick }}" style="height:56px;border-radius:13px;border:1px solid var(--pm-line-2);background:var(--pm-fill-1);display:flex;align-items:center;justify-content:center;cursor:pointer;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-ink-2)" style-hover="border-color:rgba(201,162,74,0.6);background:rgba(201,162,74,0.1);color:var(--pm-brass-2)" style-active="transform:translateY(1px)">{{ b.label }}</div>
+              </sc-for>
+            </div>
+            <span style="font:400 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:0.06em;color:var(--pm-dim-2)">One tap · no account · expires in 45 min</span>
+          </sc-if>
+          <sc-if value="{{ sheetThanks }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:13px;padding:14px 0 6px;animation:pmFade .22s ease both">
+              <span style="width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#E2BE6C,#C89B3D);display:flex;align-items:center;justify-content:center;font:600 22px/1 'IBM Plex Mono',monospace;color:#17130A;box-shadow:0 0 0 6px rgba(201,162,74,0.14),0 12px 26px -10px rgba(201,162,74,0.75)">&#10003;</span>
+              <span style="font:400 24px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">{{ sheetTitle }} is fresh again</span>
+              <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:250px">Your report is live for every player pricing this game.</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:182px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+    <div style="padding:11px 14px 9px;border-bottom:1px solid var(--pm-line-1)">
+      <div onClick="{{ openReport }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+        <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:#1B1509"></span><span style="position:absolute;inset:0;border-radius:50%;background:rgba(27,21,9,0.75);animation:pmPing 2.4s ease-out infinite"></span></span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">REPORT STATUS</span>
+          <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ reportSub }}</span>
+        </div>
+        <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+      </div>
+    </div>
+    <div style="padding:9px 6px 30px;display:flex">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.onClick }}" style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer">
+          <sc-if value="{{ n.active }}" hint-placeholder-val="{{ true }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:var(--pm-brass)"></span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-ink)">{{ n.label }}</span>
+          </sc-if>
+          <sc-if value="{{ n.inactive }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:transparent"></span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ n.label }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;defaultMode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;browse&quot;,&quot;compare&quot;],&quot;default&quot;:&quot;compare&quot;,&quot;tsType&quot;:&quot;'browse' | 'compare'&quot;,&quot;section&quot;:&quot;Mode&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;location&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;The Cosmopolitan&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Context&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { mode: null, stake: '$1/3', metric: 'net', chips: [], tick: 0, reports: {}, sheet: null, sheetDone: false, toast: null };
+
+  HANDS = 28;   /* hands per hour, house average */
+  SEATS = 9;    /* players sharing the rake */
+  CROWD_TTL = 45;
+
+  STAKES = [
+    { id: '$1/2', label: '$1/2' }, { id: '$1/3', label: '$1/3' }, { id: '$2/5', label: '$2/5' },
+    { id: '$5/10', label: '$5/10' }, { id: 'mix', label: 'MIX' },
+  ];
+  METRICS = [
+    { id: 'net', label: 'NET VALUE' }, { id: 'rake', label: 'RAKE' }, { id: 'comps', label: 'COMPS' },
+    { id: 'drop', label: 'DROP' }, { id: 'buyin', label: 'BUY-IN' },
+  ];
+  BROWSE_CHIPS = [
+    { id: 'live', label: 'Reported running' }, { id: 'walk', label: 'Walkable' },
+    { id: 'strip', label: 'Strip only' }, { id: 'lowrake', label: 'Cap $4 or less' },
+  ];
+  BUCKETS = ['NO WAIT', '1–2 WAITING', '3–5 WAITING', '6–9 WAITING', '10+ WAITING', 'JUST STARTED', 'NOT RUNNING', 'ROOM CLOSED'];
+  BUCKET_TEXT = {
+    'NO WAIT': 'No wait', '1–2 WAITING': '1–2 waiting', '3–5 WAITING': '3–5 waiting', '6–9 WAITING': '6–9 waiting',
+    '10+ WAITING': '10+ waiting', 'JUST STARTED': 'Just started', 'NOT RUNNING': 'Not running', 'ROOM CLOSED': 'Reported closed',
+  };
+
+  /* PLACEHOLDER rake economics — plausible, not sourced. cap/drop in dollars, comps $/hr, cashD = data age in days */
+  ROOMS = [
+    { room: 'ARIA', area: 'strip', dist: 0.2, walk: 4, cashD: 4, games: [
+      { s: '$1/3', g: 'NLH', pct: 10, cap: 5, drop: 1, comps: 2, min: 100, max: 500, tables: 12, crowd: { w: '3–5 waiting', mins: 9 } },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 5, drop: 1, comps: 2, min: 300, max: 1500, tables: 6 },
+      { s: '$5/10', g: 'PLO', pct: 10, cap: 5, drop: 1, comps: 2, min: 1000, max: 0, tables: 2 } ] },
+    { room: 'Bellagio', area: 'strip', dist: 0.4, walk: 8, cashD: 6, games: [
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 4, drop: 0, comps: 3, min: 300, max: 1000, tables: 14, crowd: { w: '6–9 waiting', mins: 12 } },
+      { s: '$5/10', g: 'NLH', comps: 3, min: 500, max: 0, tables: 6, time: true, half: 12 },
+      { s: 'mix', g: 'Mixed · Bobby’s', comps: 3, min: 20000, max: 0, tables: 1, time: true, half: 30 } ] },
+    { room: 'Horseshoe', area: 'strip', dist: 0.6, walk: 12, cashD: 9, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 5, drop: 2, comps: 2, min: 100, max: 300, tables: 11 },
+      { s: '$1/3', g: 'NLH', pct: 10, cap: 5, drop: 2, comps: 2, min: 200, max: 600, tables: 5 } ] },
+    { room: 'Caesars Palace', area: 'strip', dist: 0.8, walk: 16, cashD: 11, unverified: true, games: [
+      { s: '$1/3', g: 'NLH', pct: 10, cap: 5, drop: 1, comps: 2, min: 100, max: 500, tables: 9 },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 5, drop: 1, comps: 2, min: 300, max: 1000, tables: 5 } ] },
+    { room: 'MGM Grand', area: 'strip', dist: 1.1, walk: 22, cashD: 5, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 5, drop: 2, comps: 2, min: 100, max: 300, tables: 15, crowd: { w: '10+ waiting', mins: 4 } },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 5, drop: 2, comps: 2, min: 300, max: 1000, tables: 7 } ] },
+    { room: 'Venetian', area: 'strip', dist: 1.3, walk: 26, drive: 7, cashD: 6, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 2, min: 100, max: 300, tables: 26, crowd: { w: '10+ waiting', mins: 6 } },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 2, min: 300, max: 1000, tables: 12, crowd: { w: 'Not running', mins: 17 } },
+      { s: 'mix', g: 'HORSE rotation', pct: 10, cap: 4, drop: 0, comps: 2, min: 100, max: 300, tables: 3 } ] },
+    { room: 'Wynn/Encore', area: 'strip', dist: 1.7, walk: 34, drive: 8, cashD: 2, games: [
+      { s: '$1/3', g: 'NLH', pct: 10, cap: 4, drop: 0, comps: 2, min: 200, max: 1000, tables: 22, crowd: { w: '6–9 waiting', mins: 8 } },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 4, drop: 0, comps: 2, min: 500, max: 3000, tables: 12 },
+      { s: '$5/10', g: 'PLO', comps: 3, min: 500, max: 0, tables: 4, time: true, half: 10 } ] },
+    { room: 'Mandalay Bay', area: 'strip', dist: 2.1, walk: 0, drive: 9, cashD: 14, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 5, drop: 1, comps: 2, min: 100, max: 300, tables: 8 } ] },
+    { room: 'Westgate', area: 'offstrip', dist: 2.4, walk: 0, drive: 8, cashD: 3, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 100, max: 300, tables: 5 },
+      { s: '$1/3', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 200, max: 600, tables: 2 } ] },
+    { room: 'Orleans', area: 'offstrip', dist: 2.7, walk: 0, drive: 9, cashD: 7, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 2, min: 100, max: 300, tables: 18, crowd: { w: '1–2 waiting', mins: 26, lone: true } },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 2, min: 300, max: 1000, tables: 8 },
+      { s: 'mix', g: 'Mixed games', pct: 10, cap: 4, drop: 0, comps: 2, min: 100, max: 400, tables: 4 } ] },
+    { room: 'Golden Nugget', area: 'downtown', dist: 4.4, walk: 0, drive: 13, cashD: 20, games: [
+      { s: '$1/2', g: 'NLH · uncapped', pct: 10, cap: 4, drop: 1, comps: 2, min: 100, max: 0, tables: 9, crowd: { w: 'No wait', mins: 18 } },
+      { s: '$1/3', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 2, min: 200, max: 600, tables: 4 } ] },
+    { room: 'South Point', area: 'locals', dist: 7.6, walk: 0, drive: 17, cashD: 12, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 100, max: 300, tables: 20 },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 300, max: 1000, tables: 6 } ] },
+    { room: 'Green Valley Ranch', area: 'locals', dist: 9.6, walk: 0, drive: 19, cashD: 8, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 100, max: 300, tables: 10 },
+      { s: '$1/3', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 200, max: 600, tables: 3 } ] },
+    { room: 'Red Rock', area: 'locals', dist: 11.8, walk: 0, drive: 22, cashD: 5, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 100, max: 300, tables: 12 },
+      { s: '$2/5', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 3, min: 300, max: 1000, tables: 4 } ] },
+    { room: 'Santa Fe Station', area: 'locals', dist: 12.4, walk: 0, drive: 24, cashD: 38, unverified: true, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 5, drop: 1, comps: 2, min: 100, max: 300, tables: 8 } ] },
+    { room: 'Skyline', area: 'locals', dist: 8.4, walk: 0, drive: 18, cashD: 44, unverified: true, games: [
+      { s: '$1/2', g: 'NLH · locals', pct: 10, cap: 3, drop: 0, comps: 1, min: 40, max: 200, tables: 2 } ] },
+    { room: 'Boulder Station', area: 'locals', dist: 6.3, walk: 0, drive: 15, cashD: 30, games: [
+      { s: '$1/2', g: 'NLH', pct: 10, cap: 4, drop: 1, comps: 2, min: 100, max: 300, tables: 8 },
+      { s: 'mix', g: 'Mixed games', pct: 10, cap: 4, drop: 0, comps: 2, min: 100, max: 300, tables: 2 } ] },
+  ];
+
+  NAV = [{ id: 'rooms', label: 'ROOMS' }, { id: 'tourneys', label: 'TOURNEYS' }, { id: 'cash', label: 'CASH' }, { id: 'promos', label: 'PROMOS' }, { id: 'me', label: 'ME' }];
+
+  componentDidMount() { this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 1000); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.toastTimer); clearTimeout(this.sheetTimer); }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  mode() { return this.state.mode || (this.props.defaultMode === 'compare' ? 'compare' : 'browse'); }
+  money(n) { return '$' + n.toLocaleString('en-US'); }
+  minsTxt(m) { return m < 1 ? 'just now' : m + 'm ago'; }
+
+  /* Two rake models, priced separately. Pot rake is a ceiling; time collection is a flat charge. */
+  cost(g) {
+    if (g.time) return 2 * g.half - g.comps;
+    return ((g.cap + g.drop) * this.HANDS) / this.SEATS - g.comps;
+  }
+  working(g) {
+    if (g.time) return 'Time: $' + g.half + '/half hour × 2 − $' + g.comps + '/hr comps. No rake taken from the pot.';
+    return 'Pot rake: ($' + g.cap + ' cap + $' + g.drop + ' drop) × ' + this.HANDS + ' hands ÷ ' + this.SEATS + ' seats − $' + g.comps + '/hr comps';
+  }
+  modelTag(g) { return g.time ? 'TIME' : 'POT'; }
+
+  rows() {
+    const st = this.state, stake = st.stake;
+    const out = [];
+    this.ROOMS.forEach(r => {
+      r.games.filter(g => g.s === stake).forEach(g => {
+        const rep = st.reports[r.room + '|' + g.s];
+        const crowd = rep
+          ? { w: rep.w, mins: Math.floor((st.tick - rep.at) / 60), mine: true }
+          : (g.crowd && (g.crowd.mins + Math.floor(st.tick / 60)) <= this.CROWD_TTL
+              ? { w: g.crowd.w, mins: g.crowd.mins + Math.floor(st.tick / 60), lone: g.crowd.lone }
+              : null);
+        out.push({ r: r, g: g, crowd: crowd, cost: this.cost(g) });
+      });
+    });
+    return out;
+  }
+
+  filtered(list) {
+    const c = this.state.chips;
+    return list.filter(x => {
+      if (c.indexOf('live') >= 0 && !(x.crowd && x.crowd.w !== 'Not running')) return false;
+      if (c.indexOf('walk') >= 0 && !(x.r.walk && x.r.walk <= 25)) return false;
+      if (c.indexOf('strip') >= 0 && x.r.area !== 'strip') return false;
+      if (c.indexOf('lowrake') >= 0 && !(x.g.cap && x.g.cap <= 4)) return false;
+      return true;
+    });
+  }
+
+  submit(bucket) {
+    const key = this.state.sheet;
+    const w = this.BUCKET_TEXT[bucket] || bucket;
+    this.setState(st => ({ reports: Object.assign({}, st.reports, { [key]: { w: w, at: st.tick } }), sheetDone: true }));
+    clearTimeout(this.sheetTimer);
+    this.sheetTimer = setTimeout(() => this.setState({ sheet: null, sheetDone: false }), 2500);
+  }
+
+  renderVals() {
+    const st = this.state, mode = this.mode(), stake = st.stake;
+    const stakeLabel = stake === 'mix' ? 'mixed games' : stake;
+    const all = this.filtered(this.rows());
+    const ranked = all.filter(x => !x.r.unverified).sort((a, b) => {
+      if (st.metric === 'rake') return (a.g.cap - b.g.cap) || (a.g.pct - b.g.pct);
+      if (st.metric === 'comps') return b.g.comps - a.g.comps;
+      if (st.metric === 'drop') return a.g.drop - b.g.drop;
+      if (st.metric === 'buyin') return a.g.min - b.g.min;
+      return a.cost - b.cost;
+    });
+    const tail = all.filter(x => x.r.unverified);
+    const mixedModels = all.some(x => x.g.time) && all.some(x => !x.g.time);
+    const best = ranked.length ? ranked[0] : null;
+
+    const compareCard = (x, i) => {
+      const unconfirmed = !!x.r.unverified;
+      const top = i === 0 && !unconfirmed;
+      const cost = x.cost;
+      /* unconfirmed rake inputs can only ever produce an estimate: tilde + range, never a hard figure */
+      const band = cost === null ? null : { lo: cost * 0.85, hi: cost * 1.15 };
+      return {
+        rank: x.r.unverified || cost === null ? '–' : String(i + 1),
+        rankBg: top ? 'linear-gradient(180deg,#E2BE6C,#C89B3D)' : 'var(--pm-fill-1)',
+        rankLine: top ? 'rgba(255,247,222,0.4)' : 'var(--pm-line-2)',
+        rankInk: top ? '#17130A' : 'var(--pm-dim-1)',
+        border: top ? 'rgba(201,162,74,0.34)' : 'var(--pm-line-1)',
+        room: x.r.room,
+        meta: x.g.s.toUpperCase().replace('MIX', 'MIXED') + ' · ' + x.g.g.toUpperCase() + ' · ' + x.g.tables + ' TBL · ' + x.r.dist.toFixed(1) + ' MI',
+        cost: unconfirmed ? '~$' + band.lo.toFixed(0) + '–' + band.hi.toFixed(0) : '$' + cost.toFixed(2),
+        costNote: unconfirmed ? 'ESTIMATE · PER HOUR' : x.g.time ? 'TIME · PER HOUR' : 'POT RAKE · PER HOUR',
+        costColor: unconfirmed ? 'var(--pm-dim-1)' : cost <= 12 ? 'var(--pm-value)' : cost >= 16 ? 'var(--pm-caution)' : 'var(--pm-ink)',
+        isEstimate: unconfirmed,
+        notEstimate: !unconfirmed,
+        working: unconfirmed ? 'Modelled from unconfirmed inputs — $' + x.g.cap + ' cap and $' + x.g.drop + ' drop are last-known, not verified. Range shown, not a figure.' : this.working(x.g),
+        rake: x.g.time ? '$' + x.g.half + '/half hour' : (unconfirmed ? '~' : '') + x.g.pct + '% to $' + x.g.cap,
+        rakeLabel: x.g.time ? 'TIME COLLECTION' : 'POT RAKE',
+        model: this.modelTag(x.g),
+        modelInk: x.g.time ? 'var(--pm-brass-3)' : 'var(--pm-dim-1)',
+        rakeColor: unconfirmed ? 'var(--pm-dim-1)' : x.g.time ? 'var(--pm-ink-3)' : x.g.cap <= 4 ? 'var(--pm-value)' : x.g.cap >= 5 ? 'var(--pm-caution)' : 'var(--pm-ink-3)',
+        drop: (unconfirmed && x.g.drop ? '~' : '') + (x.g.drop ? '$' + x.g.drop + ' jackpot' : 'None'),
+        comps: (unconfirmed ? '~' : '') + '$' + x.g.comps + '/hr',
+        buyin: x.g.max === 0 ? this.money(x.g.min) + ' min · no max' : this.money(x.g.min) + ' – ' + this.money(x.g.max),
+        verifiedOk: !x.r.unverified,
+        unverified: !!x.r.unverified,
+        verified: x.r.unverified ? 'rake unconfirmed · ' + x.r.cashD + 'd old · not ranked' : 'rake verified ' + x.r.cashD + 'd ago',
+        onRoom: () => this.flash(x.r.room + ' · opening room detail.'),
+      };
+    };
+
+    const browseRows = all.slice().sort((a, b) => a.r.dist - b.r.dist).map(x => ({
+      room: x.r.room,
+      gameLine: x.g.g + ' · ' + x.g.tables + ' tables · ' + (x.g.time ? 'time $' + x.g.half + '/half hour' : x.g.pct + '% to $' + x.g.cap),
+      dist: x.r.dist.toFixed(1),
+      travel: x.r.walk && x.r.walk <= 25 ? x.r.walk + ' MIN WALK' : (x.r.drive || Math.round(x.r.dist * 2.4)) + ' MIN DRIVE',
+      isCrowd: !!(x.crowd && !x.crowd.lone),
+      isLowConf: !!(x.crowd && x.crowd.lone),
+      isCold: !x.crowd,
+      liveText: x.crowd ? x.g.s + ' · ' + x.crowd.w : '',
+      liveAge: x.crowd ? (x.crowd.mine ? 'you · ' : '') + this.minsTxt(x.crowd.mins) : '',
+      lowConfText: x.g.s + ' · 1 report · low confidence',
+      lowConfAge: x.crowd ? this.minsTxt(x.crowd.mins) : '',
+      coldText: 'No reports on ' + stakeLabel + ' here',
+      priceLine: (x.g.max === 0 ? this.money(x.g.min) + ' min, no max' : this.money(x.g.min) + '–' + this.money(x.g.max)) + ' · $' + x.g.comps + '/hr comps · ' + (x.g.time ? 'TIME' : 'POT'),
+      onReport: () => this.setState({ sheet: x.r.room + '|' + x.g.s, sheetDone: false }),
+      onRoom: () => this.flash(x.r.room + ' · opening room detail.'),
+    }));
+
+    const sheetKey = st.sheet || '';
+    const sheetRoom = sheetKey.split('|')[0];
+    const sheetStake = sheetKey.split('|')[1] || stake;
+
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: this.props.theme === 'light' ? 'light' : 'dark',
+      location: this.props.location || 'The Cosmopolitan',
+      isBrowse: mode === 'browse',
+      isCompare: mode === 'compare',
+      showBrowse: () => this.setState({ mode: 'browse' }),
+      showCompare: () => this.setState({ mode: 'compare' }),
+      heading: mode === 'compare' ? 'Best deal' : 'Where it’s running',
+      subheading: mode === 'compare'
+        ? (best ? 'Cost to play ' + stakeLabel + ', cheapest first. ' + best.r.room + ' runs about $' + best.cost.toFixed(2) + '/hr — ' + (ranked.length > 1 ? '$' + (ranked[ranked.length - 1].cost - best.cost).toFixed(2) + '/hr less than the priciest room on this list.' : 'the only verified room at this stake.') : 'No verified rake data at this stake yet.')
+        : all.length + ' ' + stakeLabel + ' game' + (all.length === 1 ? '' : 's') + ' across the valley, nearest first. Live state is player-reported.',
+      stakes: this.STAKES.map(s => ({
+        label: s.label,
+        count: this.ROOMS.filter(r => r.games.some(g => g.s === s.id)).length,
+        active: stake === s.id,
+        inactive: stake !== s.id,
+        onClick: () => this.setState({ stake: s.id }),
+      })),
+      metrics: this.METRICS.map(m => ({
+        label: m.label, active: st.metric === m.id, inactive: st.metric !== m.id,
+        onClick: () => this.setState({ metric: m.id }),
+      })),
+      browseChips: this.BROWSE_CHIPS.map(c => ({
+        label: c.label,
+        active: st.chips.indexOf(c.id) >= 0,
+        inactive: st.chips.indexOf(c.id) < 0,
+        onClick: () => this.setState(s => ({ chips: s.chips.indexOf(c.id) >= 0 ? s.chips.filter(x => x !== c.id) : s.chips.concat([c.id]) })),
+      })),
+      ranked: ranked.map(compareCard).concat(tail.map((x, i) => compareCard(x, ranked.length + i))),
+      mixedModels: mixedModels,
+      mixedNote: 'This stake mixes pot rake and time collection. They are priced by different models — POT and TIME tags say which, and each card shows its own working.',
+      browse: browseRows,
+      isEmpty: all.length === 0,
+      emptyText: 'No room in the valley spreads ' + stakeLabel + ' under those filters. Clear them, or pick another stake — rake economics differ completely between stakes anyway.',
+      clearFilters: () => this.setState({ chips: [] }),
+      methodology: 'Two models. Pot-raked games: (cap + jackpot drop) × ' + this.HANDS + ' hands an hour ÷ ' + this.SEATS + ' seats, minus the room’s comp rate. Time-collected games: the half-hour charge × 2, minus comps — no rake comes out of the pot. Two assumptions worth knowing: it assumes the cap is reached on every hand, so at $1/3 many pots don’t get there and your real cost is usually lower; and it assumes a full 9-handed table, so short-handed play costs more per player. Rooms whose rake we have not confirmed are shown but never ranked. Rake and comp figures are weekly data; waits are player-reported and expire in 45 minutes.',
+      openReport: () => this.setState({ sheet: (browseRows[0] ? browseRows[0].room : this.ROOMS[0].room) + '|' + stake, sheetDone: false }),
+      reportSub: 'What’s running at ' + stakeLabel + ' near you?',
+      sheetOpen: st.sheet !== null,
+      sheetAsk: st.sheet !== null && !st.sheetDone,
+      sheetThanks: st.sheet !== null && st.sheetDone,
+      sheetTitle: sheetRoom ? (sheetStake === 'mix' ? 'Mixed games' : sheetStake) + ' at ' + sheetRoom : '',
+      sheetSub: 'Anonymous · expires in 45 minutes',
+      buckets: this.BUCKETS.map(b => ({ label: b, onClick: () => this.submit(b) })),
+      closeSheet: () => { clearTimeout(this.sheetTimer); this.setState({ sheet: null, sheetDone: false }); },
+      navItems: this.NAV.map(n => ({
+        label: n.label, active: n.id === 'cash', inactive: n.id !== 'cash',
+        onClick: () => { if (n.id !== 'cash') this.flash(n.label.charAt(0) + n.label.slice(1).toLowerCase() + ' is next up in the build.'); },
+      })),
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

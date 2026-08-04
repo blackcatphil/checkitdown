@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poker Map — map (Tier A)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Archivo:wght@500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#080B09; overflow:hidden;
+    font-family:'IBM Plex Mono', ui-monospace, monospace; -webkit-font-smoothing:antialiased; }
+  #map { position:absolute; inset:0; background:#0A0E0B; }
+  .leaflet-tile-pane { filter:invert(1) hue-rotate(186deg) saturate(.24) brightness(.95) contrast(1.06); }
+  .leaflet-container { background:#0A0E0B; outline:none; }
+  #felt { position:absolute; inset:0; z-index:390; pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 40%,rgba(22,58,42,.1) 0%,rgba(8,12,10,.34) 78%); }
+
+  .pin { display:flex; flex-direction:column; align-items:center; cursor:pointer; }
+  .pin .dot { width:32px; height:32px; border-radius:50%; background:rgba(16,22,18,.96);
+    border:1px solid rgba(237,234,224,.5); display:flex; align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:600; font-variant-numeric:tabular-nums; color:#F4F1E8;
+    box-shadow:0 8px 16px -8px rgba(0,0,0,.9); }
+  .pin.closed .dot { border-style:dashed; border-color:rgba(237,234,224,.3); color:rgba(237,234,224,.55); }
+  .pin.sel .plate { display:flex; }
+  .pin .plate { display:none; flex-direction:column; align-items:center; gap:4px; margin-bottom:5px; }
+  .pin .nm { padding:5px 8px; border-radius:7px; background:rgba(8,11,9,.9);
+    border:1px solid rgba(201,162,74,.4); font-family:Archivo,sans-serif; font-size:11px; font-weight:600;
+    color:#F4F1E8; white-space:nowrap; }
+  .pin.sel .dot { width:38px; height:38px; background:linear-gradient(180deg,#E2BE6C,#C89B3D);
+    border-color:rgba(255,247,222,.5); color:#17130A; font-size:12px;
+    box-shadow:0 0 0 5px rgba(201,162,74,.16), 0 10px 22px -6px rgba(0,0,0,.85); }
+  .hit { position:absolute; left:50%; top:50%; width:48px; height:48px; transform:translate(-50%,-50%); }
+  .cluster { display:flex; align-items:center; gap:7px; height:38px; padding:0 12px; border-radius:19px;
+    background:rgba(14,19,15,.94); border:1px solid rgba(237,234,224,.28); cursor:pointer;
+    font-size:9.5px; font-weight:600; letter-spacing:.13em; color:rgba(237,234,224,.8);
+    box-shadow:0 10px 20px -10px rgba(0,0,0,.9); white-space:nowrap; }
+  .cluster b { font-size:11px; font-variant-numeric:tabular-nums; color:#E3C578; }
+  .you { width:13px; height:13px; border-radius:50%; background:#EDEAE0; border:2.5px solid #0B0F0D;
+    box-shadow:0 0 0 1.5px rgba(237,234,224,.55), 0 0 16px rgba(237,234,224,.35); }
+
+  #areas { position:absolute; z-index:400; left:0; right:0; top:0; display:flex; gap:6px;
+    padding:11px 11px 14px; overflow-x:auto; scrollbar-width:none;
+    background:linear-gradient(180deg,rgba(8,11,9,.92) 0%,rgba(8,11,9,.55) 62%,rgba(8,11,9,0) 100%); }
+  #areas::-webkit-scrollbar { display:none; }
+  #areas button { flex:none; height:44px; padding:0 13px; border-radius:12px; cursor:pointer;
+    background:rgba(12,16,13,.8); border:1px solid rgba(237,234,224,.12); backdrop-filter:blur(8px);
+    font-family:inherit; font-size:9.5px; font-weight:600; letter-spacing:.13em; color:rgba(237,234,224,.7);
+    display:flex; align-items:center; gap:7px; }
+  #areas button b { font-size:10.5px; font-weight:600; font-variant-numeric:tabular-nums; color:rgba(237,234,224,.45); }
+  #areas button.on { background:linear-gradient(180deg,#E2BE6C,#C89B3D); border-color:rgba(255,247,222,.5); color:#17130A; }
+  #areas button.on b { color:rgba(23,19,10,.62); }
+
+  #ctrls { position:absolute; z-index:400; right:11px; top:70px; display:flex; flex-direction:column; gap:6px; }
+  #ctrls button { width:44px; height:44px; border:1px solid rgba(237,234,224,.12); border-radius:12px;
+    background:rgba(10,13,11,.8); backdrop-filter:blur(8px); color:rgba(237,234,224,.72);
+    font-family:inherit; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  #ctrls button:hover { border-color:rgba(201,162,74,.5); color:#C9A24A; }
+
+  #bar { position:absolute; z-index:400; left:11px; right:11px; bottom:11px; padding:12px 13px;
+    border-radius:15px; background:rgba(10,14,11,.93); border:1px solid rgba(201,162,74,.22);
+    backdrop-filter:blur(12px); box-shadow:0 14px 34px -14px rgba(0,0,0,.95);
+    display:flex; align-items:center; gap:12px; cursor:pointer; }
+  #bar .nm { font-family:'Instrument Serif',Georgia,serif; font-size:20px; line-height:1.05; color:#F4F1E8; }
+  #bar .meta { font-size:10px; font-weight:500; letter-spacing:.06em; color:rgba(237,234,224,.52);
+    font-variant-numeric:tabular-nums; margin-top:5px; }
+  #bar .d { font-size:19px; font-weight:500; font-variant-numeric:tabular-nums; color:#F4F1E8; }
+  #bar .u { font-size:9px; color:rgba(237,234,224,.42); margin-left:2px; }
+  #credit { position:absolute; z-index:400; right:11px; bottom:74px; font-size:7.5px; letter-spacing:.04em;
+    color:rgba(237,234,224,.42); background:rgba(8,11,9,.7); padding:3px 6px; border-radius:5px; }
+  .leaflet-control-attribution, .leaflet-control-zoom { display:none; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="felt"></div>
+<div id="areas"></div>
+<div id="ctrls"><button id="zin">&plus;</button><button id="zout">&minus;</button><button id="rec">&#9678;</button></div>
+<div id="bar"><div style="flex:1;min-width:0"><div class="nm" id="barName">ARIA</div><div class="meta" id="barMeta"></div></div>
+  <div style="text-align:right"><span class="d" id="barDist">0.2</span><span class="u">mi</span></div>
+  <span style="font-size:9.5px;font-weight:600;letter-spacing:.14em;color:#C9A24A;white-space:nowrap">OPEN ROOM &#8250;</span></div>
+<div id="credit">&copy; OpenStreetMap contributors</div>
+<script>
+var HOME = [36.1096, -115.1739];
+var ROOMS = [
+  { id:1,  name:'ARIA',               area:'strip',    lat:36.1072, lon:-115.1765, tables:24, dist:0.2, open:true },
+  { id:2,  name:'Bellagio',           area:'strip',    lat:36.1126, lon:-115.1767, tables:37, dist:0.4, open:true },
+  { id:3,  name:'Horseshoe',          area:'strip',    lat:36.1147, lon:-115.1728, tables:18, dist:0.6, open:true },
+  { id:4,  name:'Caesars Palace',     area:'strip',    lat:36.1162, lon:-115.1745, tables:16, dist:0.8, open:true },
+  { id:5,  name:'MGM Grand',          area:'strip',    lat:36.1023, lon:-115.1697, tables:25, dist:1.1, open:true },
+  { id:6,  name:'Venetian',           area:'strip',    lat:36.1212, lon:-115.1697, tables:50, dist:1.3, open:true },
+  { id:7,  name:'Wynn/Encore',        area:'strip',    lat:36.1272, lon:-115.1655, tables:52, dist:1.7, open:true },
+  { id:8,  name:'Mandalay Bay',       area:'strip',    lat:36.0918, lon:-115.1765, tables:10, dist:2.1, open:true },
+  { id:9,  name:'Westgate',           area:'offstrip', lat:36.1359, lon:-115.1520, tables:7,  dist:2.4, open:true },
+  { id:10, name:'Orleans',            area:'offstrip', lat:36.1020, lon:-115.1965, tables:34, dist:2.7, open:true },
+  { id:11, name:'Golden Nugget',      area:'downtown', lat:36.1699, lon:-115.1443, tables:13, dist:4.4, open:true },
+  { id:12, name:'Boulder Station',    area:'locals',   lat:36.1585, lon:-115.0725, tables:10, dist:6.3, open:true },
+  { id:13, name:'South Point',        area:'locals',   lat:36.0130, lon:-115.1730, tables:30, dist:7.6, open:true },
+  { id:14, name:'Skyline',            area:'locals',   lat:36.0480, lon:-114.9740, tables:2,  dist:8.4, open:true },
+  { id:15, name:'Green Valley Ranch', area:'locals',   lat:36.0146, lon:-115.0797, tables:15, dist:9.6, open:true },
+  { id:16, name:'Red Rock',           area:'locals',   lat:36.1567, lon:-115.3348, tables:20, dist:11.8, open:true },
+  { id:17, name:'Santa Fe Station',   area:'locals',   lat:36.2296, lon:-115.2493, tables:14, dist:12.4, open:true },
+  { id:18, name:'WSOP · Paris',       area:'strip',    lat:36.1125, lon:-115.1712, tables:88, dist:0.5, open:false }
+];
+var AREAS = [
+  { id:'all', label:'ALL' }, { id:'strip', label:'STRIP' }, { id:'downtown', label:'DOWNTOWN' },
+  { id:'offstrip', label:'OFF-STRIP' }, { id:'locals', label:'LOCALS' }
+];
+
+var map = L.map('map', { center:[36.1105,-115.1720], zoom:12.5, zoomControl:false, attributionControl:false,
+  zoomSnap:0.5, zoomDelta:0.5, minZoom:10, maxZoom:17 });
+var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap contributors', maxZoom:19,
+  updateWhenIdle:true, updateWhenZooming:false, keepBuffer:0, crossOrigin:true,
+  errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+}).addTo(map);
+
+/* blocked tiles come back as one identical PNG — degrade to a plain felt ground instead of showing it */
+var fails = 0, checked = false;
+function sig(img) {
+  try { var c = document.createElement('canvas'); c.width = 8; c.height = 8;
+    var x = c.getContext('2d'); x.drawImage(img, 0, 0, 8, 8);
+    return Array.prototype.join.call(x.getImageData(0, 0, 8, 8).data, ','); } catch (e) { return null; }
+}
+function dropTiles() {
+  if (!map.hasLayer(tiles)) return;
+  map.removeLayer(tiles);
+  document.getElementById('felt').style.background =
+    'linear-gradient(180deg,#0F1512 0%,#0A0E0C 60%,#070A08 100%),' +
+    'repeating-linear-gradient(0deg,rgba(237,234,224,.05) 0 1px,transparent 1px 46px),' +
+    'repeating-linear-gradient(90deg,rgba(237,234,224,.05) 0 1px,transparent 1px 46px)';
+}
+tiles.on('tileerror', function () { if (++fails > 5) dropTiles(); });
+tiles.on('load', function () {
+  if (checked) return;
+  var imgs = Array.prototype.filter.call(document.querySelectorAll('img.leaflet-tile'),
+    function (i) { return i.complete && i.naturalWidth > 8; });
+  if (imgs.length < 3) return;
+  checked = true;
+  var a = sig(imgs[0]), b = sig(imgs[Math.floor(imgs.length / 2)]), c = sig(imgs[imgs.length - 1]);
+  if (a && (a === b || a === c || b === c)) dropTiles();
+});
+
+L.marker(HOME, { icon: L.divIcon({ className:'', html:'<div class="you"></div>', iconSize:[13,13], iconAnchor:[6,6] }),
+  interactive:false }).addTo(map);
+
+var selected = 1, area = 'all', markers = {};
+
+function icon(r) {
+  var cls = 'pin' + (r.id === selected ? ' sel' : '') + (r.open ? '' : ' closed');
+  return L.divIcon({ className:'', iconSize:[38, 38], iconAnchor:[19, 19],
+    html:'<div class="' + cls + '"><div class="plate"><div class="nm">' + r.name + '</div></div>' +
+         '<div class="dot">' + r.id + '</div><div class="hit"></div></div>' });
+}
+
+ROOMS.forEach(function (r) {
+  var m = L.marker([r.lat, r.lon], { icon: icon(r), zIndexOffset: Math.round((36.35 - r.lat) * 8000) }).addTo(map);
+  m.on('click', function () { select(r.id, true); });
+  markers[r.id] = m;
+});
+
+var clusterMarker = null;
+/* the eight Strip rooms sit within half a mile — collapse them until the camera is close enough */
+function clusterOn() { return area === 'all' && map.getZoom() < 13.2; }
+
+function syncCluster() {
+  var on = clusterOn();
+  if (!on) { if (clusterMarker) { map.removeLayer(clusterMarker); clusterMarker = null; } return; }
+  var strip = ROOMS.filter(function (r) { return r.area === 'strip'; });
+  var lat = strip.reduce(function (a, r) { return a + r.lat; }, 0) / strip.length;
+  var lon = strip.reduce(function (a, r) { return a + r.lon; }, 0) / strip.length;
+  var html = '<div class="cluster">THE STRIP <b>' + strip.length + '</b></div>';
+  if (clusterMarker) { map.removeLayer(clusterMarker); }
+  clusterMarker = L.marker([lat, lon], { zIndexOffset: 9000,
+    icon: L.divIcon({ className:'', html: html, iconSize:[120, 38], iconAnchor:[60, 19] }) }).addTo(map);
+  clusterMarker.on('click', function () { map.setView([36.1135, -115.1735], 14, { animate:true }); });
+}
+
+function refresh() {
+  var collapsed = clusterOn();
+  ROOMS.forEach(function (r) {
+    var m = markers[r.id];
+    var show = area === 'all' || r.area === area;
+    if (collapsed && r.area === 'strip' && r.id !== selected) show = false;
+    if (show && !map.hasLayer(m)) m.addTo(map);
+    if (!show && map.hasLayer(m)) map.removeLayer(m);
+    m.setIcon(icon(r));
+    m.setZIndexOffset(Math.round((36.35 - r.lat) * 8000) + (r.id === selected ? 4000 : 0));
+  });
+  var r = ROOMS.filter(function (x) { return x.id === selected; })[0] || ROOMS[0];
+  document.getElementById('barName').textContent = r.name;
+  document.getElementById('barMeta').textContent = (r.open ? 'OPEN' : 'SERIES ONLY') + ' · ' + r.tables + ' TABLES · ' + AREAS.filter(function (a) { return a.id === r.area; })[0].label;
+  document.getElementById('barDist').textContent = r.dist.toFixed(1);
+  drawAreas();
+  syncCluster();
+}
+
+map.on('zoomend', refresh);
+
+function select(id, tell) {
+  selected = id;
+  refresh();
+  var r = ROOMS.filter(function (x) { return x.id === id; })[0];
+  if (r) map.panTo([r.lat, r.lon], { animate:true, duration:0.35 });
+  if (tell && window.parent !== window) window.parent.postMessage({ type:'roomSelected', id:id }, '*');
+}
+
+function fitArea() {
+  var pts = ROOMS.filter(function (r) { return area === 'all' || r.area === area; })
+                 .map(function (r) { return [r.lat, r.lon]; });
+  if (area === 'all') { map.setView([36.1105, -115.1720], 12.5, { animate:false }); return; }
+  if (pts.length === 1) { map.setView(pts[0], 15, { animate:false }); return; }
+  map.fitBounds(L.latLngBounds(pts).pad(0.22), { animate:false, paddingBottomRight:[0, 70], paddingTopLeft:[0, 60] });
+}
+
+function setArea(id, tell) {
+  area = id;
+  if (ROOMS.filter(function (r) { return id === 'all' || r.area === id; }).map(function (r) { return r.id; }).indexOf(selected) === -1) {
+    selected = ROOMS.filter(function (r) { return id === 'all' || r.area === id; })[0].id;
+  }
+  fitArea(); refresh();
+  if (tell && window.parent !== window) window.parent.postMessage({ type:'areaChanged', area:id, selected:selected }, '*');
+}
+
+function drawAreas() {
+  var host = document.getElementById('areas');
+  host.innerHTML = '';
+  AREAS.forEach(function (a) {
+    var n = ROOMS.filter(function (r) { return a.id === 'all' || r.area === a.id; }).length;
+    var b = document.createElement('button');
+    b.className = area === a.id ? 'on' : '';
+    b.innerHTML = a.label + ' <b>' + n + '</b>';
+    b.onclick = function () { setArea(a.id, true); };
+    host.appendChild(b);
+  });
+}
+
+document.getElementById('zin').onclick = function () { map.zoomIn(0.5); };
+document.getElementById('zout').onclick = function () { map.zoomOut(0.5); };
+document.getElementById('rec').onclick = function () { map.setView([36.1105, -115.1720], 12.5, { animate:true }); };
+document.getElementById('bar').onclick = function () {
+  if (window.parent !== window) window.parent.postMessage({ type:'openRoom', id:selected }, '*');
+};
+
+window.addEventListener('message', function (e) {
+  var d = e.data || {};
+  if (d.type !== 'sync') return;
+  var changed = d.area && d.area !== area;
+  if (d.area) area = d.area;
+  if (d.selected) selected = d.selected;
+  if (changed) fitArea();
+  refresh();
+});
+
+refresh();
+map.whenReady(function () {
+  map.invalidateSize();
+  if (window.parent !== window) window.parent.postMessage({ type:'mapReady' }, '*');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    @keyframes pmSpin { to { transform: rotate(360deg) } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-drawer:rgba(7,10,8,0.55);
+      --pm-float:rgba(13,17,14,0.94); --pm-scrim:rgba(4,6,5,0.66);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41);
+      --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24);
+      --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93;
+      --pm-promo-1:rgba(20,54,40,0.9); --pm-promo-2:rgba(17,32,26,0.45); --pm-promo-line:rgba(78,203,147,0.13);
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#EFECE3; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(239,236,227,0.94); --pm-drawer:rgba(20,26,18,0.035);
+      --pm-float:rgba(255,255,255,0.96); --pm-scrim:rgba(24,28,20,0.42);
+      --pm-ink:#171C13; --pm-ink-2:#232A1D; --pm-ink-3:rgba(23,28,19,0.86);
+      --pm-dim-1:rgba(23,28,19,0.72); --pm-dim-2:rgba(23,28,19,0.62); --pm-dim-3:rgba(23,28,19,0.5);
+      --pm-dim-4:rgba(23,28,19,0.42);
+      --pm-line-1:rgba(23,28,19,0.1); --pm-line-2:rgba(23,28,19,0.16); --pm-line-3:rgba(23,28,19,0.28);
+      --pm-fill-1:rgba(23,28,19,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52;
+      --pm-promo-1:rgba(214,231,220,0.9); --pm-promo-2:rgba(232,238,231,0.6); --pm-promo-line:rgba(15,123,82,0.22);
+      --pm-src-empty-line:rgba(23,28,19,0.18);
+    }
+  </style>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<div data-detail-root="1" data-screen-label="Room detail" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div data-detail-header="1" style="position:sticky;top:0;z-index:30;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="padding:58px 14px 10px;display:flex;align-items:center;gap:10px">
+      <div onClick="{{ onBack }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 17px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-1)" style-hover="border-color:var(--pm-line-3);color:var(--pm-ink)">&#8249;</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <span style="font:600 13px/1.2 Archivo,sans-serif;color:var(--pm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ room.name }}</span>
+        <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ room.headerMeta }}</span>
+      </div>
+      <div onClick="{{ onRoomSwitch }}" style="flex:none;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;cursor:pointer;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)" style-hover="border-color:rgba(201,162,74,0.5);color:var(--pm-brass)">NEXT ROOM</div>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:0 14px 11px;scrollbar-width:none">
+      <sc-for list="{{ jumps }}" as="j" hint-placeholder-count="6">
+        <div onClick="{{ j.onClick }}" style="flex:none;height:34px;padding:0 12px;border-radius:10px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);display:flex;align-items:center;cursor:pointer;font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1);white-space:nowrap" style-hover="border-color:rgba(201,162,74,0.45);color:var(--pm-brass)">{{ j.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:13px">
+    <div style="display:flex;align-items:center;gap:7px">
+      <sc-if value="{{ room.isOpen }}" hint-placeholder-val="{{ true }}">
+        <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live);animation:pmPing 2.4s ease-out infinite"></span></span>
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-live)">{{ room.status }}</span>
+      </sc-if>
+      <sc-if value="{{ room.isClosed }}">
+        <span style="width:6px;height:6px;flex:none;border-radius:50%;background:var(--pm-line-3)"></span>
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-dim-3)">{{ room.status }}</span>
+      </sc-if>
+      <span style="width:3px;height:3px;flex:none;border-radius:50%;background:var(--pm-line-3)"></span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.17em;color:var(--pm-dim-3)">{{ room.areaTag }}</span>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <h1 style="flex:1;min-width:0;margin:0;font:400 34px/1.02 'Instrument Serif',Georgia,serif;letter-spacing:-0.015em;color:var(--pm-ink);text-wrap:pretty">{{ room.name }}</h1>
+      <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-top:5px">
+        <div style="display:flex;align-items:baseline;gap:3px"><span style="font:500 22px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;color:var(--pm-ink)">{{ room.distNum }}</span><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">mi</span></div>
+        <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-2)">{{ room.travel }}</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span style="font:400 12.5px/1.3 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ room.subLine }}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <sc-if value="{{ room.isFresh }}" hint-placeholder-val="{{ true }}">
+          <span style="width:15px;height:15px;flex:none;border-radius:50%;background:rgba(78,203,147,0.14);display:flex;align-items:center;justify-content:center;font:600 8.5px/1 'IBM Plex Mono',monospace;color:var(--pm-live)">&#10003;</span>
+        </sc-if>
+        <sc-if value="{{ room.isStale }}">
+          <span style="width:15px;height:15px;flex:none;border-radius:50%;background:rgba(201,162,74,0.14);display:flex;align-items:center;justify-content:center;font:600 9px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">!</span>
+        </sc-if>
+        <span style="font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ room.verifiedLine }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div data-sec="live" style="padding:22px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-dim-2)">LIVE NOW</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ room.liveNote }}</span>
+    </div>
+    <sc-if value="{{ room.hasVendor }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ room.vendorRows }}" as="v" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;gap:9px;padding:12px 12px;border-radius:12px;background:rgba(201,162,74,0.07);border:1px solid rgba(201,162,74,0.32)">
+            <span style="flex:none;padding:4px 6px;border-radius:5px;background:rgba(201,162,74,0.2);font:700 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-brass-2)">OFFICIAL</span>
+            <span style="flex:1;min-width:0;font:500 12px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ v.text }}</span>
+            <span style="position:relative;width:5px;height:5px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass-2)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass-2);animation:pmPing 2.4s ease-out infinite"></span></span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ room.hasCrowd }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ room.crowdRows }}" as="c" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;gap:9px;padding:12px;border-radius:12px;background:rgba(78,203,147,0.05);border:1px dashed rgba(78,203,147,0.36)">
+            <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:var(--pm-live);white-space:nowrap">PLAYER-REPORTED</span>
+            <span style="flex:1;min-width:0;font:500 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.text }}</span>
+            <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ c.age }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ room.hasLowConf }}">
+      <div style="display:flex;align-items:center;gap:9px;padding:12px;border-radius:12px;border:1px dashed rgba(78,203,147,0.2)">
+        <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:rgba(78,203,147,0.62);white-space:nowrap">PLAYER-REPORTED</span>
+        <span style="flex:1;min-width:0;font:400 11px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">{{ room.lowConfText }}</span>
+        <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">{{ room.lowConfAge }}</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ room.liveEmpty }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:11px;padding:8px 8px 8px 13px;border-radius:12px;border:1px dashed var(--pm-src-empty-line)">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <span style="font:500 12px/1 Archivo,sans-serif;color:var(--pm-dim-1)">No reports in the last 45 minutes</span>
+          <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-3)">BE THE FIRST · 3 SECONDS</span>
+        </div>
+        <div onClick="{{ onReport }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 14px;border-radius:11px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">REPORT</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-sec="games" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Cash games</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ room.gamesFresh }}</span>
+    </div>
+    <sc-for list="{{ room.games }}" as="g" hint-placeholder-count="3">
+      <div style="border-radius:14px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);box-shadow:0 8px 20px -14px rgba(0,0,0,0.8);padding:13px 13px 11px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:500 15px/1.1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ g.s }}</span>
+            <span style="font:400 11.5px/1.2 Archivo,sans-serif;color:var(--pm-dim-2)">{{ g.g }}</span>
+          </div>
+          <sc-if value="{{ g.isVendor }}">
+            <span style="flex:none;display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:9px;background:rgba(201,162,74,0.09);border:1px solid rgba(201,162,74,0.32)">
+              <span style="font:700 7.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-brass-2)">OFFICIAL</span>
+              <span style="font:600 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ g.liveText }}</span>
+            </span>
+          </sc-if>
+          <sc-if value="{{ g.isCrowd }}">
+            <span style="flex:none;display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:9px;background:rgba(78,203,147,0.05);border:1px dashed rgba(78,203,147,0.36)">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-live)">{{ g.liveText }}</span>
+              <span style="font:400 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-3)">{{ g.liveAge }}</span>
+            </span>
+          </sc-if>
+          <sc-if value="{{ g.isNoData }}" hint-placeholder-val="{{ true }}">
+            <div onClick="{{ g.onReport }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 12px;border-radius:11px;border:1px dashed var(--pm-src-empty-line);display:flex;align-items:center;gap:7px;cursor:pointer" style-hover="border-color:rgba(201,162,74,0.5)">
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-4)">&#8212;</span>
+              <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass)">REPORT</span>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;padding-top:2px;border-top:1px solid var(--pm-fill-1)">
+          <div style="display:flex;flex-direction:column;gap:4px;padding-top:9px">
+            <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">BUY-IN</span>
+            <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ g.buyin }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;padding-top:9px">
+            <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">RAKE</span>
+            <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ g.rake }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">JACKPOT DROP</span>
+            <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3)">{{ g.drop }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">COMPS · TABLES</span>
+            <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3)">{{ g.compTbl }}</span>
+          </div>
+        </div>
+        <sc-if value="{{ g.hasNote }}">
+          <span style="font:400 10.5px/1.4 Archivo,sans-serif;color:var(--pm-dim-2)">{{ g.note }}</span>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div data-sec="promos" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Promotions</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ room.promosFresh }}</span>
+    </div>
+    <sc-for list="{{ room.promos }}" as="p" hint-placeholder-count="3">
+      <div style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:12px;background:linear-gradient(97deg,var(--pm-promo-1) 0%,var(--pm-promo-2) 100%);border:1px solid var(--pm-promo-line)">
+        <span style="width:7px;height:7px;flex:none;background:var(--pm-brass);transform:rotate(45deg)"></span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">{{ p.kind }}</span>
+          <span style="font:500 12.5px/1.25 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-2)">{{ p.text }}</span>
+        </div>
+        <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <span style="font:500 12px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-brass-2)">{{ p.timer }}</span>
+          <span style="font:500 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-2)">{{ p.note }}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div data-sec="amen" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:10px">
+    <div onClick="{{ toggleAmen }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;cursor:pointer">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Amenities</span>
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-3)">{{ amenCount }}</span>
+        <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">{{ amenChevron }}</span>
+      </div>
+    </div>
+    <sc-if value="{{ amenOpen }}">
+      <div style="display:flex;flex-direction:column;gap:14px;animation:pmFade .26s ease both">
+        <sc-for list="{{ room.amenGroups }}" as="grp" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-brass-3);padding-bottom:7px">{{ grp.title }}</span>
+            <sc-for list="{{ grp.rows }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--pm-fill-1)">
+                <span style="flex:none;width:112px;font:400 11px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2)">{{ r.k }}</span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start">
+                  <span style="font:400 12px/1.4 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);text-wrap:pretty">{{ r.v }}</span>
+                  <sc-if value="{{ r.hasLinks }}">
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                      <sc-for list="{{ r.links }}" as="lk" hint-placeholder-count="2">
+                        <a href="{{ lk.href }}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;height:44px;box-sizing:border-box;padding:0 12px;border-radius:11px;border:1px solid rgba(201,162,74,0.4);background:rgba(201,162,74,0.06);font:500 11px/1 Archivo,sans-serif;color:var(--pm-brass)" style-hover="border-color:var(--pm-brass);background:rgba(201,162,74,0.13)">{{ lk.label }}<span style="font:400 10px/1 'IBM Plex Mono',monospace;opacity:.85">&#8599;</span></a>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-sec="comps" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:10px">
+    <div onClick="{{ toggleComps }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;cursor:pointer">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Comps &amp; club</span>
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-3)">{{ room.club.program }}</span>
+        <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">{{ compsChevron }}</span>
+      </div>
+    </div>
+    <sc-if value="{{ compsOpen }}">
+      <div style="display:flex;flex-direction:column;animation:pmFade .26s ease both">
+        <sc-for list="{{ room.clubRows }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--pm-fill-1)">
+            <span style="flex:none;width:112px;font:400 11px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2)">{{ r.k }}</span>
+            <span style="flex:1;min-width:0;font:400 12px/1.4 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);text-wrap:pretty">{{ r.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-sec="rules" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:10px">
+    <div onClick="{{ toggleRules }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;cursor:pointer">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">House rules</span>
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-3)">{{ rulesCount }}</span>
+        <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">{{ rulesChevron }}</span>
+      </div>
+    </div>
+    <sc-if value="{{ rulesOpen }}">
+      <div style="display:flex;flex-direction:column;animation:pmFade .26s ease both">
+        <sc-for list="{{ room.rules }}" as="r" hint-placeholder-count="5">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--pm-fill-1)">
+            <span style="flex:none;width:112px;font:400 11px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2)">{{ r.k }}</span>
+            <span style="flex:1;min-width:0;font:400 12px/1.4 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);text-wrap:pretty">{{ r.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-sec="tourneys" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Tournaments here</span>
+      <span onClick="{{ onAllTourneys }}" style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass);cursor:pointer;white-space:nowrap">ALL &#8250;</span>
+    </div>
+    <sc-for list="{{ room.tourneys }}" as="t" hint-placeholder-count="3">
+      <div onClick="{{ onAllTourneys }}" style="display:flex;align-items:center;gap:12px;padding:12px 13px;border-radius:13px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+        <div style="flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;width:52px">
+          <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ t.time }}</span>
+          <span style="font:500 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ t.day }}</span>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <span style="font:500 12.5px/1.2 Archivo,sans-serif;color:var(--pm-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.name }}</span>
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="font:400 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ t.meta }}</span>
+          </div>
+        </div>
+        <sc-if value="{{ t.reliable }}">
+          <span style="flex:none;padding:5px 8px;border-radius:6px;background:rgba(78,203,147,0.08);border:1px solid rgba(78,203,147,0.28);font:600 7.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-live);text-align:center">{{ t.flag }}</span>
+        </sc-if>
+        <sc-if value="{{ t.unreliable }}">
+          <span style="flex:none;padding:5px 8px;border-radius:6px;background:rgba(201,162,74,0.1);border:1px solid rgba(201,162,74,0.32);font:600 7.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass-2);text-align:center">{{ t.flag }}</span>
+        </sc-if>
+        <sc-if value="{{ t.seriesOnly }}">
+          <span style="flex:none;padding:5px 8px;border-radius:6px;border:1px dashed var(--pm-line-3);font:600 7.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2);text-align:center">{{ t.flag }}</span>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div data-sec="basics" style="padding:22px 18px 0">
+    <div style="padding:13px 14px;border-radius:12px;border:1px dashed var(--pm-line-2);display:flex;flex-direction:column;gap:9px">
+      <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-dim-1)">FIRST TIME HERE</span>
+      <sc-for list="{{ room.basics }}" as="b" hint-placeholder-count="4">
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span style="flex:none;width:88px;font:400 10px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2)">{{ b.k }}</span>
+          <span style="flex:1;min-width:0;font:400 11px/1.4 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">{{ b.v }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:20px 18px 0;display:flex;flex-direction:column;align-items:center;gap:8px">
+    <div onClick="{{ onCorrection }}" style="height:36px;display:flex;align-items:center;cursor:pointer">
+      <span style="font:400 10.5px/1 Archivo,sans-serif;color:var(--pm-dim-3);text-decoration:underline;text-decoration-color:var(--pm-line-3);text-underline-offset:3px">Report a correction</span>
+    </div>
+    <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:0.06em;color:var(--pm-dim-2)">{{ room.footerVerified }}</span>
+  </div>
+
+  <div style="height:150px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ sheetOpen }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;height:{{ frameH }}px;z-index:60;display:flex;flex-direction:column;justify-content:flex-end;background:var(--pm-scrim);animation:pmFade .18s ease both">
+        <div onClick="{{ closeSheet }}" style="flex:1"></div>
+        <div style="border-radius:22px 22px 0 0;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border-top:1px solid rgba(201,162,74,0.28);box-shadow:0 -20px 44px -14px rgba(0,0,0,0.95);padding:16px 16px 30px;display:flex;flex-direction:column;gap:15px">
+          <sc-if value="{{ sheetAsk }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass)">REPORT STATUS · ANONYMOUS</span>
+                <span style="font:400 25px/1.1 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">What’s running at {{ room.name }}?</span>
+              </div>
+              <div onClick="{{ closeSheet }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 16px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&times;</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-dim-1)">WHICH GAME</span>
+              <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
+                <sc-for list="{{ sheetGames }}" as="sg" hint-placeholder-count="3">
+                  <sc-if value="{{ sg.active }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ sg.onClick }}" style="flex:none;height:48px;box-sizing:border-box;padding:0 13px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(201,162,74,0.14);border:1px solid var(--pm-brass);cursor:pointer">
+                      <span style="font:600 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-brass-2);white-space:nowrap">{{ sg.label }}</span>
+                      <span style="font:500 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:rgba(201,162,74,0.75)">{{ sg.sub }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ sg.inactive }}">
+                    <div onClick="{{ sg.onClick }}" style="flex:none;height:48px;box-sizing:border-box;padding:0 13px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--pm-fill-1);border:1px solid var(--pm-line-2);cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+                      <span style="font:500 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);white-space:nowrap">{{ sg.label }}</span>
+                      <span style="font:500 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-3)">{{ sg.sub }}</span>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+              <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="8">
+                <div onClick="{{ b.onClick }}" style="height:56px;border-radius:13px;border:1px solid var(--pm-line-2);background:var(--pm-fill-1);display:flex;align-items:center;justify-content:center;cursor:pointer;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-ink-2)" style-hover="border-color:rgba(201,162,74,0.6);background:rgba(201,162,74,0.1);color:var(--pm-brass-2)" style-active="transform:translateY(1px)">{{ b.label }}</div>
+              </sc-for>
+            </div>
+            <span style="font:400 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:0.06em;color:var(--pm-dim-3)">One tap · no account · expires in 45 min</span>
+          </sc-if>
+          <sc-if value="{{ sheetThanks }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:13px;padding:14px 0 6px;animation:pmFade .22s ease both">
+              <span style="width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#E2BE6C,#C89B3D);display:flex;align-items:center;justify-content:center;font:600 22px/1 'IBM Plex Mono',monospace;color:#17130A;box-shadow:0 0 0 6px rgba(201,162,74,0.14),0 12px 26px -10px rgba(201,162,74,0.75)">&#10003;</span>
+              <span style="font:400 24px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">{{ sheetTitle }} is fresh again</span>
+              <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-2);text-align:center;max-width:250px">Your report is live for every player nearby.</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:104px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+
+    <div style="padding:11px 14px 9px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--pm-line-1)">
+      <sc-if value="{{ room.hasWaitlist }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ onWaitlist }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+          <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:#1B1509"></span><span style="position:absolute;inset:0;border-radius:50%;background:rgba(27,21,9,0.75);animation:pmPing 2.4s ease-out infinite"></span></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">JOIN WAITLIST</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ room.waitDetail }}</span>
+          </div>
+          <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ room.noWaitlist }}">
+        <div onClick="{{ onReport }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+          <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:#1B1509"></span><span style="position:absolute;inset:0;border-radius:50%;background:rgba(27,21,9,0.75);animation:pmPing 2.4s ease-out infinite"></span></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">REPORT STATUS</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ room.reportDetail }}</span>
+          </div>
+          <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+        </div>
+      </sc-if>
+      <div style="display:flex;gap:9px">
+        <div onClick="{{ onDirections }}" style="flex:1;height:46px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+          <span style="font:600 11px/1 Archivo,sans-serif;letter-spacing:0.09em;color:var(--pm-ink-2)">DIRECTIONS</span>
+        </div>
+        <div onClick="{{ onCall }}" style="flex:1;height:46px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+          <span style="font:600 11px/1 Archivo,sans-serif;letter-spacing:0.09em;color:var(--pm-ink-2)">CALL ROOM</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:9px 6px 30px;display:flex">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.onClick }}" style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer">
+          <sc-if value="{{ n.active }}" hint-placeholder-val="{{ true }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:var(--pm-brass)"></span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-ink)">{{ n.label }}</span>
+          </sc-if>
+          <sc-if value="{{ n.inactive }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:transparent"></span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ n.label }}</span>
+          </sc-if>
+        </sc-for>
+      </div>
+  </div>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;room&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ARIA&quot;,&quot;Wynn/Encore&quot;,&quot;Venetian&quot;],&quot;default&quot;:&quot;ARIA&quot;,&quot;tsType&quot;:&quot;'ARIA' | 'Wynn/Encore' | 'Venetian'&quot;,&quot;section&quot;:&quot;Room&quot;},&quot;access&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;off&quot;,&quot;on&quot;],&quot;default&quot;:&quot;off&quot;,&quot;tsType&quot;:&quot;'off' | 'on'&quot;,&quot;section&quot;:&quot;Live data&quot;},&quot;reportData&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;populated&quot;,&quot;cold-start&quot;],&quot;default&quot;:&quot;populated&quot;,&quot;tsType&quot;:&quot;'populated' | 'cold-start'&quot;,&quot;section&quot;:&quot;Live data&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = {
+    roomIdx: 0,
+    tick: 0,
+    reports: {},
+    sheet: false,
+    sheetGame: null,
+    sheetDone: false,
+    open: { amen: false, comps: false, rules: false },
+    toast: null,
+  };
+
+  BUCKETS = ['NO WAIT', '1–2 WAITING', '3–5 WAITING', '6–9 WAITING', '10+ WAITING', 'JUST STARTED', 'NOT RUNNING', 'ROOM CLOSED'];
+  BUCKET_TEXT = {
+    'NO WAIT': 'No wait', '1–2 WAITING': '1–2 waiting', '3–5 WAITING': '3–5 waiting',
+    '6–9 WAITING': '6–9 waiting', '10+ WAITING': '10+ waiting', 'JUST STARTED': 'Just started',
+    'NOT RUNNING': 'Not running', 'ROOM CLOSED': 'Reported closed',
+  };
+  SHORT = { 'No wait': 'NONE', '1–2 waiting': '1–2', '3–5 waiting': '3–5', '6–9 waiting': '6–9',
+    '10+ waiting': '10+', 'Just started': 'NEW', 'Not running': 'NR', 'Reported closed': 'CLOSED' };
+  CROWD_TTL = 45;
+  ABBR = { 'No-Limit Hold’em': 'NLH', 'Pot-Limit Omaha': 'PLO', 'Limit Hold’em': 'LHE', 'Omaha Hi-Lo': 'O8', 'Mixed Game': 'MIX', 'Seven Card Stud': 'STUD' };
+
+  ROOMS = [
+    {
+      id: 1, name: 'ARIA', areaTag: 'STRIP', status: 'OPEN 24H', open: true, dist: 0.2, walk: 4,
+      tables: 24, verifiedH: 3, phone: '(702) 590-7757', cashFresh: 'CASH DATA · 4d ago', promoFresh: 'PROMOS · TODAY',
+      games: [
+        { g: 'No-Limit Hold’em', s: '$1/3', min: 100, max: 500, rake: '10% to $5', drop: '$1 jackpot', comp: '$2/hr', t: 12, note: 'Straddle allowed from any position. Must-post on return after 20 min.' },
+        { g: 'No-Limit Hold’em', s: '$2/5', min: 300, max: 1500, rake: '10% to $5', drop: '$1 jackpot', comp: '$2/hr', t: 6, note: 'Uncapped buy-in after 60 min at the table.' },
+        { g: 'Pot-Limit Omaha', s: '$5/10', min: 1000, max: 0, rake: '10% to $5', drop: '$1 jackpot', comp: '$2/hr', t: 2, note: 'No max buy-in. $5 bring-in straddle only under the gun.' },
+      ],
+      crowd: [{ g: '$1/3', w: '3–5 waiting', reports: 4, mins: 9 }],
+      promos: [
+        { kind: 'BAD BEAT JACKPOT', text: '$12,400 progressive · aces full beaten', timer: 'LIVE', note: 'ALL GAMES' },
+        { kind: 'HIGH HAND', text: '$300 every 30 min · 10a–6p', timer: '18:40', note: 'NEXT PAY' },
+        { kind: 'LOCALS RATE', text: 'NV ID · $3/hr comps on $1/3', timer: 'ALL DAY', note: 'ID REQUIRED' },
+      ],
+      food: {
+        tableside: 'Yes · 24 hours', from: [ { label: 'Jean Georges menu', href: 'https://aria.mgmresorts.com/en/restaurants.html' }, { label: 'Café Vettro menu', href: 'https://aria.mgmresorts.com/en/restaurants.html' } ],
+        cocktails: 'Cocktail service continuous · $1–2/drink tip is standard', soda: 'Self-serve soda and coffee station in the room',
+      },
+      parking: { self: 'Self-park $18/day · free with 2 hrs poker play', valet: 'Valet $30 · comped at 4 hrs play', walk: '6 min from the east garage' },
+      comfort: [
+        { k: 'Power at seat', v: 'USB-A + USB-C at every seat' },
+        { k: 'Screens', v: '12 TVs, 4 on the tournament clock' },
+        { k: 'Air', v: 'Fully non-smoking · own HVAC zone' },
+        { k: 'Restrooms', v: 'Inside the room, no floor crossing' },
+        { k: 'Connectivity', v: 'Free Wi-Fi (MGM Free) · strong 5G' },
+      ],
+      services: [
+        { k: 'Massage', v: '$2/min · 3 therapists on nights' },
+        { k: 'Cage', v: 'Chip runners, no cage trip needed' },
+        { k: 'Cash', v: 'ATM inside room · check cashing at cage' },
+        { k: 'Phone-in list', v: 'Yes · (702) 590-7757, holds 30 min' },
+      ],
+      club: { program: 'MGM REWARDS', rate: '$2/hr in comp dollars, tracked from first hand', redeem: 'Comps spend at any MGM restaurant, spa, or room folio', earn: 'Poker earns comps only — no tier credits from cash play', tiers: 'Tournament buy-ins do earn tier credits' },
+      rules: [
+        { k: 'Straddle', v: 'Any position, $1/3 and up' },
+        { k: 'Must-post', v: 'Yes, after a 20-minute absence' },
+        { k: 'Chips', v: 'Chip runners at the table; no cage trip' },
+        { k: 'Rebuy min', v: 'Half the table max, or full stack reset' },
+        { k: 'Electronics', v: 'Phones at the table, no calls, no photos of players' },
+        { k: 'Min bet', v: 'Big blind; $5 minimum raise on $2/5+' },
+        { k: 'Quirk', v: 'Bomb-pot Fridays after 8p on $1/3, one per hour' },
+      ],
+      basics: [
+        { k: 'Dress code', v: 'Casual, no smart limits · shoes and shirt required' },
+        { k: 'ID', v: '21+ · government photo ID for the cage and the list' },
+        { k: 'Drinks', v: 'Free while playing · tip $1–2 per drink' },
+        { k: 'Hours', v: 'Open 24/7 · thinnest 6a–10a, deepest 8p–2a' },
+      ],
+      tourneys: [
+        { time: '11:00', day: 'AM', name: 'Daily $150 NLH · 15K stack', meta: '$150 · $5K GTD · 20-min levels', flag: 'TYPICALLY RUNS', kind: 'reliable' },
+        { time: '19:00', day: 'PM', name: 'Nightly $240 NLH turbo', meta: '$240 · $8K GTD · 15-min levels', flag: 'OFTEN CANCELS', kind: 'unreliable' },
+        { time: '12:00', day: 'SAT', name: 'ARIA Poker Classic Day 1A', meta: '$1,100 · $500K GTD · series', flag: 'SERIES ONLY', kind: 'series' },
+      ],
+    },
+    {
+      id: 7, name: 'Wynn/Encore', areaTag: 'STRIP', status: 'OPEN 24H', open: true, dist: 1.7, walk: 34, drive: 8,
+      tables: 52, verifiedH: 1, vendor: true, waitlist: true, phone: '(702) 770-7000', cashFresh: 'CASH DATA · 2d ago', promoFresh: 'PROMOS · TODAY',
+      games: [
+        { g: 'No-Limit Hold’em', s: '$1/3', min: 200, max: 1000, rake: '10% to $4', drop: 'No jackpot drop', comp: '$2/hr', t: 22, live: 5, note: 'Straddle under the gun only. No must-post.' },
+        { g: 'No-Limit Hold’em', s: '$2/5', min: 500, max: 3000, rake: '10% to $4', drop: 'No jackpot drop', comp: '$2/hr', t: 12, live: 2, note: 'Uncapped after one orbit; $10 straddle common.' },
+        { g: 'Pot-Limit Omaha', s: '$5/5', min: 500, max: 0, rake: '10% to $4', drop: 'No jackpot drop', comp: '$2/hr', t: 4, live: 0, note: 'No max buy-in. Runs nightly from 6p.' },
+      ],
+      crowd: [{ g: '$1/3', w: '6–9 waiting', reports: 3, mins: 8 }],
+      promos: [
+        { kind: 'TOURNAMENT', text: 'Wynn Classic $150K GTD · Day 1B', timer: '46:00', note: 'CARDS IN AIR' },
+        { kind: 'HIGH HAND', text: '$500 hourly · noon to midnight', timer: '27:12', note: 'NEXT PAY' },
+      ],
+      food: {
+        tableside: 'Yes · 10a–2a',
+        from: [ { label: 'Wazuzu menu', href: 'https://www.wynnlasvegas.com/dining' }, { label: 'Jardin menu', href: 'https://www.wynnlasvegas.com/dining' } ],
+        cocktails: 'Dedicated poker cocktail server · $2/drink tip standard', soda: 'Server-only, no self-serve station',
+      },
+      parking: { self: 'Self-park free for Nevada IDs · $20 otherwise', valet: 'Valet free with Red Card play', walk: '4 min from the Encore garage' },
+      comfort: [
+        { k: 'Power at seat', v: 'USB-C and AC outlets at every seat' },
+        { k: 'Screens', v: '18 TVs · dedicated sports feed' },
+        { k: 'Air', v: 'Non-smoking room · smoking permitted at the door' },
+        { k: 'Restrooms', v: '20 seconds from the room entrance' },
+        { k: 'Connectivity', v: 'Free Wi-Fi · Wynn app waitlist' },
+      ],
+      services: [
+        { k: 'Massage', v: '$2/min · 4 therapists peak' },
+        { k: 'Cage', v: 'In-room cage plus chip runners' },
+        { k: 'Cash', v: 'ATM and check cashing in room' },
+        { k: 'Phone-in list', v: 'App-based · live from the Wynn Poker app' },
+      ],
+      club: { program: 'WYNN REWARDS', rate: '$2/hr in comps · $3/hr at $5/10 and above', redeem: 'Comps spend on dining and rooms; poker comps do not expire', earn: 'Poker play earns comps and Red Card status hours', tiers: 'Tournament entries count toward tier' },
+      rules: [
+        { k: 'Straddle', v: 'Under the gun only' },
+        { k: 'Must-post', v: 'No must-post' },
+        { k: 'Chips', v: 'Chip runners and in-room cage' },
+        { k: 'Rebuy min', v: 'Table minimum; top-up any amount' },
+        { k: 'Electronics', v: 'Phones fine; no video at the tables' },
+        { k: 'Min bet', v: 'Big blind; $10 minimum on $5/10' },
+        { k: 'Quirk', v: 'Waitlist runs in-app; two no-shows drops you' },
+      ],
+      basics: [
+        { k: 'Dress code', v: 'Smart casual after 8p · no athletic wear at high limit' },
+        { k: 'ID', v: '21+ · photo ID for the app waitlist' },
+        { k: 'Drinks', v: 'Free while playing · tip $2 per drink' },
+        { k: 'Hours', v: 'Open 24/7 · deepest 7p–3a during series' },
+      ],
+      tourneys: [
+        { time: '12:10', day: 'PM', name: 'Wynn Classic Day 1B', meta: '$1,600 · $150K GTD · series', flag: 'SERIES ONLY', kind: 'series' },
+        { time: '18:00', day: 'PM', name: 'Nightly $400 NLH', meta: '$400 · $20K GTD · 30-min levels', flag: 'TYPICALLY RUNS', kind: 'reliable' },
+      ],
+    },
+    {
+      id: 6, name: 'Venetian', areaTag: 'STRIP', status: 'OPEN 24H', open: true, dist: 1.3, walk: 26, drive: 7,
+      tables: 50, verifiedH: 4, phone: '(702) 414-3400', cashFresh: 'CASH DATA · 6d ago', promoFresh: 'PROMOS · TODAY',
+      games: [
+        { g: 'No-Limit Hold’em', s: '$1/2', min: 100, max: 300, rake: '10% to $4', drop: '$1 jackpot', comp: '$2/hr', t: 26, note: 'Spread-limit feel: $2 open standard. Must-post applies.' },
+        { g: 'No-Limit Hold’em', s: '$2/5', min: 300, max: 1000, rake: '10% to $4', drop: '$1 jackpot', comp: '$2/hr', t: 12, note: 'Straddle any position. Uncapped on request with table agreement.' },
+        { g: 'Mixed Game', s: '$4/8', min: 100, max: 300, rake: '10% to $4', drop: 'No jackpot drop', comp: '$2/hr', t: 3, note: 'Rotating HORSE, Thursdays and Sundays from 4p.' },
+      ],
+      crowd: [{ g: '$1/2', w: '10+ waiting', reports: 3, mins: 6 }, { g: '$2/5', w: 'Not running', reports: 2, mins: 17 }],
+      promos: [
+        { kind: 'TOURNAMENT', text: 'Deep Stack Extravaganza · 6:00p flight', timer: '1:57:00', note: 'REG OPEN' },
+        { kind: 'HIGH HAND', text: '$1,000 every hour · 24 hours', timer: '41:30', note: 'NEXT PAY' },
+        { kind: 'SPLASH POT', text: '$100 splash on $1/2 · top of the hour', timer: '11:30', note: 'NEXT DROP' },
+      ],
+      food: {
+        tableside: 'Yes · 24 hours, seat delivery',
+        from: [ { label: 'Grand Lux Cafe menu', href: 'https://www.venetianlasvegas.com/restaurants.html' }, { label: 'Black Tap menu', href: 'https://www.venetianlasvegas.com/restaurants.html' }, { label: 'Miznon menu', href: 'https://www.venetianlasvegas.com/restaurants.html' } ],
+        cocktails: 'Cocktail service every 20 min at peak', soda: 'Self-serve soda, coffee and tea in the room',
+      },
+      parking: { self: 'Self-park free · validated at the poker desk', valet: 'Valet $25 · free at 3 hrs play', walk: '8 min from the self-park garage' },
+      comfort: [
+        { k: 'Power at seat', v: 'USB-A at every seat, AC at rail seats' },
+        { k: 'Screens', v: '24 TVs · four tournament clocks' },
+        { k: 'Air', v: 'Non-smoking · smoking patio 40 seconds away' },
+        { k: 'Restrooms', v: 'In-room restrooms' },
+        { k: 'Connectivity', v: 'Free Wi-Fi · patchy 5G in the back rows' },
+      ],
+      services: [
+        { k: 'Massage', v: '$2/min · queue at peak' },
+        { k: 'Cage', v: 'Chip runners; cage 30 seconds away' },
+        { k: 'Cash', v: 'ATM at the entrance · check cashing at cage' },
+        { k: 'Phone-in list', v: 'Yes · (702) 414-3400, holds 45 min' },
+      ],
+      club: { program: 'VENETIAN REWARDS', rate: '$2/hr comps, $3/hr on $5/10+', redeem: 'Comps spend on dining and retail, not the room rate', earn: 'Poker earns comps and Grazie points on tournament entries', tiers: 'Cash play does not move tier' },
+      rules: [
+        { k: 'Straddle', v: 'Any position on $2/5+, UTG only on $1/2' },
+        { k: 'Must-post', v: 'Yes, after missing your blinds' },
+        { k: 'Chips', v: 'Chip runners at the table' },
+        { k: 'Rebuy min', v: '$100, or match the largest stack on request' },
+        { k: 'Electronics', v: 'One device at the table, headphones fine' },
+        { k: 'Min bet', v: 'Big blind; $5 min raise on $2/5' },
+        { k: 'Quirk', v: 'Largest room on the Strip — ask for a seat change button early' },
+      ],
+      basics: [
+        { k: 'Dress code', v: 'Casual · no swimwear from the pool' },
+        { k: 'ID', v: '21+ · ID to open the list' },
+        { k: 'Drinks', v: 'Free while playing · tip $1–2 per drink' },
+        { k: 'Hours', v: 'Open 24/7 · deepest 6p–1a, thin 5a–9a' },
+      ],
+      tourneys: [
+        { time: '11:00', day: 'AM', name: 'Deep Stack $400 NLH', meta: '$400 · $40K GTD · 40-min levels', flag: 'TYPICALLY RUNS', kind: 'reliable' },
+        { time: '18:00', day: 'PM', name: 'Evening $150 NLH', meta: '$150 · $10K GTD · 20-min levels', flag: 'TYPICALLY RUNS', kind: 'reliable' },
+        { time: '22:00', day: 'PM', name: 'Late night $125 turbo', meta: '$125 · no GTD · 12-min levels', flag: 'OFTEN CANCELS', kind: 'unreliable' },
+      ],
+    },
+  ];
+
+  NAV = [
+    { id: 'rooms', label: 'ROOMS' }, { id: 'tourneys', label: 'TOURNEYS' },
+    { id: 'cash', label: 'CASH' }, { id: 'promos', label: 'PROMOS' }, { id: 'me', label: 'ME' },
+  ];
+
+  JUMPS = [
+    { key: 'live', label: 'LIVE' }, { key: 'games', label: 'CASH GAMES' }, { key: 'promos', label: 'PROMOS' },
+    { key: 'amen', label: 'AMENITIES' }, { key: 'comps', label: 'COMPS' }, { key: 'rules', label: 'RULES' },
+    { key: 'tourneys', label: 'TOURNEYS' }, { key: 'basics', label: 'BASICS' },
+  ];
+
+  componentDidMount() {
+    this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 1000);
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+    clearTimeout(this.toastTimer);
+    clearTimeout(this.sheetTimer);
+  }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  /* the prop picks the room; NEXT ROOM then walks the list from there */
+  room() {
+    if (this.props.room !== this._lastProp) {
+      this._lastProp = this.props.room;
+      const i = this.ROOMS.map(r => r.name).indexOf(this.props.room);
+      if (i >= 0 && i !== this.state.roomIdx) setTimeout(() => this.setState({ roomIdx: i }), 0);
+      if (i >= 0) return this.ROOMS[i];
+    }
+    return this.ROOMS[this.state.roomIdx % this.ROOMS.length];
+  }
+
+  money(n) { return '$' + n.toLocaleString('en-US'); }
+
+  ageTxt(h) {
+    if (h < 1) return 'just now';
+    if (h < 12) return h + 'h ago';
+    if (h < 24) return 'today';
+    if (h < 36) return 'yesterday';
+    return Math.floor(h / 24) + 'd ago';
+  }
+  minsTxt(m) { return m < 1 ? 'just now' : m + 'm ago'; }
+
+  crowdList(r) {
+    const out = [];
+    r.games.forEach(g => {
+      const mine = this.state.reports[r.id + '|' + g.s];
+      if (!mine) return;
+      const mins = Math.floor((this.state.tick - mine.at) / 60);
+      if (mins <= this.CROWD_TTL) out.push({ g: g.s, w: mine.w, reports: 1, mins: mins, mine: true });
+    });
+    if (this.props.reportData !== 'cold-start') {
+      (r.crowd || []).forEach(c => {
+        if (out.some(o => o.g === c.g)) return;
+        const mins = c.mins + Math.floor(this.state.tick / 60);
+        if (mins <= this.CROWD_TTL) out.push({ g: c.g, w: c.w, reports: c.reports, mins: mins });
+      });
+    }
+    return out.sort((a, b) => a.mins - b.mins);
+  }
+
+  primaryGame(r) { return r.games.slice().sort((a, b) => b.t - a.t)[0].s; }
+
+  submit(bucket) {
+    const r = this.room();
+    const w = this.BUCKET_TEXT[bucket] || bucket;
+    this.setState(st => ({
+      reports: Object.assign({}, st.reports, { [r.id + '|' + st.sheetGame]: { w: w, at: st.tick, reports: 1, mine: true } }),
+      sheetDone: true,
+    }));
+    clearTimeout(this.sheetTimer);
+    this.sheetTimer = setTimeout(() => this.setState({ sheet: false, sheetDone: false }), 2500);
+  }
+
+  jump(key) {
+    const root = document.querySelector('[data-detail-root]');
+    if (!root) return;
+    const el = root.querySelector('[data-sec="' + key + '"]');
+    const scroller = root.parentElement;
+    if (!el || !scroller) return;
+    const header = root.querySelector('[data-detail-header]');
+    const chrome = header ? header.getBoundingClientRect().height : 162;
+    const delta = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - (chrome + 12);
+    scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+  }
+
+  renderVals() {
+    const r = this.room();
+    const reports = this.crowdList(r);
+    const strong = reports.filter(c => c.reports >= 2 || c.mine);
+    const weak = reports.filter(c => c.reports < 2 && !c.mine);
+    const ageH = r.verifiedH + Math.floor(this.state.tick / 3600);
+    const vendorOn = !!r.vendor && this.props.access === 'on';
+    const vendorRows = vendorOn ? r.games.map(g => ({
+      text: g.s + ' · ' + (g.live === 0 ? 'seat open now' : g.live + ' on list') + ' · ' + g.t + ' tables',
+    })) : [];
+
+    const games = r.games.map(g => {
+      const rep = reports.filter(c => c.g === g.s)[0];
+      return {
+        g: g.g, s: g.s, t: g.t,
+        buyin: g.max === 0 ? this.money(g.min) + ' min · no max' : this.money(g.min) + ' – ' + this.money(g.max),
+        rake: g.rake,
+        drop: g.drop,
+        compTbl: g.comp + ' · ' + g.t + ' tbl',
+        note: g.note,
+        hasNote: !!g.note,
+        isVendor: vendorOn,
+        isCrowd: !vendorOn && !!rep,
+        isNoData: !vendorOn && !rep,
+        liveText: vendorOn ? (g.live === 0 ? 'OPEN' : g.live + ' waiting') : (rep ? (this.SHORT[rep.w] || rep.w) : ''),
+        liveAge: rep ? this.minsTxt(rep.mins) : '',
+        onReport: () => this.setState({ sheet: true, sheetGame: g.s, sheetDone: false }),
+      };
+    });
+
+    const amenGroups = [
+      { title: 'FOOD & DRINK', rows: [
+        { k: 'Tableside food', v: r.food.tableside, hasLinks: true, links: r.food.from },
+        { k: 'Cocktails', v: r.food.cocktails, hasLinks: false, links: [] },
+        { k: 'Self-serve', v: r.food.soda, hasLinks: false, links: [] },
+      ] },
+      { title: 'PARKING', rows: [
+        { k: 'Self-park', v: r.parking.self, hasLinks: false, links: [] },
+        { k: 'Valet', v: r.parking.valet, hasLinks: false, links: [] },
+        { k: 'Walk to room', v: r.parking.walk, hasLinks: false, links: [] },
+      ] },
+      { title: 'COMFORT', rows: r.comfort.map(x => ({ k: x.k, v: x.v, hasLinks: false, links: [] })) },
+      { title: 'SERVICES', rows: r.services.map(x => ({ k: x.k, v: x.v, hasLinks: false, links: [] })) },
+    ];
+    const amenCount = amenGroups.reduce((n, g) => n + g.rows.length, 0);
+
+    const primary = this.primaryGame(r);
+    const st = this.state;
+
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: this.props.theme === 'light' ? 'light' : 'dark',
+      room: Object.assign({}, r, {
+        isOpen: r.open,
+        isClosed: !r.open,
+        distNum: r.dist.toFixed(1),
+        travel: r.walk <= 25 ? r.walk + ' MIN WALK' : r.drive + ' MIN DRIVE',
+        headerMeta: r.areaTag + ' · ' + r.tables + ' TABLES · ' + r.dist.toFixed(1) + ' MI',
+        subLine: r.tables + ' tables · ' + r.games.length + ' games spread · ' + r.phone,
+        verifiedLine: 'verified ' + this.ageTxt(ageH),
+        isFresh: ageH < 36,
+        isStale: ageH >= 36,
+        footerVerified: 'ROOM DATA VERIFIED ' + this.ageTxt(ageH).toUpperCase() + ' · CASH GAMES ' + r.cashFresh.split('· ')[1].toUpperCase(),
+        liveNote: vendorOn ? 'OFFICIAL FEED' : 'PLAYER REPORTS · 45 MIN WINDOW',
+        hasVendor: vendorOn,
+        vendorRows: vendorRows,
+        hasCrowd: !vendorOn && strong.length > 0,
+        crowdRows: strong.map(c => ({ text: c.g + ' · ' + c.w, age: (c.mine ? 'you · ' : '') + this.minsTxt(c.mins) })),
+        hasLowConf: !vendorOn && weak.length > 0,
+        lowConfText: weak.length ? weak[0].g + ' · 1 report · low confidence' : '',
+        lowConfAge: weak.length ? this.minsTxt(weak[0].mins) : '',
+        liveEmpty: !vendorOn && reports.length === 0,
+        games: games,
+        gamesFresh: r.cashFresh,
+        promosFresh: r.promoFresh,
+        promos: r.promos,
+        amenGroups: amenGroups,
+        clubRows: [
+          { k: 'Program', v: r.club.program },
+          { k: 'Comp rate', v: r.club.rate },
+          { k: 'Redeem for', v: r.club.redeem },
+          { k: 'Poker earns', v: r.club.earn },
+          { k: 'Tier credit', v: r.club.tiers },
+        ],
+        rules: r.rules,
+        basics: r.basics,
+        tourneys: r.tourneys.map(t => ({
+          time: t.time, day: t.day, name: t.name, meta: t.meta, flag: t.flag,
+          reliable: t.kind === 'reliable', unreliable: t.kind === 'unreliable', seriesOnly: t.kind === 'series',
+        })),
+        hasWaitlist: !!r.waitlist && vendorOn,
+        noWaitlist: !(r.waitlist && vendorOn),
+        waitDetail: (r.waitlist && vendorOn) ? (r.games[0].s + ' · ' + r.games[0].live + ' ahead · ~' + (r.games[0].live * 6 + 4) + ' min') : '',
+        reportDetail: reports.length ? 'Confirm or update ' + primary : 'No reports yet · be the first on ' + primary,
+      }),
+      jumps: this.JUMPS.map(j => ({ label: j.label, onClick: () => this.jump(j.key) })),
+      amenOpen: st.open.amen,
+      amenChevron: st.open.amen ? '▴' : '▾',
+      amenCount: amenCount + ' DETAILS',
+      compsOpen: st.open.comps,
+      compsChevron: st.open.comps ? '▴' : '▾',
+      rulesOpen: st.open.rules,
+      rulesChevron: st.open.rules ? '▴' : '▾',
+      rulesCount: r.rules.length + ' RULES',
+      toggleAmen: () => this.setState(s => ({ open: Object.assign({}, s.open, { amen: !s.open.amen }) })),
+      toggleComps: () => this.setState(s => ({ open: Object.assign({}, s.open, { comps: !s.open.comps }) })),
+      toggleRules: () => this.setState(s => ({ open: Object.assign({}, s.open, { rules: !s.open.rules }) })),
+      sheetOpen: st.sheet,
+      sheetAsk: st.sheet && !st.sheetDone,
+      sheetThanks: st.sheet && st.sheetDone,
+      sheetTitle: (st.sheetGame || primary) + ' at ' + r.name,
+      sheetGames: r.games.map(g => ({
+        label: g.s,
+        sub: this.ABBR[g.g] || 'MIX',
+        active: (st.sheetGame || primary) === g.s,
+        inactive: (st.sheetGame || primary) !== g.s,
+        onClick: () => this.setState({ sheetGame: g.s }),
+      })),
+      buckets: this.BUCKETS.map(b => ({ label: b, onClick: () => this.submit(b) })),
+      onReport: () => this.setState({ sheet: true, sheetGame: primary, sheetDone: false }),
+      closeSheet: () => { clearTimeout(this.sheetTimer); this.setState({ sheet: false, sheetDone: false }); },
+      onWaitlist: () => this.flash('You’re #' + (r.games[0].live + 1) + ' on the ' + r.games[0].s + ' list at ' + r.name + '.'),
+      onDirections: () => this.flash('Walking route · ' + r.dist.toFixed(1) + ' mi to ' + r.name + '.'),
+      onCall: () => this.flash('Calling the ' + r.name + ' poker desk · ' + r.phone),
+      onCorrection: () => this.flash('Correction sent to our review queue — thank you.'),
+      onBack: () => this.flash('Back to Rooms near me.'),
+      onAllTourneys: () => this.flash('Tourneys is next up in the build.'),
+      onRoomSwitch: () => this.setState(s => ({ roomIdx: (s.roomIdx + 1) % this.ROOMS.length, open: { amen: false, comps: false, rules: false } })),
+      navItems: this.NAV.map(n => ({
+        label: n.label,
+        active: n.id === 'rooms',
+        inactive: n.id !== 'rooms',
+        onClick: () => { if (n.id !== 'rooms') this.flash(n.label.charAt(0) + n.label.slice(1).toLowerCase() + ' is next up in the build.'); },
+      })),
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

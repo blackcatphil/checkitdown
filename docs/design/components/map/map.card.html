@@ -1,0 +1,20 @@
+<!-- @dsCard group="Components" viewport="700x260" name="Map pins" subtitle="Filtering dims; clusters carry a ratio" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;padding:16px;background:var(--cid-ink-800);font-family:var(--cid-font-ui);color:var(--cid-text)}
+.row{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.pin{min-width:44px;min-height:44px;padding:10px 12px;border-radius:3px;display:inline-flex;align-items:center;background:rgba(20,23,27,.92);border:1px solid rgba(242,244,246,.16);font:500 12px/1 var(--cid-font-ui);color:var(--cid-paper)}
+.cl{min-width:44px;height:44px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font:600 13px/1 var(--cid-font-mono);font-variant-numeric:tabular-nums}
+.cap{font:500 9px/1 var(--cid-font-mono);letter-spacing:.13em;color:var(--cid-dim);margin-top:7px;display:block}
+.note{font:400 11px/1.5 var(--cid-font-ui);color:var(--cid-text-3);max-width:640px}
+</style></head><body>
+<div class="row">
+<div><span class="pin">Bellagio</span><span class="cap">MATCHES</span></div>
+<div><span class="pin" style="opacity:.2">Skyline</span><span class="cap">DIMMED, NOT REMOVED</span></div>
+<div><span class="pin" style="background:var(--cid-accent-700);border-color:var(--cid-accent-300)">ARIA</span><span class="cap">SELECTED</span></div>
+<div><span class="cl" style="background:var(--cid-accent-500);color:var(--cid-paper)">9</span><span class="cap">ALL MATCH</span></div>
+<div><span class="cl" style="border:1.5px solid var(--cid-accent-300);color:var(--cid-paper)">1/9</span><span class="cap">SOME MATCH</span></div>
+<div><span class="cl" style="background:rgba(242,244,246,.1);border:1.5px solid rgba(242,244,246,.26);color:rgba(242,244,246,.5)">0/9</span><span class="cap">NONE MATCH</span></div>
+</div>
+<div class="note">The ratio exists because dimming cannot represent a partial group: at city zoom the Strip is one pin standing for nine rooms, and opacity has nothing to say when one of them matches.</div>
+</body></html>

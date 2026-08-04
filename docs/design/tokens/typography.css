@@ -1,0 +1,28 @@
+/* Three families, three jobs. Numbers are ALWAYS mono + tabular.
+   Desktop-first scale; the mobile pass scales the display sizes down, not the mono. */
+:root {
+  --cid-font-display: 'Instrument Serif', Georgia, serif;    /* page titles, room names */
+  --cid-font-ui: Archivo, system-ui, sans-serif;             /* interface + prose */
+  --cid-font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* every number + label */
+
+  --cid-statement: 400 52px/1.05 var(--cid-font-display);  /* one per page, max */
+  --cid-h1: 400 44px/1 var(--cid-font-display);
+  --cid-h2: 400 28px/1.1 var(--cid-font-display);
+  --cid-room-name: 400 21px/1.1 var(--cid-font-display);
+
+  --cid-lede: 400 16px/1.6 var(--cid-font-ui);
+  --cid-body: 400 13.5px/1.55 var(--cid-font-ui);
+  --cid-body-strong: 500 13px/1.45 var(--cid-font-ui);
+  --cid-caption: 400 12.5px/1.45 var(--cid-font-ui);
+
+  --cid-num: 500 13px/1 var(--cid-font-mono);
+  --cid-num-lg: 500 17px/1 var(--cid-font-mono);
+  --cid-rank: 600 15px/1 var(--cid-font-mono);
+  --cid-tag: 500 11px/1 var(--cid-font-mono);
+  --cid-label: 600 9.5px/1 var(--cid-font-mono);
+
+  --cid-track-label: 0.18em;   /* section + column labels */
+  --cid-track-nav: 0.16em;     /* header nav, sort heads */
+  --cid-track-action: 0.15em;  /* the filled action */
+  --cid-tabular: tabular-nums;
+}

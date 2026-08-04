@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+    @keyframes pmSweep { 0% { transform: translateY(0); opacity: .25 } 50% { transform: translateY(-4px); opacity: .5 } 100% { transform: translateY(0); opacity: .25 } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-scrim:rgba(4,6,5,0.72);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93; --pm-caution:#D9A23F;
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#EFECE3; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(239,236,227,0.94); --pm-scrim:rgba(24,28,20,0.5);
+      --pm-ink:#171C13; --pm-ink-2:#232A1D; --pm-ink-3:rgba(23,28,19,0.86);
+      --pm-dim-1:rgba(23,28,19,0.72); --pm-dim-2:rgba(23,28,19,0.66); --pm-dim-3:rgba(23,28,19,0.5); --pm-dim-4:rgba(23,28,19,0.42);
+      --pm-line-1:rgba(23,28,19,0.1); --pm-line-2:rgba(23,28,19,0.16); --pm-line-3:rgba(23,28,19,0.28); --pm-fill-1:rgba(23,28,19,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52; --pm-caution:#8A5B0F;
+      --pm-src-empty-line:rgba(23,28,19,0.18);
+    }
+  </style>
+</helmet>
+<div data-states-root="1" data-pm-theme="{{ theme }}" style="min-height:100vh;background:#07100C;font-family:Archivo,system-ui,sans-serif;padding:26px 22px 40px;display:flex;flex-direction:column;gap:20px">
+
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:980px">
+    <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass)">DESIGN-TIME SWITCHER · NOT PART OF THE APP</span>
+    <div style="display:flex;flex-wrap:wrap;gap:7px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="6">
+        <sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ t.onClick }}" style="height:40px;padding:0 14px;border-radius:11px;display:flex;align-items:center;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 100%);cursor:pointer;font:700 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:#17130A">{{ t.label }}</div>
+        </sc-if>
+        <sc-if value="{{ t.inactive }}">
+          <div onClick="{{ t.onClick }}" style="height:40px;padding:0 14px;border-radius:11px;display:flex;align-items:center;background:rgba(237,234,224,0.05);border:1px solid var(--pm-line-2);cursor:pointer;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-1)" style-hover="border-color:rgba(201,162,74,0.5);color:var(--pm-brass)">{{ t.label }}</div>
+        </sc-if>
+      </sc-for>
+    </div>
+    <span style="font:400 12px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);max-width:640px;text-wrap:pretty">{{ blurb }}</span>
+  </div>
+
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+  <div data-screen-label="{{ screenLabel }}" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+    <sc-if value="{{ isPrompt }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;display:flex;flex-direction:column;padding:78px 22px 30px;gap:26px">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <span style="font:400 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.3em;color:var(--pm-brass)">POKER MAP</span>
+          <h1 style="margin:0;font:400 42px/0.98 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink);text-wrap:pretty">Every poker room in the valley, sorted by how far you'd walk.</h1>
+          <span style="font:400 13.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Waits, stakes, rake, tournaments and promotions across all 17 open rooms. No account, ever.</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:11px;padding:15px;border-radius:16px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1)">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">BEFORE WE ASK FOR LOCATION</span>
+          <sc-for list="{{ promises }}" as="p" hint-placeholder-count="3">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--pm-fill-1)">
+              <span style="flex:none;width:16px;height:16px;margin-top:1px;border-radius:50%;background:{{ p.dotBg }};display:flex;align-items:center;justify-content:center;font:600 9px/1 'IBM Plex Mono',monospace;color:{{ p.dotInk }}">{{ p.mark }}</span>
+              <span style="flex:1;min-width:0;font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">{{ p.text }}</span>
+            </div>
+          </sc-for>
+          <span style="font:400 10.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:0.02em;color:var(--pm-dim-2);text-wrap:pretty">Your position is used on your device to sort the list. It is never stored on our servers and never tied to an identity.</span>
+        </div>
+
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+          <div onClick="{{ onAllow }}" style="height:60px;border-radius:15px;padding:0 18px;display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 10px 26px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+            <span style="position:relative;width:7px;height:7px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:#1B1509"></span><span style="position:absolute;inset:0;border-radius:50%;background:rgba(27,21,9,0.75);animation:pmPing 2.4s ease-out infinite"></span></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+              <span style="font:700 13px/1 Archivo,sans-serif;letter-spacing:0.09em;color:#17130A">USE MY LOCATION</span>
+              <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.66)">Your phone will ask next · one tap</span>
+            </div>
+          </div>
+          <div onClick="{{ onPick }}" style="height:50px;border-radius:13px;display:flex;align-items:center;justify-content:center;border:1px solid var(--pm-line-2);cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+            <span style="font:600 11px/1 Archivo,sans-serif;letter-spacing:0.09em;color:var(--pm-ink-2)">PICK MY HOTEL INSTEAD</span>
+          </div>
+          <div onClick="{{ onSkip }}" style="height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+            <span style="font:400 11px/1 Archivo,sans-serif;color:var(--pm-dim-2);text-decoration:underline;text-decoration-color:var(--pm-line-3);text-underline-offset:3px">Skip — show me the Strip</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDenied }}">
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div style="padding:58px 18px 13px;background:var(--pm-head);border-bottom:1px solid var(--pm-line-1);display:flex;align-items:center;gap:8px">
+          <span style="width:6px;height:6px;flex:none;border-radius:50%;background:var(--pm-caution)"></span>
+          <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-caution)">LOCATION OFF</span>
+          <span style="font:500 11px/1 Archivo,sans-serif;color:var(--pm-dim-1)">Showing the Strip</span>
+        </div>
+        <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:13px">
+          <h1 style="margin:0;font:400 33px/1 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink)">Rooms on the Strip</h1>
+          <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Location is off, so distances are measured from the centre of the Strip. Everything else works exactly the same — waits, rake, promos, tournaments.</span>
+          <div style="display:flex;gap:9px;flex-wrap:wrap">
+            <div onClick="{{ onPick }}" style="height:44px;padding:0 14px;border-radius:11px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">SET MY LOCATION</div>
+            <div onClick="{{ onRetry }}" style="height:44px;padding:0 14px;border-radius:11px;border:1px solid var(--pm-line-2);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-1)" style-hover="border-color:var(--pm-line-3);color:var(--pm-ink-2)">TRY LOCATION AGAIN</div>
+          </div>
+        </div>
+        <div style="padding:20px 18px 0;display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ fallbackRooms }}" as="r" hint-placeholder-count="4">
+            <div style="border-radius:15px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);padding:13px 14px;display:flex;align-items:center;gap:12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                <span style="font:400 18px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ r.name }}</span>
+                <span style="font:400 11px/1.25 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ r.meta }}</span>
+              </div>
+              <span style="flex:none;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2);text-align:right">{{ r.from }}</span>
+            </div>
+          </sc-for>
+          <span style="font:400 10.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-2);text-wrap:pretty">We won't ask again. If you change your mind, it's under ME → where you're measuring from.</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPicker }}">
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div style="padding:58px 18px 13px;background:var(--pm-head);border-bottom:1px solid var(--pm-line-1);display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div onClick="{{ onBack }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 17px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-1)">&#8249;</div>
+            <span style="flex:1;font:600 13px/1.2 Archivo,sans-serif;color:var(--pm-ink)">Where are you?</span>
+          </div>
+          <div style="height:46px;border-radius:12px;border:1px solid var(--pm-line-2);background:var(--pm-fill-1);display:flex;align-items:center;padding:0 13px;gap:9px">
+            <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&#9906;</span>
+            <span style="flex:1;font:400 12.5px/1 Archivo,sans-serif;color:var(--pm-dim-2)">Search hotels and casinos</span>
+          </div>
+        </div>
+        <div style="padding:18px 18px 0;display:flex;flex-direction:column;gap:9px">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-dim-1)">COMMON STARTING POINTS</span>
+          <sc-for list="{{ places }}" as="pl" hint-placeholder-count="6">
+            <div onClick="{{ pl.onClick }}" style="min-height:52px;padding:11px 13px;border-radius:12px;background:{{ pl.bg }};border:1px solid {{ pl.line }};display:flex;align-items:center;gap:11px;cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                <span style="font:500 13px/1.2 Archivo,sans-serif;color:var(--pm-ink-2)">{{ pl.name }}</span>
+                <span style="font:400 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ pl.area }}</span>
+              </div>
+              <sc-if value="{{ pl.chosen }}">
+                <span style="flex:none;font:600 12px/1 'IBM Plex Mono',monospace;color:var(--pm-brass-2)">&#10003;</span>
+              </sc-if>
+            </div>
+          </sc-for>
+          <span style="font:400 10.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-2);padding-top:4px;text-wrap:pretty">Stays on this device. Change it any time under ME.</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOffline }}">
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div style="padding:58px 18px 12px;background:var(--pm-head);border-bottom:1px solid var(--pm-line-1);display:flex;flex-direction:column;gap:11px">
+          <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:11px;background:rgba(217,162,63,0.09);border:1px solid rgba(217,162,63,0.34)">
+            <span style="flex:none;width:6px;height:6px;border-radius:50%;background:var(--pm-caution);animation:pmSweep 2.2s ease-in-out infinite"></span>
+            <span style="flex:1;min-width:0;font:500 11px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.03em;color:var(--pm-ink-3)">Offline · last synced 20m ago</span>
+            <div onClick="{{ onRetry }}" style="flex:none;height:34px;padding:0 10px;border-radius:9px;border:1px solid rgba(217,162,63,0.4);display:flex;align-items:center;cursor:pointer;font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-caution)">RETRY</div>
+          </div>
+        </div>
+        <div style="padding:20px 18px 0;display:flex;flex-direction:column;gap:13px">
+          <h1 style="margin:0;font:400 31px/1 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink)">Working from cache</h1>
+          <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Casino basements eat signal. Everything below is what we had 20 minutes ago — rooms, rake, hours and tournament schedules are still accurate. Live waits are not, so they're held back rather than shown stale.</span>
+        </div>
+        <div style="padding:18px 18px 0;display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ cachedRooms }}" as="r" hint-placeholder-count="3">
+            <div style="border-radius:15px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);padding:13px 14px;display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                  <span style="font:400 18px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ r.name }}</span>
+                  <span style="font:400 11px/1.25 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ r.meta }}</span>
+                </div>
+                <span style="flex:none;font:500 15px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ r.dist }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;border:1px dashed var(--pm-src-empty-line)">
+                <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1)">LIVE WAIT</span>
+                <span style="flex:1;min-width:0;font:400 11px/1.3 Archivo,sans-serif;color:var(--pm-dim-1)">Held back while offline — last seen {{ r.lastSeen }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isGone }}">
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div style="padding:58px 18px 13px;background:var(--pm-head);border-bottom:1px solid var(--pm-line-1);display:flex;align-items:center;gap:10px">
+          <div onClick="{{ onBack }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 17px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-1)">&#8249;</div>
+          <span style="flex:1;font:600 13px/1.2 Archivo,sans-serif;color:var(--pm-ink)">Room not found</span>
+        </div>
+        <div style="padding:26px 18px 0;display:flex;flex-direction:column;gap:14px">
+          <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-caution)">CLOSED · MARCH 30, 2026</span>
+          <h1 style="margin:0;font:400 33px/1.02 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink);text-wrap:pretty">Resorts World's poker room is gone</h1>
+          <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">It closed on 30 March 2026 and hasn't reopened. We keep the page so links from search don't dead-end — and because the closure itself is worth knowing before you walk over.</span>
+        </div>
+        <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:11px">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-brass-3)">NEAREST OPEN ROOMS INSTEAD</span>
+          <sc-for list="{{ nearbyRooms }}" as="r" hint-placeholder-count="3">
+            <div onClick="{{ r.onClick }}" style="border-radius:15px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                <span style="font:400 18px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ r.name }}</span>
+                <span style="font:400 11px/1.25 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ r.meta }}</span>
+              </div>
+              <span style="flex:none;font:500 14px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ r.dist }}</span>
+              <span style="flex:none;font:400 15px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&#8250;</span>
+            </div>
+          </sc-for>
+          <div onClick="{{ onBack }}" style="height:50px;margin-top:4px;border-radius:13px;display:flex;align-items:center;justify-content:center;border:1px solid var(--pm-line-2);cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+            <span style="font:600 11px/1 Archivo,sans-serif;letter-spacing:0.09em;color:var(--pm-ink-2)">ALL 17 OPEN ROOMS</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showSystemDialog }}">
+      <div style="position:absolute;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:26px;background:var(--pm-scrim);animation:pmFade .18s ease both">
+        <div style="width:100%;max-width:290px;border-radius:16px;background:#F3F1EA;box-shadow:0 26px 60px -14px rgba(0,0,0,0.9);overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,Archivo,sans-serif">
+          <div style="padding:20px 18px 16px;display:flex;flex-direction:column;gap:9px;text-align:center">
+            <span style="font:600 15px/1.3 -apple-system,Archivo,sans-serif;color:#0B0E0A">Allow “Poker Map” to use your location?</span>
+            <span style="font:400 12.5px/1.4 -apple-system,Archivo,sans-serif;color:rgba(11,14,10,0.62)">Your location is used to sort poker rooms by distance.</span>
+          </div>
+          <div style="display:flex;border-top:1px solid rgba(11,14,10,0.12)">
+            <div onClick="{{ onDeny }}" style="flex:1;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-right:1px solid rgba(11,14,10,0.12);font:400 14px/1 -apple-system,Archivo,sans-serif;color:#0A63D6">Don't allow</div>
+            <div onClick="{{ onGrant }}" style="flex:1;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:600 14px/1 -apple-system,Archivo,sans-serif;color:#0A63D6">Allow once</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isGranted }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px 26px">
+        <span style="width:56px;height:56px;border-radius:50%;background:linear-gradient(180deg,#E2BE6C,#C89B3D);display:flex;align-items:center;justify-content:center;font:600 24px/1 'IBM Plex Mono',monospace;color:#17130A;box-shadow:0 0 0 7px rgba(201,162,74,0.14)">&#10003;</span>
+        <span style="font:400 27px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">ARIA is 0.2 mi away</span>
+        <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:260px;text-wrap:pretty">Location on. Loading the 17 open rooms nearest you — this is where the app hands off to Rooms near me.</span>
+        <div onClick="{{ onReset }}" style="height:44px;padding:0 15px;border-radius:11px;border:1px solid var(--pm-line-2);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-1)">REPLAY FIRST RUN</div>
+      </div>
+    </sc-if>
+  </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:1090},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;prompt&quot;,&quot;granted&quot;,&quot;denied&quot;,&quot;picker&quot;,&quot;offline&quot;,&quot;gone&quot;],&quot;default&quot;:&quot;prompt&quot;,&quot;tsType&quot;:&quot;'prompt' | 'granted' | 'denied' | 'picker' | 'offline' | 'gone'&quot;,&quot;section&quot;:&quot;State&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { view: null, dialog: false, place: 0 };
+
+  TABS = [
+    { id: 'prompt', label: 'FIRST RUN' },
+    { id: 'granted', label: 'GRANTED' },
+    { id: 'denied', label: 'DENIED · USABLE' },
+    { id: 'picker', label: 'SET LOCATION' },
+    { id: 'offline', label: 'OFFLINE' },
+    { id: 'gone', label: 'ROOM CLOSED · 404' },
+  ];
+
+  BLURB = {
+    prompt: 'The pre-prompt. It states what location buys the user and what we never do with it, before the browser dialog appears — a cold permission ask gets denied, and "rooms near me" is dead without the grant. Two escape hatches sit under the primary action so nobody feels cornered.',
+    granted: 'What a grant looks like: an immediate, concrete payoff (the nearest room and its distance) rather than a spinner, then hand-off to Rooms near me.',
+    denied: 'The state most products skip. Location refused, app fully usable: distances measured from the centre of the Strip, a way to set a location by hand, one retry — and an explicit promise not to nag.',
+    picker: 'Manual location. Also reached from ME → where you\'re measuring from, and used on desktop where there is no useful GPS fix.',
+    offline: 'PWA in a casino basement. Cached room facts still render; live waits are withheld rather than shown stale, with an honest last-synced line and a retry.',
+    gone: 'A room closes but Google keeps linking its URL for months. The page explains the closure, dates it, and routes to the nearest open rooms.',
+  };
+
+  PROMISES = [
+    { mark: '✓', text: 'Sorts every room by how far you actually are — the whole point of the app.', ok: true },
+    { mark: '✓', text: 'Shows what is walkable from where you stand right now, not from the Strip in general.', ok: true },
+    { mark: '×', text: 'No account, no tracking, no location history, nothing kept on our servers.', ok: false },
+  ];
+
+  STRIP_ROOMS = [
+    { name: 'Bellagio', meta: '37 tables · $2/5 · $5/10 · high limit', from: 'CENTRE STRIP' },
+    { name: 'ARIA', meta: '24 tables · $1/3 · $2/5 · PLO', from: '0.5 MI SOUTH' },
+    { name: 'Horseshoe', meta: '18 tables · $1/2 · $1/3 · daily tourneys', from: '0.3 MI NORTH' },
+    { name: 'Venetian', meta: '50 tables · largest room on the Strip', from: '0.9 MI NORTH' },
+  ];
+
+  PLACES = [
+    { name: 'The Cosmopolitan', area: 'CENTRE STRIP' },
+    { name: 'ARIA · CityCenter', area: 'CENTRE STRIP' },
+    { name: 'Venetian · Palazzo', area: 'NORTH STRIP' },
+    { name: 'Golden Nugget · Fremont St', area: 'DOWNTOWN' },
+    { name: 'Red Rock · Summerlin', area: 'WEST VALLEY' },
+    { name: 'Harry Reid Airport · T1', area: 'AIRPORT' },
+  ];
+
+  CACHED = [
+    { name: 'ARIA', meta: '24 tables · 10% to $5 · open 24h', dist: '0.2', lastSeen: '3–5 waiting, 26m ago' },
+    { name: 'Bellagio', meta: '37 tables · 10% to $4 · open 24h', dist: '0.4', lastSeen: '6–9 waiting, 32m ago' },
+    { name: 'Horseshoe', meta: '18 tables · 10% to $5 · open 24h', dist: '0.6', lastSeen: 'no reports' },
+  ];
+
+  NEARBY = [
+    { name: 'Wynn/Encore', meta: '52 tables · $1/3 · $2/5 · PLO', dist: '0.4' },
+    { name: 'Venetian', meta: '50 tables · $1/2 · $2/5 · mixed', dist: '0.7' },
+    { name: 'Westgate', meta: '7 tables · $1/2 · $1/3', dist: '1.1' },
+  ];
+
+  view() { return this.state.view || this.props.state || 'prompt'; }
+
+  renderVals() {
+    const v = this.view();
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: this.props.theme === 'light' ? 'light' : 'dark',
+      screenLabel: (this.TABS.filter(t => t.id === v)[0] || this.TABS[0]).label,
+      tabs: this.TABS.map(t => ({
+        label: t.label, active: v === t.id, inactive: v !== t.id,
+        onClick: () => this.setState({ view: t.id, dialog: false }),
+      })),
+      blurb: this.BLURB[v],
+      isPrompt: v === 'prompt',
+      isGranted: v === 'granted',
+      isDenied: v === 'denied',
+      isPicker: v === 'picker',
+      isOffline: v === 'offline',
+      isGone: v === 'gone',
+      promises: this.PROMISES.map(p => ({
+        mark: p.mark, text: p.text,
+        dotBg: p.ok ? 'rgba(78,203,147,0.16)' : 'rgba(237,234,224,0.08)',
+        dotInk: p.ok ? 'var(--pm-live)' : 'var(--pm-dim-1)',
+      })),
+      showSystemDialog: this.state.dialog,
+      onAllow: () => this.setState({ dialog: true }),
+      onGrant: () => this.setState({ dialog: false, view: 'granted' }),
+      onDeny: () => this.setState({ dialog: false, view: 'denied' }),
+      onSkip: () => this.setState({ view: 'denied' }),
+      onPick: () => this.setState({ view: 'picker' }),
+      onRetry: () => this.setState({ dialog: true, view: 'prompt' }),
+      onBack: () => this.setState({ view: 'denied' }),
+      onReset: () => this.setState({ view: 'prompt', dialog: false }),
+      fallbackRooms: this.STRIP_ROOMS,
+      places: this.PLACES.map((p, i) => ({
+        name: p.name, area: p.area, chosen: this.state.place === i,
+        bg: this.state.place === i ? 'rgba(201,162,74,0.1)' : 'var(--pm-fill-1)',
+        line: this.state.place === i ? 'var(--pm-brass)' : 'var(--pm-line-1)',
+        onClick: () => this.setState({ place: i }),
+      })),
+      cachedRooms: this.CACHED,
+      nearbyRooms: this.NEARBY.map(r => Object.assign({}, r, { onClick: () => this.setState({ view: 'denied' }) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing:border-box }
+  html, body { margin:0; height:100%; background:#0C0E11; font-family:Archivo,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#A98CE8; text-decoration:none; border-bottom:1px solid rgba(169,140,232,.4); }
+  a:hover { color:#C4AEF5; }
+  ::-webkit-scrollbar { width:10px; height:10px }
+  ::-webkit-scrollbar-thumb { background:rgba(242,244,246,.14); border-radius:6px }
+  @keyframes knockR1 { 0% { transform:scale(.3); opacity:0 } 5% { opacity:.9 } 28% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockR2 { 0%, 17% { transform:scale(.3); opacity:0 } 22% { opacity:.9 } 46% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockTap { 0%, 100% { transform:translateY(0) } 4% { transform:translateY(2px) } 10% { transform:translateY(0) } 21% { transform:translateY(2px) } 27% { transform:translateY(0) } }
+  .knock .kr { opacity:0 }
+  .knock.knocking .kr1 { animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) 1 both }
+  .knock.knocking .kr2 { animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) 1 both }
+  .knock.knocking .kt { animation:knockTap 3.4s ease-in-out 1 both }
+  @media (prefers-reduced-motion: reduce) { .kr, .kt { animation:none !important } .kr1 { opacity:.62 !important } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#0C0E11;display:flex;flex-direction:column">
+
+  <div style="height:64px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#14171B;border-bottom:1px solid rgba(242,244,246,.12);position:sticky;top:0;z-index:40">
+    <div style="display:flex;align-items:center;gap:26px;min-width:0;flex:0 1 auto">
+      <div class="knock" ref="{{ knockRef }}" onMouseEnter="{{ replayKnock }}" style="display:flex;align-items:center;gap:11px;min-height:44px;cursor:pointer">
+        <svg viewBox="0 0 120 120" width="30" height="30" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26"></ellipse><ellipse class="kr kr1" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><ellipse class="kr kr2" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><g class="kt" style="transform-box:fill-box;transform-origin:center"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg>
+        <span style="font:400 21px/1 'Instrument Serif',serif;color:#F2F4F6;white-space:nowrap">Check It Down</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:2px">
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">MAP</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">JUST THE FACTS</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;border-radius:4px;background:rgba(94,58,147,.24);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8;cursor:pointer;white-space:nowrap">TOURNAMENTS</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">PROMOS</span>
+      </div>
+    </div>
+    <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6);white-space:nowrap">{{ statusLine }}</span>
+  </div>
+
+  <div style="max-width:1240px;width:100%;margin:0 auto;padding:30px 20px 60px;display:flex;flex-direction:column;gap:20px">
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h1 style="margin:0;font:400 44px/1 'Instrument Serif',serif;color:#F2F4F6">Tournaments</h1>
+        <span style="font:400 14px/1.5 Archivo,sans-serif;color:rgba(242,244,246,.72);max-width:680px">Every daily and series event in the valley, with the buy-in split out so you can see what the house takes. {{ sortNote }}</span>
+      </div>
+      <span style="font:500 11px/1.5 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.58);text-align:right;white-space:pre-line">{{ freshLine }}</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 15px;background:rgba(242,244,246,.04);border-left:2px solid rgba(242,244,246,.28);flex-wrap:wrap">
+      <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.58);white-space:nowrap">HOW WE READ THE BUY-IN</span>
+      <span style="font:400 12.5px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.82);max-width:820px">Fee % is the house's cut as a share of the <strong style="font-weight:600;color:#F2F4F6">total</strong> buy-in — a $200 event with a $30 fee is 15%. Measured against the prize pool instead it would read 17.6%; we state the convention because both are used in the wild.</span>
+    </div>
+
+    <sc-if value="{{ flatBanner }}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 15px;background:rgba(94,58,147,.16);border:1px solid rgba(169,140,232,.35);flex-wrap:wrap">
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.86)">{{ flatBanner }}</span>
+        <span onClick="{{ backToTime }}" style="padding:11px 14px;border:1px solid rgba(242,244,246,.22);font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.82);cursor:pointer;white-space:nowrap" style-hover="border-color:rgba(242,244,246,.45);color:#F2F4F6">BACK TO TIME</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ excludedLine }}">
+      <div style="padding:12px 14px;background:rgba(242,244,246,.04);border-left:2px solid rgba(242,244,246,.28);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <span style="font:500 12.5px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.82)">{{ excludedLine }}</span>
+        <span style="font:500 11px/1 Archivo,sans-serif;color:rgba(242,244,246,.6);border-bottom:1px solid rgba(242,244,246,.3);cursor:pointer" style-hover="color:#F2F4F6">Report a correction</span>
+      </div>
+    </sc-if>
+
+    <div style="border:1px solid rgba(242,244,246,.12);background:#14171B">
+      <div style="position:sticky;top:64px;z-index:20;background:#191D22;border-bottom:1px solid rgba(242,244,246,.16);display:grid;grid-template-columns:92px minmax(0,1.9fr) minmax(0,.92fr) minmax(0,1.06fr) minmax(0,.66fr) minmax(0,.92fr) minmax(0,1fr) minmax(0,1.12fr);gap:12px;padding:12px 16px">
+        <span style="font:600 9.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#4FBFAE;white-space:nowrap">{{ rankHeader }}</span>
+        <span style="font:600 9.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">EVENT</span>
+        <sc-for list="{{ cols }}" as="c" hint-placeholder-count="5">
+          <span onClick="{{ c.sort }}" style="{{ c.style }}" style-hover="color:#F2F4F6">{{ c.label }}</span>
+        </sc-for>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font:600 9.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">OUR READ</span>
+          <span style="font:500 8.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58)">EDITORIAL · NOT SORTABLE</span>
+        </div>
+      </div>
+
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="17">
+        <div>
+          <sc-if value="{{ r.groupLabel }}">
+            <div style="position:sticky;top:110px;z-index:15;display:flex;align-items:baseline;gap:12px;padding:9px 16px;background:#10141A;border-top:1px solid rgba(242,244,246,.1);border-bottom:1px solid rgba(242,244,246,.1)">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#A98CE8">{{ r.groupLabel }}</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58);font-variant-numeric:tabular-nums">{{ r.groupCount }}</span>
+            </div>
+          </sc-if>
+          <div onClick="{{ r.open }}" style="{{ r.rowStyle }}" style-hover="background:rgba(94,58,147,.12)">
+            <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInk }}">{{ r.rank }}</span>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+              <div style="display:flex;align-items:baseline;gap:9px;min-width:0;flex-wrap:wrap">
+                <span style="font:400 17px/1.15 'Instrument Serif',serif;color:#F2F4F6">{{ r.name }}</span>
+                <sc-if value="{{ r.seriesTag }}">
+                  <span style="padding:3px 6px;border:1px solid rgba(169,140,232,.45);font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#A98CE8;white-space:nowrap">{{ r.seriesTag }}</span>
+                </sc-if>
+              </div>
+              <span style="font:500 10.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.08em;color:rgba(242,244,246,.58)">{{ r.roomLine }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font:600 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.startInk }}">{{ r.start }}</span>
+              <span style="font:500 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:.06em;color:rgba(242,244,246,.58)">{{ r.startSub }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font:600 13.5px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.buyInk }}">{{ r.buy }}</span>
+              <span style="font:500 10px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.58)">{{ r.buySub }}</span>
+            </div>
+            <span style="font:600 13.5px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.feeInk }};align-self:flex-start">{{ r.fee }}</span>
+            <span style="font:500 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.gtdInk }};border-bottom:{{ r.gtdRule }};align-self:flex-start">{{ r.gtd }}</span>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font:500 12px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.paceInk }}">{{ r.pace }}</span>
+              <span style="font:500 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:.06em;color:rgba(242,244,246,.58)">{{ r.paceSub }}</span>
+            </div>
+            <span style="font:500 11.5px/1.35 Archivo,sans-serif;color:rgba(242,244,246,.84)">{{ r.read }}</span>
+          </div>
+        </div>
+      </sc-for>
+
+      <div style="padding:13px 16px;display:flex;flex-direction:column;gap:7px">
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">{{ countLine }}</span>
+        <span style="font:400 11.5px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.6);max-width:900px">Buy-ins, guarantees and structures are room-published and carry their own verified date. <strong style="font-weight:600;color:rgba(242,244,246,.84)">Our read is editorial</strong> — our own judgement from watching these events run and from what players tell us, not a figure any room publishes. It is not ranked or sorted, because scoring a judgement would give it a precision it has not earned.</span>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ modal }}">
+    <div onClick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(6,8,10,.72);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:56px 20px;overflow:auto">
+      <div onClick="{{ stop }}" style="width:100%;max-width:820px;background:#14171B;border:1px solid rgba(242,244,246,.16);display:flex;flex-direction:column">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:22px 24px;border-bottom:1px solid rgba(242,244,246,.12)">
+          <div style="display:flex;flex-direction:column;gap:7px;min-width:0">
+            <h2 style="margin:0;font:400 30px/1.1 'Instrument Serif',serif;color:#F2F4F6">{{ modal.name }}</h2>
+            <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.6)">{{ modal.roomLine }}</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58)">{{ modal.route }}</span>
+          </div>
+          <span onClick="{{ closeModal }}" style="flex:none;width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(242,244,246,.2);font:400 17px/1 Archivo,sans-serif;color:rgba(242,244,246,.72);cursor:pointer" style-hover="color:#F2F4F6;border-color:rgba(242,244,246,.45)">&times;</span>
+        </div>
+        <div style="padding:20px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(242,244,246,.1)">
+          <sc-for list="{{ modal.facts }}" as="f" hint-placeholder-count="8">
+            <div style="background:#14171B;padding:13px 14px;display:flex;flex-direction:column;gap:5px">
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.58)">{{ f.k }}</span>
+              <span style="font:600 14px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ f.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:0 24px 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="padding:13px 15px;background:rgba(242,244,246,.04);border-left:2px solid rgba(242,244,246,.28);display:flex;flex-direction:column;gap:5px">
+            <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.58)">STRUCTURE</span>
+            <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:rgba(242,244,246,.84)">{{ modal.structure }}</span>
+            <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:rgba(242,244,246,.6);border-bottom:1px solid rgba(242,244,246,.3);cursor:pointer;align-self:flex-start" style-hover="color:#F2F4F6">{{ modal.structureLink }}</span>
+          </div>
+          <div style="padding:13px 15px;background:rgba(242,244,246,.04);border-left:2px solid rgba(242,244,246,.28);display:flex;flex-direction:column;gap:5px">
+            <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.58)">OUR READ · EDITORIAL</span>
+            <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:rgba(242,244,246,.84)">{{ modal.readLine }}</span>
+          </div>
+        </div>
+        <div style="padding:16px 24px;border-top:1px solid rgba(242,244,246,.12);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span onClick="{{ addCal }}" style="padding:14px 20px;background:#5E3A93;border-top:1px solid #A98CE8;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F2F4F6;cursor:pointer;white-space:nowrap" style-hover="filter:brightness(1.12)">ADD TO CALENDAR</span>
+          <span onClick="{{ remindMe }}" style="padding:14px 18px;border:1px solid rgba(242,244,246,.22);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.82);cursor:pointer;white-space:nowrap" style-hover="border-color:rgba(242,244,246,.45);color:#F2F4F6">REMIND ME &middot; ON THIS DEVICE</span>
+          <span onClick="{{ openRoom }}" style="padding:14px 18px;border:1px solid rgba(242,244,246,.22);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.82);cursor:pointer;white-space:nowrap" style-hover="border-color:rgba(242,244,246,.45);color:#F2F4F6">OPEN ROOM</span>
+          <span style="margin-left:auto;font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58)">{{ modal.verLine }}</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);padding:12px 18px;background:#1D2128;border:1px solid rgba(169,140,232,.4);z-index:80;font:500 12px/1 Archivo,sans-serif;color:#F2F4F6">{{ toast }}</div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:900},&quot;sortBy&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;time&quot;,&quot;buy&quot;,&quot;fee&quot;,&quot;gtd&quot;,&quot;pace&quot;],&quot;default&quot;:&quot;time&quot;,&quot;tsType&quot;:&quot;'time' | 'buy' | 'fee' | 'gtd' | 'pace'&quot;,&quot;section&quot;:&quot;Demo&quot;}}">
+/* Every sortable column is backed by a number. Strings — room name, our read,
+   the structure note — are display only and are not offered as sorts. */
+const EV = [
+  { slug:'venetian-deepstack-noon', name:'Deepstack', room:'Venetian', area:'STRIP', start:-38, lateReg:42,
+    entry:135, fee:15, gtd:15000, stack:20000, level:20, read:'Typically runs', verDays:1,
+    structure:'20,000 stack, 20-minute levels, one re-entry per flight. Late reg closes at the end of level 9.', pdf:2 },
+  { slug:'aria-1pm', name:'Daily $125', room:'ARIA', area:'STRIP', start:-14, lateReg:66,
+    entry:110, fee:15, gtd:8000, stack:15000, level:20, read:'Typically runs', verDays:1,
+    structure:'15,000 stack, 20-minute levels, unlimited re-entry through level 8.', pdf:3 },
+  { slug:'orleans-noon', name:'Noon Daily', room:'Orleans', area:'OFF-STRIP', start:-6, lateReg:74,
+    entry:70, fee:10, gtd:5000, stack:12000, level:20, read:'Typically runs', verDays:2,
+    structure:'12,000 stack, 20-minute levels, one re-entry.', pdf:2 },
+  { slug:'wsop-paris-mystery', name:'Mystery Bounty', room:'WSOP\u00b7Paris', area:'STRIP', start:22, lateReg:0, series:'WSOP',
+    entry:1000, fee:100, gtd:1000000, stack:30000, level:40, read:'Series only \u2014 runs late May to mid July', verDays:1,
+    structure:'30,000 stack, 40-minute levels, two starting flights, bounties drawn at the end of day 1.', pdf:1, full:true },
+  { slug:'bellagio-7pm', name:'Evening Deepstack', room:'Bellagio', area:'STRIP', start:80, lateReg:0,
+    entry:135, fee:15, gtd:10000, gtdEst:true, stack:20000, level:25, read:'Typically runs', verDays:2,
+    structure:'20,000 stack, 25-minute levels, one re-entry through level 6.', pdf:4 },
+  { slug:'south-point-7pm', name:'Nightly $70', room:'South Point', area:'LOCALS', start:80, lateReg:0,
+    entry:60, fee:10, gtd:3000, stack:10000, level:20, read:'Typically runs', verDays:3,
+    structure:'10,000 stack, 20-minute levels, one re-entry.', pdf:3 },
+  { slug:'red-rock-7pm', name:'Nightly Turbo', room:'Red Rock', area:'LOCALS', start:80, lateReg:0,
+    entry:70, fee:10, gtd:2500, stack:8000, level:12, read:'Often cancels below 20 entries', verDays:3,
+    structure:'8,000 stack, 12-minute levels, one re-entry.', pdf:5 },
+  { slug:'westgate-7pm', name:'Nightly $65', room:'Westgate', area:'OFF-STRIP', start:80, lateReg:0,
+    entry:55, fee:10, gtd:null, stack:10000, level:20, read:'Often cancels midweek', verDays:3,
+    structure:'10,000 stack, 20-minute levels, unlimited re-entry.', pdf:6 },
+  { slug:'boulder-7pm', name:'Nightly $50', room:'Boulder Station', area:'LOCALS', start:80, lateReg:0,
+    entry:40, fee:10, gtd:null, stack:8000, level:15, read:'Often cancels below 18 entries', verDays:5,
+    structure:'8,000 stack, 15-minute levels, one re-entry.', pdf:7 },
+  { slug:'santa-fe-7pm', name:'Nightly $60', room:'Santa Fe Station', area:'LOCALS', start:80, lateReg:0,
+    entry:50, fee:10, gtd:null, stack:9000, level:15, read:'Typically runs', verDays:5,
+    structure:'9,000 stack, 15-minute levels, one re-entry.', pdf:6 },
+  { slug:'gn-9pm', name:'Late Night $70', room:'Golden Nugget', area:'DOWNTOWN', start:200, lateReg:0,
+    entry:60, fee:10, gtd:2000, stack:10000, level:15, read:'Typically runs', verDays:3,
+    structure:'10,000 stack, 15-minute levels, unlimited re-entry through level 6.', pdf:3 },
+  { slug:'mgm-11am', name:'Morning $80', room:'MGM Grand', area:'STRIP', start:920, lateReg:0,
+    entry:70, fee:10, gtd:4000, stack:12000, level:20, read:'Typically runs', verDays:3,
+    structure:'12,000 stack, 20-minute levels, one re-entry.', pdf:4 },
+  { slug:'wynn-1110', name:'Deepstack $150', room:'Wynn/Encore', area:'STRIP', start:930, lateReg:0,
+    entry:130, fee:20, gtd:20000, stack:20000, level:30, read:'Typically runs', verDays:2,
+    structure:'20,000 stack, 30-minute levels, one re-entry through level 9.', pdf:2 },
+  { slug:'caesars-noon', name:'Noon $100', room:'Caesars Palace', area:'STRIP', start:980, lateReg:0,
+    entry:85, fee:15, gtd:3000, stack:12000, level:20, read:'Often cancels off-season', verDays:2,
+    structure:'12,000 stack, 20-minute levels, one re-entry.', pdf:5 },
+  { slug:'horseshoe-noon', name:'Noon $60', room:'Horseshoe', area:'STRIP', start:980, lateReg:0,
+    entry:50, fee:10, gtd:null, stack:10000, level:20, read:'Typically runs', verDays:3,
+    structure:'10,000 stack, 20-minute levels, one re-entry.', pdf:4 },
+  { slug:'mandalay-11am', name:'Morning $80', room:'Mandalay Bay', area:'STRIP', start:2360, lateReg:0,
+    entry:70, fee:10, gtd:2500, stack:12000, level:20, read:'Often cancels below 25 entries', verDays:4,
+    structure:'12,000 stack, 20-minute levels, one re-entry.', pdf:6 },
+  { slug:'gvr-7pm', name:'Nightly $70', room:'Green Valley Ranch', area:'LOCALS', start:2480, lateReg:0,
+    entry:60, fee:10, gtd:2000, stack:10000, level:20, read:'Typically runs', verDays:4,
+    structure:'10,000 stack, 20-minute levels, one re-entry.', pdf:5 },
+  { slug:'skyline-6pm', name:'Nightly $45', room:'Skyline', area:'LOCALS', start:2420, lateReg:0,
+    entry:35, fee:10, gtd:null, stack:8000, level:15, read:'Often cancels \u2014 small room, four tables', verDays:6,
+    structure:'8,000 stack, 15-minute levels, one re-entry.', pdf:9 }
+];
+
+const NOW_MIN = 19 * 60 + 40;
+const total = e => e.entry + e.fee;
+const feePct = e => (e.fee / total(e)) * 100;
+const paceScore = e => e.stack * e.level / 60; /* chips per level-hour */
+const money = n => '$' + n.toLocaleString('en-US');
+const clock = m => {
+  const t = ((NOW_MIN + m) % 1440 + 1440) % 1440;
+  const h = Math.floor(t / 60), mm = t % 60;
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return h12 + ':' + String(mm).padStart(2, '0') + (h < 12 ? ' AM' : ' PM');
+};
+const groupOf = e => e.start < 0 ? 'RUNNING NOW' : e.start < 300 ? 'TONIGHT' : e.start < 1740 ? 'TOMORROW' : 'LATER THIS WEEK';
+const paceName = e => { const p = paceScore(e); return p >= 6000 ? 'DEEP' : p <= 2500 ? 'TURBO' : 'STANDARD'; };
+const verLabel = d => d === null ? 'UNVERIFIED' : d === 1 ? 'YESTERDAY' : d + ' DAYS AGO';
+
+class Component extends DCLogic {
+  state = { sort: 'time', open: null, toast: '' };
+
+  componentDidMount() {
+    const q = new URLSearchParams(location.search);
+    const slug = q.get('event');
+    if (slug && EV.some(e => e.slug === slug)) this.setState({ open: slug });
+    this.knock = React.createRef();
+    if (this.knock.current) this.knock.current.classList.add('knocking');
+  }
+
+  flash(t) { clearTimeout(this._t); this.setState({ toast: t }); this._t = setTimeout(() => this.setState({ toast: '' }), 2200); }
+
+  setSort(s) { this.setState({ sort: s }); }
+
+  ranked(sort) {
+    /* Guarantees we have not confirmed are shown but never allowed to win the column. */
+    const val = {
+      time: e => e.start, buy: e => total(e), fee: e => feePct(e),
+      gtd: e => -(e.gtd || 0), pace: e => -paceScore(e)
+    };
+    const f = val[sort] || val.time;
+    const out = e => sort === 'gtd' && (e.gtd === null || e.gtdEst);
+    const rankable = EV.filter(e => !out(e));
+    const rest = EV.filter(out);
+    const sorted = rankable.slice().sort((a, b) => f(a) - f(b) || a.start - b.start).concat(rest);
+    return sorted.map((e, i) => ({ ev: e, rank: out(e) ? null : i + 1 }));
+  }
+
+  renderVals() {
+    const sort = this.state.sort;
+    const grouped = sort === 'time';
+    const list = this.ranked(sort);
+    const counts = {};
+    EV.forEach(e => { const g = groupOf(e); counts[g] = (counts[g] || 0) + 1; });
+
+    let lastGroup = '';
+    const rows = list.map(entry => {
+      const e = entry.ev, lead = entry.rank === 1;
+      const g = groupOf(e);
+      const showGroup = grouped && g !== lastGroup;
+      if (showGroup) lastGroup = g;
+      const running = e.start < 0;
+      return {
+        groupLabel: showGroup ? g : '',
+        groupCount: showGroup ? counts[g] + (counts[g] === 1 ? ' EVENT' : ' EVENTS') : '',
+        rank: entry.rank === null ? '\u2014' : '#' + entry.rank,
+        rankInk: lead ? '#4FBFAE' : 'rgba(242,244,246,.72)',
+        name: e.name,
+        seriesTag: e.series || '',
+        roomLine: e.room + ' \u00b7 ' + e.area + ' \u00b7 VERIFIED ' + verLabel(e.verDays),
+        start: running ? clock(e.start) : clock(e.start),
+        startInk: sort === 'time' && lead ? '#4FBFAE' : 'rgba(242,244,246,.92)',
+        startSub: running ? (e.lateReg > 0 ? 'LATE REG ' + e.lateReg + 'M LEFT' : 'IN PROGRESS')
+          : (e.start < 90 ? 'IN ' + e.start + 'M'
+            : e.start < 300 ? 'IN ' + Math.round(e.start / 60 * 10) / 10 + 'H' : g),
+        buy: money(total(e)),
+        buyInk: sort === 'buy' && lead ? '#4FBFAE' : 'rgba(242,244,246,.92)',
+        buySub: money(e.entry) + ' + ' + money(e.fee),
+        fee: feePct(e).toFixed(1) + '%',
+        feeInk: sort === 'fee' && lead ? '#4FBFAE' : 'rgba(242,244,246,.92)',
+        gtd: e.gtd === null ? '\u2014' : (e.gtdEst ? '~' : '') + money(e.gtd),
+        gtdInk: e.gtd === null ? 'rgba(242,244,246,.58)' : (sort === 'gtd' && lead ? '#4FBFAE' : 'rgba(242,244,246,.84)'),
+        gtdRule: e.gtdEst ? '1px dotted rgba(242,244,246,.45)' : 'none',
+        pace: paceName(e),
+        paceInk: sort === 'pace' && lead ? '#4FBFAE' : 'rgba(242,244,246,.84)',
+        paceSub: e.stack.toLocaleString('en-US') + ' / ' + e.level + 'M',
+        read: e.read,
+        rowStyle: 'display:grid;grid-template-columns:92px minmax(0,1.9fr) minmax(0,.92fr) minmax(0,1.06fr) minmax(0,.66fr) minmax(0,.92fr) minmax(0,1fr) minmax(0,1.12fr);gap:12px;padding:14px 16px;align-items:center;cursor:pointer;border-bottom:1px solid rgba(242,244,246,.07)',
+        open: () => { this.setState({ open: e.slug }); }
+      };
+    });
+
+    const colDef = [
+      { key: 'time', label: 'START' }, { key: 'buy', label: 'BUY-IN' }, { key: 'fee', label: 'FEE %' },
+      { key: 'gtd', label: 'GUARANTEE' }, { key: 'pace', label: 'PACE' }
+    ];
+    const cols = colDef.map(c => ({
+      label: c.label + (sort === c.key ? ' \u2193' : ''),
+      style: 'font:600 9.5px/1.2 \'IBM Plex Mono\',monospace;letter-spacing:.14em;cursor:pointer;white-space:nowrap;color:'
+        + (sort === c.key ? '#F2F4F6' : 'rgba(242,244,246,.58)'),
+      sort: () => this.setSort(c.key)
+    }));
+
+    const rankHeads = { time: '# BY START', buy: '# BY BUY-IN', fee: '# BY FEE %', gtd: '# BY GUARANTEE', pace: '# BY PACE' };
+    const notes = {
+      time: 'Grouped by when they start \u2014 the default view.',
+      buy: 'Ranked by total buy-in, cheapest first, citywide.',
+      fee: 'Ranked by the house\u2019s share of the buy-in, lowest first \u2014 this screen\u2019s lowest rake.',
+      gtd: 'Ranked by advertised guarantee, largest first.',
+      pace: 'Ranked by starting stack against level length (chips per level-hour) \u2014 deepest structure first.'
+    };
+    const flatNames = { buy: 'total buy-in', fee: 'fee %', gtd: 'guarantee', pace: 'pace' };
+
+    const openEv = EV.filter(e => e.slug === this.state.open)[0];
+    const modal = !openEv ? null : {
+      name: openEv.name,
+      roomLine: openEv.room + ' \u00b7 ' + openEv.area + ' \u00b7 ' + clock(openEv.start) + (openEv.series ? ' \u00b7 ' + openEv.series : ''),
+      route: '/tournaments/' + openEv.slug,
+      facts: [
+        { k: 'BUY-IN', v: money(total(openEv)) },
+        { k: 'ENTRY + FEE', v: money(openEv.entry) + ' + ' + money(openEv.fee) },
+        { k: 'FEE % OF TOTAL', v: feePct(openEv).toFixed(1) + '%' },
+        { k: 'GUARANTEE', v: openEv.gtd === null ? 'None advertised' : (openEv.gtdEst ? '~' : '') + money(openEv.gtd) },
+        { k: 'STARTING STACK', v: openEv.stack.toLocaleString('en-US') },
+        { k: 'LEVEL LENGTH', v: openEv.level + ' min' },
+        { k: 'PACE', v: paceName(openEv) },
+        { k: 'LATE REG', v: openEv.start < 0 ? (openEv.lateReg > 0 ? openEv.lateReg + ' min left' : 'Closed') : 'Opens at start' }
+      ],
+      structure: openEv.structure,
+      structureLink: openEv.full
+        ? 'Full level-by-level structure below \u00b7 transcribed, verified ' + verLabel(openEv.pdf).toLowerCase()
+        : 'Room\u2019s published structure (PDF) \u2197 \u00b7 fetched ' + verLabel(openEv.pdf).toLowerCase(),
+      readLine: openEv.read + '. This is our own judgement from watching the event run and from what players tell us \u2014 not a figure the room publishes.',
+      verLine: 'VERIFIED ' + verLabel(openEv.verDays)
+    };
+
+    return {
+      rows, cols, modal,
+      rankHeader: rankHeads[sort],
+      sortNote: notes[sort],
+      statusLine: '18 EVENTS LISTED \u00b7 VERIFIED DAILY',
+      freshLine: 'SCHEDULES DAILY \u00b7 STRUCTURES WEEKLY\nLAST FULL SWEEP YESTERDAY',
+      flatBanner: grouped ? '' : 'Sorted by ' + flatNames[sort] + ' \u2014 time groups are flattened into one citywide ranking, so #1 is the best in the valley, not the best tonight.',
+      excludedLine: sort !== 'gtd' ? '' :
+        'Bellagio\u2019s Evening Deepstack advertises a guarantee we have not confirmed with the room, and five events advertise none at all \u2014 none of them can be ranked here.',
+      countLine: (grouped ? '18 EVENTS \u00b7 GROUPED BY START' : '18 EVENTS \u00b7 ONE CITYWIDE RANKING'),
+      toast: this.state.toast,
+      knockRef: (el) => { this.knockEl = el; if (el && !el.dataset.k) { el.dataset.k = '1'; el.classList.add('knocking'); } },
+      replayKnock: () => { const el = this.knockEl; if (!el) return; el.classList.remove('knocking'); void el.offsetWidth; el.classList.add('knocking'); },
+      backToTime: () => this.setSort('time'),
+      closeModal: () => this.setState({ open: null }),
+      stop: (e) => e.stopPropagation(),
+      addCal: () => this.flash('Added to your calendar \u2014 ' + (openEv ? openEv.name + ' at ' + openEv.room : '')),
+      remindMe: () => this.flash('Reminder set on this device only \u2014 it will not follow you to another browser.'),
+      openRoom: () => this.flash((openEv ? openEv.room : '') + ' \u00b7 opening room detail.')
+    };
+  }
+}
+
+</script>
+</body>
+</html>

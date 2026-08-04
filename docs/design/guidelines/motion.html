@@ -1,0 +1,16 @@
+<!-- @dsCard group="Motion" viewport="700x200" name="The knock" subtitle="Once on load, replayed on hover — never a loop" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:16px;background:var(--cid-ink-800);font-family:var(--cid-font-ui);color:var(--cid-text)}
+.stage{display:flex;align-items:center;gap:30px}
+.note{margin-top:18px;font:400 11px/1.5 var(--cid-font-ui);color:var(--cid-text-3);max-width:640px}
+</style></head><body>
+<div class="stage">
+<div class="knock knocking">
+<svg viewBox="0 0 120 120" width="76" height="76"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26"></ellipse><ellipse class="kr kr1" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><ellipse class="kr kr2" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><g class="kt" style="transform-box:fill-box;transform-origin:center"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px;font:500 10px/1.5 var(--cid-font-mono);letter-spacing:.1em;color:var(--cid-dim)">
+<span>KNOCK 3.4s &middot; SECOND RING AT 17%</span><span>EASE cubic-bezier(.2,.7,.3,1)</span><span>FAST .18s &middot; BASE .26s</span><span>REST RING .62 OPACITY</span></div>
+</div>
+<div class="note">Two knuckles, two rings. A permanently ticking logo competes with live data, so it fires once on arrival and again on hover. Under reduced motion the animation freezes with the static ring visible — never a bare pair of dots.</div>
+</body></html>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poker Map — 3D city view</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#0A0C0E; overflow:hidden;
+    font-family:'IBM Plex Mono', ui-monospace, monospace; -webkit-font-smoothing:antialiased; }
+  #stage { position:absolute; inset:0; overflow:hidden; perspective:820px; perspective-origin:50% 26%; }
+  #map { position:absolute; left:-14%; right:-14%; top:-18%; bottom:-22%;
+    transform-origin:50% 62%; transform:rotateX(60deg);
+    transition:transform .5s cubic-bezier(.4,0,.2,1); background:#0C0E11; }
+  #stage.flat #map { transform:rotateX(0deg); }
+  .leaflet-tile-pane { filter:invert(1) hue-rotate(212deg) saturate(.2) brightness(.95) contrast(1.06); }
+  .leaflet-container { background:#0C0E11; outline:none; }
+  #buildings { position:absolute; inset:0; z-index:250; pointer-events:none; }
+  #labels { position:absolute; inset:0; z-index:300; pointer-events:none; }
+  #veil { position:absolute; inset:0; pointer-events:none; z-index:340;
+    background:linear-gradient(180deg,rgba(10,12,14,.96) 0%,rgba(10,12,14,.42) 13%,rgba(10,12,14,0) 30%); }
+  #felt { position:absolute; inset:0; pointer-events:none; z-index:200;
+    background:radial-gradient(120% 80% at 50% 74%,rgba(94,58,147,.13) 0%,rgba(8,10,13,.3) 74%); }
+
+  .lbl { position:absolute; transform:translate(-50%,-100%); display:flex; flex-direction:column;
+    align-items:center; gap:5px; cursor:pointer; pointer-events:auto; will-change:left,top; }
+  .lbl .nm { padding:5px 8px; border-radius:7px; background:rgba(8,11,9,.86); backdrop-filter:blur(3px);
+    border:1px solid rgba(242,244,246,.12); font-family:Archivo,sans-serif; font-size:11px; font-weight:600;
+    color:#F2F4F6; white-space:nowrap; box-shadow:0 6px 16px -8px rgba(0,0,0,.9); }
+  .lbl .sub { font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:500; letter-spacing:.1em;
+    color:rgba(242,244,246,.5); }
+  .lbl .stem { width:1px; height:14px; background:linear-gradient(180deg,rgba(242,244,246,.5),rgba(242,244,246,0)); }
+  .lbl.sel .nm { background:linear-gradient(180deg,#A98CE8,#6E45AC); border-color:rgba(247,244,255,.4);
+    color:#F7F4FF; box-shadow:0 0 0 4px rgba(138,102,201,.16), 0 10px 22px -6px rgba(0,0,0,.85); }
+  .lbl.sel .sub { color:#A98CE8; }
+  .lbl.sel .stem { background:linear-gradient(180deg,rgba(169,140,232,.85),rgba(169,140,232,0)); height:18px; }
+  .lbl .hit { position:absolute; left:50%; top:0; width:64px; height:54px; transform:translate(-50%,-8px); }
+  .lbl .pin { display:none; width:32px; height:32px; border-radius:50%; background:rgba(16,22,18,.96);
+    border:1px solid rgba(242,244,246,.5); align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:600; font-variant-numeric:tabular-nums; color:#F4F1E8;
+    box-shadow:0 8px 16px -8px rgba(0,0,0,.9); }
+  .lbl.sel .pin { background:linear-gradient(180deg,#A98CE8,#6E45AC); border-color:rgba(247,244,255,.5);
+    color:#F7F4FF; box-shadow:0 0 0 4px rgba(138,102,201,.18), 0 10px 22px -6px rgba(0,0,0,.85); }
+  #stage.coarse .lbl { transform:translate(-50%,-50%); }
+  #stage.coarse .lbl .nm, #stage.coarse .lbl .sub, #stage.coarse .lbl .stem { display:none; }
+  #stage.coarse .lbl .pin { display:flex; }
+  #stage.coarse .lbl.cluster .pin { background:rgba(94,58,147,.92); border-color:rgba(169,140,232,.75);
+    color:#F7F4FF; box-shadow:0 0 0 5px rgba(94,58,147,.22), 0 8px 18px -6px rgba(0,0,0,.8); }
+  #stage.coarse .lbl.cluster.part .pin { background:rgba(20,23,27,.94); border-color:#A98CE8; color:#A98CE8;
+    box-shadow:0 0 0 5px rgba(94,58,147,.14), 0 8px 18px -6px rgba(0,0,0,.8); font-size:10px; letter-spacing:0; }
+  .lbl.out .pin { background:rgba(20,23,27,.7); border-color:rgba(242,244,246,.2); color:rgba(242,244,246,.45);
+    box-shadow:none; }
+  .lbl.out .nm { opacity:.42; }
+  #stage.coarse .lbl .hit { width:44px; height:44px; transform:translate(-50%,-6px); }
+  #you { position:absolute; z-index:290; transform:translate(-50%,-50%); pointer-events:none; }
+  #you i { display:block; width:13px; height:13px; border-radius:50%; background:#F2F4F6;
+    border:2.5px solid #0C0E11; box-shadow:0 0 0 1.5px rgba(242,244,246,.55), 0 0 16px rgba(242,244,246,.35); }
+
+  .ui { position:absolute; z-index:400; display:flex; }
+  #modes { left:11px; top:11px; gap:3px; padding:3px; border-radius:12px; background:rgba(10,13,11,.78);
+    border:1px solid rgba(242,244,246,.1); backdrop-filter:blur(8px); }
+  #modes button { height:38px; padding:0 12px; border:0; border-radius:9px; background:transparent;
+    font-family:inherit; font-size:9.5px; font-weight:500; letter-spacing:.14em; color:rgba(242,244,246,.42); cursor:pointer; }
+  #modes button.on { background:#1D2128; border:1px solid rgba(242,244,246,.09); color:#F2EFE6; font-weight:600; }
+  #zoom { right:11px; top:11px; flex-direction:column; gap:6px; }
+  #zoom button { width:44px; height:44px; border:1px solid rgba(242,244,246,.12); border-radius:12px;
+    background:rgba(10,13,11,.78); backdrop-filter:blur(8px); color:rgba(242,244,246,.72);
+    font-family:inherit; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  #zoom button:hover { border-color:rgba(138,102,201,.5); color:#8A66C9; }
+  #legend { left:11px; bottom:11px; z-index:400; font-size:8px; font-weight:500; letter-spacing:.2em;
+    color:rgba(242,244,246,.6); white-space:nowrap; background:rgba(8,11,9,.75); padding:4px 7px; border-radius:5px; }
+  #credit { right:11px; bottom:11px; z-index:400; font-size:7.5px; letter-spacing:.04em;
+    color:rgba(242,244,246,.42); background:rgba(8,11,9,.7); padding:3px 6px; border-radius:5px; }
+  .leaflet-control-attribution, .leaflet-control-zoom { display:none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="map"></div>
+  <div id="felt"></div>
+  <canvas id="buildings"></canvas>
+  <div id="labels"><div id="you"><i></i></div></div>
+  <div id="veil"></div>
+  <div class="ui" id="modes"><button id="b3d" class="on">3D</button><button id="bflat">FLAT</button></div>
+  <div class="ui" id="zoom"><button id="zin">&plus;</button><button id="zout">&minus;</button><button id="rec">&#9678;</button></div>
+  <div class="ui" id="legend">LAS VEGAS VALLEY · CLICK A ROOM</div>
+  <div class="ui" id="credit">&copy; OpenStreetMap contributors</div>
+</div>
+<script>
+var TILT = 60, PERSP = 820, EXAG = 1.0, HOME_Z = 11.6, HOME_C = [36.1205, -115.158];
+var HOME = [36.1096, -115.1739];
+
+/* Massing: each property is a set of volumes offset in metres from its real centre.
+   x = east, y = north, w/d = plan size, b = bearing, h = height (m),
+   shape: box (default) | round | pyramid, cap = roof inset factor for tapered towers. */
+var ROOMS = [
+  { id:1, name:'ARIA', area:'strip', lat:36.1072, lon:-115.1765, tables:24, dist:0.2, masses:[
+    { x:-34, y:6,   w:128, d:36, b:36,  h:183, shape:'round' },
+    { x:44,  y:22,  w:118, d:34, b:12,  h:172, shape:'round' },
+    { x:4,   y:-64, w:186, d:86, b:22,  h:26 } ] },
+  { id:2, name:'Bellagio', area:'strip', lat:36.1126, lon:-115.1767, tables:37, dist:0.4, masses:[
+    { x:-66, y:16, w:92, d:30, b:22,  h:151 },
+    { x:16,  y:2,  w:92, d:30, b:0,   h:151 },
+    { x:96,  y:20, w:82, d:30, b:340, h:138 },
+    { x:12,  y:-74, w:220, d:92, b:0,  h:22 } ] },
+  { id:3, name:'Horseshoe', area:'strip', lat:36.1147, lon:-115.1728, tables:18, dist:0.6, masses:[
+    { x:0, y:24,  w:112, d:32, b:10, h:92 },
+    { x:0, y:-42, w:152, d:82, b:10, h:20 } ] },
+  { id:4, name:'Caesars Palace', area:'strip', lat:36.1162, lon:-115.1745, tables:16, dist:0.8, masses:[
+    { x:-54, y:34, w:78, d:28, b:355, h:100 },
+    { x:32,  y:52, w:70, d:28, b:20,  h:88 },
+    { x:66,  y:-16, w:58, d:58, b:0,  h:72, shape:'round' },
+    { x:0,   y:-62, w:206, d:112, b:0, h:24 } ] },
+  { id:5, name:'MGM Grand', area:'strip', lat:36.1023, lon:-115.1697, tables:25, dist:1.1, masses:[
+    { x:0, y:6,   w:152, d:32, b:0, h:89 },
+    { x:0, y:6,   w:32, d:152, b:0, h:89 },
+    { x:0, y:-84, w:212, d:120, b:0, h:22 } ] },
+  { id:6, name:'Venetian', area:'strip', lat:36.1212, lon:-115.1697, tables:50, dist:1.3, masses:[
+    { x:0,   y:24,  w:150, d:38, b:8, h:145 },
+    { x:-74, y:-58, w:16, d:16, b:8, h:96, cap:0.55 },
+    { x:0,   y:-72, w:202, d:100, b:8, h:26 } ] },
+  { id:7, name:'Wynn/Encore', area:'strip', lat:36.1272, lon:-115.1655, tables:52, dist:1.7, masses:[
+    { x:-44, y:-24, w:120, d:32, b:26, h:186, shape:'round' },
+    { x:58,  y:58,  w:110, d:32, b:36, h:186, shape:'round' },
+    { x:0,   y:-72, w:182, d:92, b:26, h:24 } ] },
+  { id:8, name:'Mandalay Bay', area:'strip', lat:36.0918, lon:-115.1765, tables:10, dist:2.1, masses:[
+    { x:0, y:0, w:112, d:28, b:0,   h:155 },
+    { x:0, y:0, w:112, d:28, b:60,  h:155 },
+    { x:0, y:0, w:112, d:28, b:120, h:155 },
+    { x:0, y:-96, w:200, d:112, b:340, h:22 } ] },
+  { id:9, name:'Westgate', area:'offstrip', lat:36.1359, lon:-115.1520, tables:7, dist:2.4, masses:[
+    { x:0, y:22,  w:102, d:32, b:0, h:105 },
+    { x:0, y:-46, w:152, d:72, b:0, h:18 } ] },
+  { id:10, name:'Orleans', area:'offstrip', lat:36.1020, lon:-115.1965, tables:34, dist:2.7, masses:[
+    { x:0, y:28,  w:122, d:32, b:0, h:60 },
+    { x:0, y:-36, w:172, d:102, b:0, h:16 } ] },
+  { id:11, name:'Golden Nugget', area:'downtown', lat:36.1699, lon:-115.1443, tables:13, dist:4.4, masses:[
+    { x:-32, y:12, w:70, d:28, b:0, h:60 },
+    { x:42,  y:22, w:60, d:26, b:0, h:52 },
+    { x:0,   y:-42, w:152, d:82, b:0, h:16 } ] },
+  { id:12, name:'Boulder Station', area:'locals', lat:36.1585, lon:-115.0725, tables:10, dist:6.3, masses:[
+    { x:0,   y:0,  w:132, d:92, b:0, h:22 },
+    { x:-42, y:22, w:40, d:40, b:0, h:34 } ] },
+  { id:13, name:'South Point', area:'locals', lat:36.0130, lon:-115.1730, tables:30, dist:7.6, masses:[
+    { x:0, y:28,  w:122, d:32, b:0, h:60 },
+    { x:0, y:-36, w:172, d:102, b:0, h:16 } ] },
+  { id:14, name:'Skyline', area:'locals', lat:36.0480, lon:-114.9740, tables:2, dist:8.4, masses:[
+    { x:0, y:0, w:62, d:42, b:0, h:12 } ] },
+  { id:15, name:'Green Valley Ranch', area:'locals', lat:36.0146, lon:-115.0797, tables:15, dist:9.6, masses:[
+    { x:0, y:22,  w:102, d:32, b:0, h:45 },
+    { x:0, y:-32, w:152, d:92, b:0, h:14 } ] },
+  { id:16, name:'Red Rock', area:'locals', lat:36.1567, lon:-115.3348, tables:20, dist:11.8, masses:[
+    { x:0, y:22,  w:112, d:32, b:0, h:55 },
+    { x:0, y:-36, w:162, d:96, b:0, h:16 } ] },
+  { id:17, name:'Santa Fe Station', area:'locals', lat:36.2296, lon:-115.2493, tables:14, dist:12.4, masses:[
+    { x:0,   y:0,  w:132, d:86, b:0, h:22 },
+    { x:-32, y:16, w:50, d:40, b:0, h:30 } ] },
+  { id:18, name:'WSOP · Paris', seasonal:true, area:'strip', lat:36.1125, lon:-115.1712, tables:88, dist:0.5, masses:[
+    { x:0, y:0, w:44, d:44, b:0, h:165, shape:'pyramid' },
+    { x:34, y:-58, w:154, d:82, b:0, h:52 } ] }
+];
+
+/* Strip landmarks — not poker rooms, but they make the skyline legible */
+var LANDMARKS = [
+  { name:'Luxor',        lat:36.0955, lon:-115.1761, masses:[ { x:0, y:0, w:150, d:150, b:0, h:107, shape:'pyramid' } ] },
+  { name:'Excalibur',    lat:36.0987, lon:-115.1753, masses:[
+      { x:0, y:0, w:150, d:110, b:0, h:34 },
+      { x:-56, y:40, w:20, d:20, b:0, h:66, shape:'round', cap:0.4 },
+      { x:56,  y:40, w:20, d:20, b:0, h:66, shape:'round', cap:0.4 },
+      { x:-56, y:-40, w:20, d:20, b:0, h:60, shape:'round', cap:0.4 },
+      { x:56,  y:-40, w:20, d:20, b:0, h:60, shape:'round', cap:0.4 } ] },
+  { name:'New York-New York', lat:36.1024, lon:-115.1745, masses:[
+      { x:-40, y:20, w:38, d:38, b:12, h:150, cap:0.5 },
+      { x:6,   y:0,  w:34, d:34, b:12, h:120, cap:0.55 },
+      { x:44,  y:26, w:30, d:30, b:12, h:96, cap:0.6 },
+      { x:20,  y:-46, w:130, d:60, b:12, h:44 } ] },
+  { name:'Stratosphere', lat:36.1474, lon:-115.1556, masses:[
+      { x:0, y:0, w:26, d:26, b:0, h:350, shape:'round', cap:0.35 } ] },
+  { name:'T-Mobile Arena', lat:36.1028, lon:-115.1784, masses:[
+      { x:0, y:0, w:140, d:110, b:20, h:40, shape:'round' } ] }
+];
+
+var map = L.map('map', { center:HOME_C, zoom:HOME_Z, zoomControl:false, attributionControl:false,
+  zoomSnap:0.5, zoomDelta:0.5, minZoom:9.5, maxZoom:17, fadeAnimation:false, zoomAnimation:false });
+var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap contributors', maxZoom:19,
+  updateWhenIdle:true, updateWhenZooming:false, keepBuffer:0, crossOrigin:true,
+  errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+}).addTo(map);
+
+/* If the tile host blocks us it still answers with a decodable PNG, so every tile
+   comes back pixel-identical. Compare signatures and fall back to a plain felt ground. */
+var tileFails = 0, groundChecked = false;
+function tileSignature(img) {
+  try {
+    var c = document.createElement('canvas'); c.width = 8; c.height = 8;
+    var x = c.getContext('2d'); x.drawImage(img, 0, 0, 8, 8);
+    return Array.prototype.join.call(x.getImageData(0, 0, 8, 8).data, ',');
+  } catch (e) { return null; }
+}
+function dropTiles() {
+  if (!map.hasLayer(tiles)) return;
+  map.removeLayer(tiles);
+  document.getElementById('felt').style.background =
+    'linear-gradient(180deg,#0F1512 0%,#0A0E0C 60%,#070A08 100%),' +
+    'repeating-linear-gradient(0deg,rgba(242,244,246,.05) 0 1px,transparent 1px 46px),' +
+    'repeating-linear-gradient(90deg,rgba(242,244,246,.05) 0 1px,transparent 1px 46px)';
+  drawBuildings();
+}
+tiles.on('tileerror', function () { if (++tileFails > 5) dropTiles(); });
+tiles.on('load', function () {
+  if (groundChecked) return;
+  var imgs = Array.prototype.filter.call(document.querySelectorAll('img.leaflet-tile'), function (i) {
+    return i.complete && i.naturalWidth > 8;
+  });
+  if (imgs.length < 3) return;
+  groundChecked = true;
+  var sigs = [tileSignature(imgs[0]), tileSignature(imgs[Math.floor(imgs.length / 2)]), tileSignature(imgs[imgs.length - 1])];
+  if (sigs[0] && (sigs[0] === sigs[1] || sigs[0] === sigs[2] || sigs[1] === sigs[2])) dropTiles();
+});
+
+var stage = document.getElementById('stage'), mapEl = document.getElementById('map');
+var cv = document.getElementById('buildings'), ctx = cv.getContext('2d');
+var labelsEl = document.getElementById('labels'), youEl = document.getElementById('you');
+var SEASON = false;
+var DIMSET = null; /* array of room names that match the filter; null = no filter */
+function isLit(name) { return !DIMSET || DIMSET.indexOf(name) !== -1; }
+var selected = 0, area = 'all', tilt3d = true, labels = {};
+
+function pxPerMetre() {
+  var c = map.getCenter(), z = map.getZoom();
+  var a = map.project(c, z), b = map.project(L.latLng(c.lat, c.lng + 0.01), z);
+  return Math.abs(b.x - a.x) / map.distance(c, L.latLng(c.lat, c.lng + 0.01));
+}
+
+function ring(base, m) {
+  var latM = 1 / 110540, lonM = 1 / (111320 * Math.cos(base.lat * Math.PI / 180));
+  var t = (m.b || 0) * Math.PI / 180, hw = m.w / 2, hd = m.d / 2, pts = [];
+  if (m.shape === 'round') {
+    for (var i = 0; i < 14; i++) {
+      var a = (i / 14) * Math.PI * 2;
+      pts.push([Math.cos(a) * hw, Math.sin(a) * hd]);
+    }
+  } else {
+    pts = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]];
+  }
+  return pts.map(function (p) {
+    var x = p[0] * Math.cos(t) - p[1] * Math.sin(t) + (m.x || 0);
+    var y = p[0] * Math.sin(t) + p[1] * Math.cos(t) + (m.y || 0);
+    return L.latLng(base.lat + y * latM, base.lon + x * lonM);
+  });
+}
+
+function tiltDeg() { return tilt3d ? TILT : 0; }
+function project(latlng, hpx) {
+  var cp = map.latLngToContainerPoint(latlng);
+  var ml = mapEl.offsetLeft, mt = mapEl.offsetTop, mw = mapEl.offsetWidth, mh = mapEl.offsetHeight;
+  var ox = ml + mw * 0.5, oy = mt + mh * 0.62;
+  var vx = ml + cp.x - ox, vy = mt + cp.y - oy;
+  var T = tiltDeg() * Math.PI / 180;
+  var x = vx, y = vy * Math.cos(T), z = vy * Math.sin(T);
+  if (hpx) { y -= hpx * Math.sin(T); z += hpx * Math.cos(T); }
+  var qx = ox + x, qy = oy + y;
+  var px = stage.clientWidth * 0.5, py = stage.clientHeight * 0.26;
+  var s = PERSP / Math.max(80, PERSP - z);
+  return { x: px + (qx - px) * s, y: py + (qy - py) * s, z: z };
+}
+
+function rgba(c, a) { return 'rgba(' + c + ',' + a + ')'; }
+
+function collect(ppm) {
+  var vols = [];
+  var coarse = ppm < 0.12; /* below ~z13.5 a real footprint is a few pixels */
+  function floors(m) {
+    if (!coarse) return m;
+    var minPlan = 15 / ppm, minH = 30 / (ppm * EXAG);
+    return { x:m.x, y:m.y, b:m.b, shape:m.shape, cap:m.cap,
+      w:Math.max(m.w, minPlan), d:Math.max(m.d, minPlan), h:Math.max(m.h, minH) };
+  }
+  function push(base, m, kind, id) {
+    var r0 = ring(base, m);
+    var hpx = tilt3d ? m.h * ppm * EXAG : 0;
+    var ground = r0.map(function (ll) { return project(ll, 0); });
+    var cLat = 0, cLon = 0;
+    r0.forEach(function (ll) { cLat += ll.lat / r0.length; cLon += ll.lng / r0.length; });
+    var capF = m.cap || 1;
+    var roofLL = capF === 1 ? r0 : r0.map(function (ll) {
+      return L.latLng(cLat + (ll.lat - cLat) * capF, cLon + (ll.lng - cLon) * capF);
+    });
+    var roof = roofLL.map(function (ll) { return project(ll, hpx); });
+    var apex = m.shape === 'pyramid' ? project(L.latLng(cLat, cLon), hpx) : null;
+    var depth = ground.reduce(function (s, p) { return s + p.z; }, 0) / ground.length;
+    vols.push({ kind: kind, id: id || null, ground: ground, roof: roof, apex: apex, depth: depth, hpx: hpx });
+  }
+  ROOMS.filter(function (r) { return (!r.seasonal || SEASON) && (area === 'all' || r.area === area); })
+    .forEach(function (r) {
+      var ms = coarse ? [r.masses.slice().sort(function (a, b) { return b.h - a.h; })[0]] : r.masses;
+      var kind = r.id === selected ? 'sel' : (isLit(r.name) ? 'room' : 'out');
+      ms.forEach(function (m) { push(r, floors(m), kind, r.id); });
+    });
+  if (!coarse) LANDMARKS.forEach(function (l) { l.masses.forEach(function (m) { push(l, m, 'land'); }); });
+  return vols.sort(function (a, b) { return a.depth - b.depth; });
+}
+
+function paintVol(v) {
+  var g = v.ground, rf = v.roof, n = g.length, sel = v.kind === 'sel', land = v.kind === 'land' || v.kind === 'out';
+  var out = v.kind === 'out';
+
+  ctx.beginPath();
+  ctx.moveTo(g[0].x, g[0].y);
+  for (var s0 = 1; s0 < n; s0++) ctx.lineTo(g[s0].x, g[s0].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.fill();
+
+  if (v.hpx > 0) {
+    for (var i = 0; i < n; i++) {
+      var j = (i + 1) % n;
+      var top1 = v.apex || rf[i], top2 = v.apex || rf[j];
+      var facing = (g[j].x - g[i].x) * (top1.y - g[i].y) - (g[j].y - g[i].y) * (top1.x - g[i].x);
+      if (facing <= 0) continue;
+      var len = Math.max(1, Math.hypot(g[j].x - g[i].x, g[j].y - g[i].y));
+      var lit = 0.5 + 0.5 * ((g[j].x - g[i].x) / len);
+      ctx.beginPath();
+      ctx.moveTo(g[i].x, g[i].y); ctx.lineTo(g[j].x, g[j].y);
+      if (v.apex) { ctx.lineTo(v.apex.x, v.apex.y); }
+      else { ctx.lineTo(rf[j].x, rf[j].y); ctx.lineTo(rf[i].x, rf[i].y); }
+      ctx.closePath();
+      var grad = ctx.createLinearGradient(g[i].x, g[i].y, top1.x, top1.y);
+      if (sel) {
+        grad.addColorStop(0, rgba('58,38,92', 0.99));
+        grad.addColorStop(1, rgba('169,140,232', 0.62 + 0.28 * lit));
+      } else if (out) {
+        grad.addColorStop(0, rgba('10,12,14', 0.99));
+        grad.addColorStop(1, rgba('52,56,62', 0.42 + 0.14 * lit));
+      } else if (land) {
+        grad.addColorStop(0, rgba('11,16,14', 0.99));
+        grad.addColorStop(1, rgba('66,80,72', 0.6 + 0.2 * lit));
+      } else {
+        grad.addColorStop(0, rgba('13,19,16', 0.99));
+        grad.addColorStop(1, rgba('84,100,89', 0.66 + 0.26 * lit));
+      }
+      ctx.fillStyle = grad; ctx.fill();
+      ctx.strokeStyle = sel ? rgba('233,224,255', 0.34) : rgba('242,244,246', land ? 0.08 : 0.11);
+      ctx.lineWidth = 0.8; ctx.stroke();
+
+      if (!v.apex && v.hpx > 26) {
+        var steps = Math.max(2, Math.min(7, Math.round(len / 24)));
+        ctx.save(); ctx.clip();
+        ctx.strokeStyle = sel ? rgba('233,224,255', 0.17) : rgba('242,244,246', 0.07);
+        ctx.lineWidth = 0.7;
+        for (var k = 1; k < steps; k++) {
+          var f = k / steps;
+          ctx.beginPath();
+          ctx.moveTo(g[i].x + (g[j].x - g[i].x) * f, g[i].y + (g[j].y - g[i].y) * f);
+          ctx.lineTo(rf[i].x + (rf[j].x - rf[i].x) * f, rf[i].y + (rf[j].y - rf[i].y) * f);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  if (!v.apex) {
+    ctx.beginPath();
+    ctx.moveTo(rf[0].x, rf[0].y);
+    for (var m2 = 1; m2 < n; m2++) ctx.lineTo(rf[m2].x, rf[m2].y);
+    ctx.closePath();
+    ctx.fillStyle = sel ? rgba('169,140,232', 0.96) : out ? rgba('74,80,88', 0.42) : land ? rgba('96,112,102', 0.6) : rgba('124,140,127', 0.66);
+    ctx.fill();
+    ctx.strokeStyle = sel ? rgba('247,244,255', 0.9) : rgba('242,244,246', land ? 0.28 : 0.42);
+    ctx.lineWidth = sel ? 1.4 : 1; ctx.stroke();
+  }
+}
+
+function drawBuildings() {
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var W = stage.clientWidth, H = stage.clientHeight;
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  var ppm = pxPerMetre();
+  var coarse = ppm < 0.12;
+  stage.classList.toggle('coarse', coarse);
+  var horizon = H * 0.2;
+  var painted = {};
+  collect(ppm).forEach(function (v) {
+    var baseY = v.ground.reduce(function (a, p) { return Math.max(a, p.y); }, -1e9);
+    if (baseY < horizon) return; /* skip volumes that would float in the haze */
+    paintVol(v);
+    if (v.id) painted[v.id] = true;
+  });
+
+  /* labels sit on each property's tallest roof; nearest wins a collision */
+  var visible = ROOMS.filter(function (r) { return (!r.seasonal || SEASON) && (area === 'all' || r.area === area); });
+  var anchors = visible.map(function (r) {
+    var tall = r.masses.slice().sort(function (a, b) { return b.h - a.h; })[0];
+    var r0 = ring(r, tall), cLat = 0, cLon = 0;
+    r0.forEach(function (ll) { cLat += ll.lat / r0.length; cLon += ll.lng / r0.length; });
+    var p = project(L.latLng(cLat, cLon), tilt3d ? tall.h * ppm * EXAG : 0);
+    return { id: r.id, p: p };
+  }).sort(function (a, b) { return b.p.z - a.p.z; });
+
+  var placed = [];
+  anchors.forEach(function (a) {
+    var l = labels[a.id], c = a.p, sel = a.id === selected;
+    var inFrame = painted[a.id] && c.x > 34 && c.x < W - 34 && c.y > 78 && c.y < H - 24;
+    var gapX = coarse ? 36 : 98, gapY = coarse ? 36 : 48;
+    var host = null;
+    placed.some(function (q) {
+      if (Math.abs(q.x - c.x) < gapX && Math.abs(q.y - c.y) < gapY) { host = q; return true; }
+      return false;
+    });
+    if (!inFrame || (host && !sel)) {
+      l.style.display = 'none';
+      if (host) { host.absorbed = (host.absorbed || 0) + 1; (host.members = host.members || []).push(a.id); }
+      return;
+    }
+    c.absorbed = 0; c.id = a.id; c.members = [a.id];
+    if (host && sel) {
+      /* the selected room wins the spot; it inherits what the host stood for */
+      var hostEl = labels[host.id];
+      if (hostEl) hostEl.style.display = 'none';
+      c.absorbed = (host.absorbed || 0) + 1;
+      c.members = (host.members || []).concat([a.id]);
+      placed[placed.indexOf(host)] = c;
+    } else {
+      placed.push(c);
+    }
+    l.style.display = 'flex';
+    l.style.left = c.x + 'px';
+    l.style.top = (c.y - 6) + 'px';
+    l.style.zIndex = String(300 + Math.round(c.z));
+  });
+  placed.forEach(function (q) {
+    var el = labels[q.id]; if (!el) return;
+    var pin = el.querySelector('.pin');
+    var n = (q.absorbed || 0) + 1;
+    var members = q.members || [q.id];
+    var matched = members.filter(function (id) {
+      var r = ROOMS.filter(function (x) { return x.id === id; })[0];
+      return r && isLit(r.name);
+    }).length;
+    el.classList.remove('cluster', 'part', 'out');
+    if (coarse && n > 1) {
+      el.classList.add('cluster');
+      if (!DIMSET || matched === n) {
+        pin.textContent = n;
+        el.title = n + ' rooms here \u2014 zoom in';
+      } else if (matched === 0) {
+        pin.textContent = '0/' + n;
+        el.classList.add('out');
+        el.title = 'none of these ' + n + ' rooms match';
+      } else {
+        pin.textContent = matched + '/' + n;
+        el.classList.add('part');
+        el.title = matched + ' of ' + n + ' rooms here match \u2014 zoom in';
+      }
+    } else {
+      pin.textContent = q.id;
+      el.title = '';
+      if (DIMSET && !isLit((ROOMS.filter(function (x) { return x.id === q.id; })[0] || {}).name)) el.classList.add('out');
+    }
+  });
+  Object.keys(labels).forEach(function (id) {
+    if (!visible.some(function (r) { return String(r.id) === id; })) labels[id].style.display = 'none';
+  });
+
+  var yp = project(L.latLng(HOME[0], HOME[1]), 0);
+  youEl.style.left = yp.x + 'px'; youEl.style.top = yp.y + 'px';
+}
+
+function buildLabels() {
+  ROOMS.forEach(function (r) {
+    var el = document.createElement('div');
+    el.className = 'lbl';
+    el.innerHTML = '<div class="hit"></div><div class="nm">' + r.name + '</div>' +
+      '<div class="sub">' + r.dist.toFixed(1) + ' MI · ' + r.tables + ' TBL</div><div class="stem"></div>' +
+      '<div class="pin">' + r.id + '</div>';
+    el.addEventListener('click', function () {
+      if (el.classList.contains('cluster')) { map.setView([r.lat, r.lon], Math.min(15, map.getZoom() + 2.5), { animate: true }); redraw(); return; }
+      select(r.id, true);
+    });
+    labelsEl.appendChild(el);
+    labels[r.id] = el;
+  });
+}
+
+function paintSel() {
+  Object.keys(labels).forEach(function (id) { labels[id].classList.toggle('sel', Number(id) === selected); });
+}
+
+function select(id, tell) {
+  selected = id; paintSel(); drawBuildings();
+  var r = ROOMS.filter(function (x) { return x.id === id; })[0];
+  if (r) map.panTo([r.lat, r.lon], { animate: true, duration: 0.4 });
+  if (tell && window.parent !== window) window.parent.postMessage({ type: 'roomSelected', id: id }, '*');
+}
+
+/* The visible frame is a tilted crop of the map container, so a plain fitBounds can
+   leave rooms off-screen. Fit, then verify in projected space and ease out until all fit. */
+var FITTING = false;
+var userMoved = false;
+function fitArea() {
+  FITTING = true;
+  try { fitAreaInner(); } finally { setTimeout(function () { FITTING = false; }, 60); }
+}
+function fitAreaInner() {
+  var rooms = ROOMS.filter(function (r) { return (!r.seasonal || SEASON) && (area === 'all' || r.area === area); });
+  if (rooms.length === 1) { map.setView([rooms[0].lat, rooms[0].lon], 15.5, { animate: false }); drawBuildings(); return; }
+  map.fitBounds(L.latLngBounds(rooms.map(function (r) { return [r.lat, r.lon]; })).pad(0.2), { animate: false });
+
+  /* Deterministic fit: measure the projected bounding box once, derive the zoom that
+     makes it fit the same window the labels are culled by, then centre it. */
+  function box() {
+    var b = { minX: 1e9, maxX: -1e9, minY: 1e9, maxY: -1e9 };
+    rooms.forEach(function (r) {
+      var p = project(L.latLng(r.lat, r.lon), 0);
+      if (p.x < b.minX) b.minX = p.x; if (p.x > b.maxX) b.maxX = p.x;
+      if (p.y < b.minY) b.minY = p.y; if (p.y > b.maxY) b.maxY = p.y;
+    });
+    return b;
+  }
+  var W0 = stage.clientWidth, H0 = stage.clientHeight;
+  var winL = 46, winR = W0 - 46, winT = 96, winB = H0 - 44;
+  var b0 = box();
+  var sx = (winR - winL) / Math.max(1, b0.maxX - b0.minX);
+  var sy = (winB - winT) / Math.max(1, b0.maxY - b0.minY);
+  var scale = Math.min(sx, sy, 1);
+  if (scale < 1) {
+    var dz = Math.floor(Math.log(scale) / Math.LN2 * 2) / 2;
+    map.setZoom(Math.max(map.getMinZoom(), map.getZoom() + dz), { animate: false });
+  }
+  /* Verify against the exact predicate the labels are culled by, and keep easing
+     until every room passes it. Measuring after each move is what makes this reliable. */
+  function outsideCount() {
+    var W = stage.clientWidth, H = stage.clientHeight, n = 0;
+    rooms.forEach(function (r) {
+      var p = project(L.latLng(r.lat, r.lon), 0);
+      if (!(p.x > 40 && p.x < W - 40 && p.y > 84 && p.y < H - 30)) n++;
+    });
+    return n;
+  }
+  for (var pass = 0; pass < 12; pass++) {
+    var b = box();
+    var dx = (winL + winR) / 2 - (b.minX + b.maxX) / 2;
+    var dy = (winT + winB) / 2 - (b.minY + b.maxY) / 2;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      map.panBy([-dx, -dy / Math.max(0.25, Math.cos(tiltDeg() * Math.PI / 180))], { animate: false });
+    }
+    if (outsideCount() === 0) break;
+    if (map.getZoom() <= map.getMinZoom()) break;
+    map.setZoom(map.getZoom() - 0.5, { animate: false });
+  }
+  drawBuildings();
+}
+
+var rafId = null, redrawTimer = null;
+function queueDraw() { if (rafId) return; rafId = requestAnimationFrame(function () { rafId = null; drawBuildings(); }); }
+function redraw() { clearTimeout(redrawTimer); queueDraw(); redrawTimer = setTimeout(drawBuildings, 560); }
+
+document.getElementById('b3d').onclick = function () {
+  tilt3d = true; stage.classList.remove('flat');
+  this.classList.add('on'); document.getElementById('bflat').classList.remove('on');
+  document.getElementById('legend').textContent = 'LAS VEGAS VALLEY · CLICK A ROOM';
+  redraw();
+};
+document.getElementById('bflat').onclick = function () {
+  tilt3d = false; stage.classList.add('flat');
+  this.classList.add('on'); document.getElementById('b3d').classList.remove('on');
+  document.getElementById('legend').textContent = 'LAS VEGAS VALLEY · CLICK A ROOM';
+  fitArea(); redraw();
+};
+document.getElementById('zin').onclick = function () { map.zoomIn(0.8); };
+document.getElementById('zout').onclick = function () { map.zoomOut(0.8); };
+document.getElementById('rec').onclick = function () { area = 'all'; userMoved = false; fitArea(); redraw(); };
+
+map.on('move zoom', queueDraw);
+map.on('moveend zoomend resize', redraw);
+window.addEventListener('resize', redraw);
+
+window.addEventListener('message', function (e) {
+  var d = e.data || {};
+  if (d.type === 'season') { SEASON = !!d.on; drawBuildings(); return; }
+  if (d.type !== 'sync') return;
+  var changed = d.area && d.area !== area;
+  if (d.area) area = d.area;
+  if (d.selected && d.selected !== selected) { selected = d.selected; paintSel(); }
+  if (changed) fitArea();
+  drawBuildings();
+});
+
+buildLabels(); paintSel();
+map.whenReady(function () {
+  map.invalidateSize();
+  fitArea();
+  /* The stage keeps resizing while the shell lays out and fonts load, and a fit measured
+     against a stale box is wrong. Re-fit on every size change until the user takes over. */
+  map.on('zoomstart dragstart', function () { if (!FITTING) userMoved = true; });
+  var rt;
+  new ResizeObserver(function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () {
+      if (userMoved) return;
+      map.invalidateSize();
+      fitArea();
+    }, 180);
+  }).observe(stage);
+  setTimeout(function () { if (!userMoved) { map.invalidateSize(); fitArea(); } }, 900);
+  drawBuildings(); redraw();
+  if (window.parent !== window) window.parent.postMessage({ type: 'mapReady' }, '*');
+});
+</script>
+
+<script>
+(function(){
+  var labelsEl = document.getElementById('labels');
+  labelsEl.addEventListener('dblclick', function (e) {
+    var l = e.target.closest ? e.target.closest('.lbl') : null;
+    if (!l) return;
+    var nm = l.querySelector('.nm');
+    if (nm && window.parent !== window) window.parent.postMessage({ type: 'roomOpen', name: nm.textContent }, '*');
+  });
+  function applyDim(names) {
+    DIMSET = names && names.length ? names.slice() : null;
+    drawBuildings();
+  }
+  window.addEventListener('message', function (e) {
+    var m = e.data || {};
+    if (m.type === 'dim') applyDim(m.names);
+
+  });
+})();
+</script>
+</body>
+</html>

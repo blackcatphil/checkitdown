@@ -1,0 +1,26 @@
+/* Motion is quiet. One knock on arrival, replayed on hover. Nothing loops.
+   A permanently animating logo competes with live data. */
+:root {
+  --cid-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --cid-ease-knock: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --cid-dur-fast: 0.18s;
+  --cid-dur: 0.26s;
+  --cid-knock: 3.4s;
+}
+
+/* The mark knocks TWICE — two knuckles, second ring entering at 17%. */
+@keyframes knockR1 { 0% { transform:scale(.3); opacity:0 } 5% { opacity:.9 } 28%, 100% { transform:scale(1.95); opacity:0 } }
+@keyframes knockR2 { 0%, 17% { transform:scale(.3); opacity:0 } 22% { opacity:.9 } 46%, 100% { transform:scale(1.95); opacity:0 } }
+@keyframes knockTap { 0%, 100% { transform:translateY(0) } 4% { transform:translateY(2px) } 10% { transform:translateY(0) } 21% { transform:translateY(2px) } 27% { transform:translateY(0) } }
+@keyframes cid-fade { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }
+
+.knock .kr { opacity: 0 }
+.knock.knocking .kr1 { animation: knockR1 var(--cid-knock) var(--cid-ease-knock) 1 both }
+.knock.knocking .kr2 { animation: knockR2 var(--cid-knock) var(--cid-ease-knock) 1 both }
+.knock.knocking .kt  { animation: knockTap var(--cid-knock) ease-in-out 1 both }
+
+/* At rest the mark still reads: one static ring holds, never a bare dot. */
+@media (prefers-reduced-motion: reduce) {
+  .kr, .kt { animation: none !important }
+  .kr1 { opacity: .62 !important }
+}

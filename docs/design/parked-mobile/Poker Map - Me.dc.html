@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-scrim:rgba(4,6,5,0.66);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93;
+      --pm-promo-1:rgba(20,54,40,0.9); --pm-promo-2:rgba(17,32,26,0.45); --pm-promo-line:rgba(78,203,147,0.13);
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#EFECE3; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(239,236,227,0.94); --pm-scrim:rgba(24,28,20,0.42);
+      --pm-ink:#171C13; --pm-ink-2:#232A1D; --pm-ink-3:rgba(23,28,19,0.86);
+      --pm-dim-1:rgba(23,28,19,0.72); --pm-dim-2:rgba(23,28,19,0.66); --pm-dim-3:rgba(23,28,19,0.5); --pm-dim-4:rgba(23,28,19,0.42);
+      --pm-line-1:rgba(23,28,19,0.1); --pm-line-2:rgba(23,28,19,0.16); --pm-line-3:rgba(23,28,19,0.28); --pm-fill-1:rgba(23,28,19,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52;
+      --pm-promo-1:rgba(214,231,220,0.9); --pm-promo-2:rgba(232,238,231,0.6); --pm-promo-line:rgba(15,123,82,0.22);
+      --pm-src-empty-line:rgba(23,28,19,0.18);
+    }
+  </style>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<div data-me-root="1" data-screen-label="Me" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div style="position:sticky;top:0;z-index:30;padding:58px 18px 13px;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:11px">
+      <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-brass)">YOUR SHELF · ANONYMOUS</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2)">NO ACCOUNT</span>
+    </div>
+  </div>
+
+  <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:10px">
+    <h1 style="margin:0;font:400 35px/0.98 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink)">You</h1>
+    <span style="font:400 12.5px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ intro }}</span>
+  </div>
+
+  <div style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">SAVED ROOMS</span>
+      <span style="flex:1;height:1px;background:var(--pm-line-1)"></span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ savedCount }}</span>
+    </div>
+    <sc-for list="{{ saved }}" as="r" hint-placeholder-count="2">
+      <div style="border-radius:17px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);box-shadow:0 10px 26px -14px rgba(0,0,0,0.85);padding:15px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <sc-if value="{{ r.open }}" hint-placeholder-val="{{ true }}">
+            <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live);animation:pmPing 2.4s ease-out infinite"></span></span>
+            <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-live)">{{ r.status }}</span>
+          </sc-if>
+          <sc-if value="{{ r.closed }}">
+            <span style="width:6px;height:6px;flex:none;border-radius:50%;background:var(--pm-line-3)"></span>
+            <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-dim-3)">{{ r.status }}</span>
+          </sc-if>
+          <span style="width:3px;height:3px;flex:none;border-radius:50%;background:var(--pm-line-3)"></span>
+          <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.17em;color:var(--pm-dim-3)">{{ r.areaTag }}</span>
+          <span style="flex:1"></span>
+          <div onClick="{{ r.onUnsave }}" style="flex:none;width:44px;height:44px;margin:-11px -11px -11px 0;display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 15px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)" style-hover="color:var(--pm-brass-2)">&#9733;</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+            <span style="font:400 21px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ r.name }}</span>
+            <span style="font:400 11.5px/1.3 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ r.meta }}</span>
+          </div>
+          <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div style="display:flex;align-items:baseline;gap:3px"><span style="font:500 17px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ r.dist }}</span><span style="font:400 9px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">mi</span></div>
+            <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2)">{{ r.travel }}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;min-height:44px;border-top:1px solid var(--pm-line-1)">
+          <span style="flex:1;min-width:0;font:400 10.5px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);margin-top:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.priceLine }}</span>
+          <div onClick="{{ r.onOpen }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 12px;border-radius:11px;border:1px solid var(--pm-line-2);display:flex;align-items:center;gap:7px;cursor:pointer;margin-top:9px" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink-2)">ROOM</span>
+            <span style="font:400 13px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&#8250;</span>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ noSaved }}">
+      <div style="display:flex;flex-direction:column;gap:12px;padding:26px 18px;border-radius:17px;border:1px dashed var(--pm-src-empty-line)">
+        <span style="font:400 19px/1.2 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Nothing saved yet</span>
+        <span style="font:400 12px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Star a room while you're deciding and it lands here — your regular tables, one tap from the map.</span>
+        <div onClick="{{ goRooms }}" style="height:44px;align-self:flex-start;padding:0 15px;border-radius:11px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">BROWSE ROOMS</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">MY REPORTS</span>
+      <span style="flex:1;height:1px;background:var(--pm-line-1)"></span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ reportCount }}</span>
+    </div>
+    <sc-for list="{{ reports }}" as="rep" hint-placeholder-count="3">
+      <div style="display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:13px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1)">
+        <span style="flex:none;width:26px;height:26px;border-radius:8px;background:{{ rep.badgeBg }};border:1px solid {{ rep.badgeLine }};display:flex;align-items:center;justify-content:center;font:600 11px/1 'IBM Plex Mono',monospace;color:{{ rep.badgeInk }}">{{ rep.badge }}</span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <span style="font:500 12px/1.25 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ rep.line }}</span>
+          <span style="font:400 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.06em;font-variant-numeric:tabular-nums;color:{{ rep.statusInk }}">{{ rep.status }}</span>
+        </div>
+        <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ rep.age }}</span>
+      </div>
+    </sc-for>
+    <sc-if value="{{ noReports }}">
+      <div style="display:flex;flex-direction:column;gap:12px;padding:26px 18px;border-radius:17px;border:1px dashed var(--pm-src-empty-line)">
+        <span style="font:400 19px/1.2 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">You haven't reported yet</span>
+        <span style="font:400 12px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Three seconds in a room tells everyone else what's running. Your reports show up here with how many players confirmed them.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasReports }}">
+      <span style="font:400 10.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ reportFooter }}</span>
+    </sc-if>
+  </div>
+
+  <div style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">REMINDERS</span>
+      <span style="flex:1;height:1px;background:var(--pm-line-1)"></span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-2)">ON THIS DEVICE</span>
+    </div>
+    <sc-for list="{{ reminders }}" as="rm" hint-placeholder-count="2">
+      <div style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:12px;background:linear-gradient(97deg,var(--pm-promo-1) 0%,var(--pm-promo-2) 100%);border:1px solid var(--pm-promo-line)">
+        <span style="flex:none;width:7px;height:7px;background:var(--pm-brass);transform:rotate(45deg)"></span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-brass-3)">{{ rm.kind }}</span>
+          <span style="font:500 12px/1.25 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ rm.line }}</span>
+        </div>
+        <div onClick="{{ rm.onRemove }}" style="flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:5px;min-height:44px;box-sizing:border-box;padding:0 2px 0 8px;cursor:pointer" style-hover="opacity:.82">
+          <span style="font:500 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-brass-2)">{{ rm.timer }}</span>
+          <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">REMOVE</span>
+        </div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ noReminders }}">
+      <div style="display:flex;flex-direction:column;gap:10px;padding:22px 18px;border-radius:17px;border:1px dashed var(--pm-src-empty-line)">
+        <span style="font:400 17px/1.25 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">No reminders set</span>
+        <span style="font:400 11.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Tap REMIND ME on a promo or tournament and it waits here.</span>
+      </div>
+    </sc-if>
+    <span style="font:400 10px/1.5 'IBM Plex Mono',monospace;letter-spacing:0.02em;color:var(--pm-dim-2);text-wrap:pretty">Reminders live on this device only — this build sends no push notifications, so check back here. Your picks are logged anonymously so we know what to alert first.</span>
+  </div>
+
+  <div style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">SETTINGS</span>
+      <span style="flex:1;height:1px;background:var(--pm-line-1)"></span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--pm-fill-1)">
+      <span style="flex:1;min-width:0;font:400 12px/1.35 Archivo,sans-serif;color:var(--pm-ink-2)">Appearance</span>
+      <div style="flex:none;display:flex;gap:2px;padding:3px;border-radius:11px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1)">
+        <sc-for list="{{ themeOpts }}" as="t" hint-placeholder-count="2">
+          <sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}"><div style="height:38px;padding:0 13px;border-radius:8px;display:flex;align-items:center;background:var(--pm-seg);border:1px solid var(--pm-line-1);font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink)">{{ t.label }}</div></sc-if>
+          <sc-if value="{{ t.inactive }}"><div onClick="{{ t.onClick }}" style="height:38px;padding:0 13px;border-radius:8px;display:flex;align-items:center;cursor:pointer;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2)">{{ t.label }}</div></sc-if>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--pm-fill-1)">
+      <span style="flex:1;min-width:0;font:400 12px/1.35 Archivo,sans-serif;color:var(--pm-ink-2)">Distances</span>
+      <div style="flex:none;display:flex;gap:2px;padding:3px;border-radius:11px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1)">
+        <sc-for list="{{ unitOpts }}" as="u" hint-placeholder-count="2">
+          <sc-if value="{{ u.active }}" hint-placeholder-val="{{ true }}"><div style="height:38px;padding:0 13px;border-radius:8px;display:flex;align-items:center;background:var(--pm-seg);border:1px solid var(--pm-line-1);font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink)">{{ u.label }}</div></sc-if>
+          <sc-if value="{{ u.inactive }}"><div onClick="{{ u.onClick }}" style="height:38px;padding:0 13px;border-radius:8px;display:flex;align-items:center;cursor:pointer;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2)">{{ u.label }}</div></sc-if>
+        </sc-for>
+      </div>
+    </div>
+
+    <div onClick="{{ cycleHome }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--pm-fill-1);min-height:44px;cursor:pointer">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+        <span style="font:400 12px/1.35 Archivo,sans-serif;color:var(--pm-ink-2)">Where you're measuring from</span>
+        <span style="font:400 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-1)">{{ homeSub }}</span>
+      </div>
+      <span style="flex:none;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass)">CHANGE</span>
+    </div>
+
+  </div>
+
+  <sc-if value="{{ notInstalled }}">
+    <div style="padding:22px 18px 0">
+      <div style="padding:15px;border-radius:17px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid rgba(201,162,74,0.3);display:flex;flex-direction:column;gap:13px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:400 19px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Keep the valley in your pocket</span>
+          <span style="font:400 11.5px/1.4 Archivo,sans-serif;color:var(--pm-dim-1)">Add to your home screen — opens straight to the rooms nearest you, and keeps working on a bad casino signal.</span>
+        </div>
+        <div onClick="{{ onInstall }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">ADD TO HOME SCREEN</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.66)">No app store · no account</span>
+          </div>
+          <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">ABOUT THE DATA</span>
+      <span style="flex:1;height:1px;background:var(--pm-line-1)"></span>
+    </div>
+    <sc-for list="{{ about }}" as="a" hint-placeholder-count="3">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--pm-fill-1)">
+        <span style="flex:none;width:104px;font:400 10.5px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2)">{{ a.k }}</span>
+        <span style="flex:1;min-width:0;font:400 11.5px/1.45 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">{{ a.v }}</span>
+      </div>
+    </sc-for>
+    <div style="display:flex;flex-direction:column;gap:9px;padding-top:6px">
+      <div onClick="{{ onCorrection }}" style="height:36px;display:flex;align-items:center;cursor:pointer;align-self:flex-start">
+        <span style="font:400 10.5px/1 Archivo,sans-serif;color:var(--pm-dim-2);text-decoration:underline;text-decoration-color:var(--pm-line-3);text-underline-offset:3px">Report a correction</span>
+      </div>
+      <span style="font:400 10px/1.5 'IBM Plex Mono',monospace;letter-spacing:0.02em;color:var(--pm-dim-2);text-wrap:pretty">Independent — not affiliated with any casino, and no room pays for placement. 21+. If gambling stops being fun, call 1-800-GAMBLER.</span>
+    </div>
+  </div>
+
+  <div style="height:150px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:16px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+    <div style="padding:9px 6px 30px;display:flex">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.onClick }}" style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer">
+          <sc-if value="{{ n.active }}" hint-placeholder-val="{{ true }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:var(--pm-brass)"></span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-ink)">{{ n.label }}</span>
+          </sc-if>
+          <sc-if value="{{ n.inactive }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:transparent"></span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ n.label }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;shelf&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;populated&quot;,&quot;empty&quot;],&quot;default&quot;:&quot;populated&quot;,&quot;tsType&quot;:&quot;'populated' | 'empty'&quot;,&quot;section&quot;:&quot;State&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;units&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mi&quot;,&quot;km&quot;],&quot;default&quot;:&quot;mi&quot;,&quot;tsType&quot;:&quot;'mi' | 'km'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { removed: {}, unsaved: {}, theme: null, units: null, homeIdx: 0, installed: false, tick: 0, toast: null };
+
+  HOMES = ['The Cosmopolitan', 'ARIA · you’re here', 'Downtown · Fremont St', 'Summerlin', 'Airport · Terminal 1'];
+
+  SAVED = [
+    { id: 1, name: 'ARIA', areaTag: 'STRIP', status: 'OPEN 24H', open: true, dist: 0.2, walk: 4, tables: 24,
+      meta: '24 tables · $1/3 · $2/5 · $5/10', priceLine: '10% to $5 · $1 drop · $2/hr comps' },
+    { id: 6, name: 'Venetian', areaTag: 'STRIP', status: 'OPEN 24H', open: true, dist: 1.3, walk: 26, drive: 7, tables: 50,
+      meta: '50 tables · $1/2 · $2/5 · mixed', priceLine: '10% to $4 · $1 drop · $2/hr comps' },
+    { id: 10, name: 'Orleans', areaTag: 'OFF-STRIP', status: 'CLOSED · OPENS 10A', open: false, dist: 2.7, drive: 9, tables: 34,
+      meta: '34 tables · $1/2 · $2/5 · mixed', priceLine: '10% to $4 · $1 drop · $2/hr comps' },
+  ];
+
+  REPORTS = [
+    { id: 'a', line: '$2/5 at ARIA · 3–5 waiting', mins: 12, confirms: 2, state: 'confirmed' },
+    { id: 'b', line: '$5/10 at Venetian · not running', mins: 34, confirms: 1, state: 'pending' },
+    { id: 'c', line: 'High hand at Bellagio · time changed', mins: 96, confirms: 3, state: 'expired' },
+  ];
+
+  REMINDERS = [
+    { id: 'r1', kind: 'BAD BEAT JACKPOT', line: 'Golden Nugget · $47,200 · notify at $50K', timer: 'WATCHING' },
+    { id: 'r2', kind: 'FREEROLL', line: 'Orleans · $5,000 monthly · reg opens 6:00p', timer: '2:41:00' },
+  ];
+
+  NAV = [{ id: 'rooms', label: 'ROOMS' }, { id: 'tourneys', label: 'TOURNEYS' }, { id: 'cash', label: 'CASH' }, { id: 'promos', label: 'PROMOS' }, { id: 'me', label: 'ME' }];
+
+  componentDidMount() { this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 1000); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.toastTimer); }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  minsTxt(m) { return m < 1 ? 'just now' : m < 60 ? m + 'm ago' : Math.floor(m / 60) + 'h ago'; }
+
+  renderVals() {
+    const st = this.state;
+    const empty = this.props.shelf === 'empty';
+    const theme = st.theme || (this.props.theme === 'light' ? 'light' : 'dark');
+    const units = st.units || (this.props.units === 'km' ? 'km' : 'mi');
+    const factor = units === 'km' ? 1.609 : 1;
+
+    const saved = empty ? [] : this.SAVED.filter(r => !st.unsaved[r.id]).map(r => ({
+      name: r.name, areaTag: r.areaTag, status: r.status, open: r.open, closed: !r.open,
+      meta: r.meta,
+      dist: (r.dist * factor).toFixed(1),
+      travel: r.walk && r.walk <= 25 ? r.walk + ' MIN WALK' : (r.drive || Math.round(r.dist * 2.4)) + ' MIN DRIVE',
+      priceLine: r.priceLine,
+      onOpen: () => this.flash(r.name + ' · opening room detail.'),
+      onUnsave: () => this.setState(s => ({ unsaved: Object.assign({}, s.unsaved, { [r.id]: true }), toast: r.name + ' removed from your shelf.' })),
+    }));
+
+    const reports = empty ? [] : this.REPORTS.map(r => {
+      const mins = r.mins + Math.floor(st.tick / 60);
+      const expired = r.state === 'expired' || mins > 45;
+      return {
+        line: r.line,
+        badge: r.state === 'confirmed' ? '✓' : expired ? '·' : '1',
+        badgeBg: r.state === 'confirmed' ? 'rgba(78,203,147,0.14)' : expired ? 'var(--pm-fill-1)' : 'rgba(78,203,147,0.05)',
+        badgeLine: r.state === 'confirmed' ? 'rgba(78,203,147,0.34)' : expired ? 'var(--pm-line-1)' : 'rgba(78,203,147,0.2)',
+        badgeInk: r.state === 'confirmed' ? 'var(--pm-live)' : 'var(--pm-dim-1)',
+        status: r.state === 'confirmed' ? 'confirmed by ' + r.confirms + ' other players'
+          : expired ? 'expired · thanks for the window it covered'
+          : 'waiting on a second player to confirm',
+        statusInk: r.state === 'confirmed' ? 'var(--pm-live)' : 'var(--pm-dim-1)',
+        age: this.minsTxt(mins),
+      };
+    });
+
+    const reminders = empty ? [] : this.REMINDERS.filter(r => !st.removed[r.id]).map(r => ({
+      kind: r.kind, line: r.line, timer: r.timer,
+      onRemove: () => this.setState(s => ({ removed: Object.assign({}, s.removed, { [r.id]: true }), toast: 'Reminder removed.' })),
+    }));
+
+    const confirmedCount = reports.filter(r => /confirmed by/.test(r.status)).length;
+
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: theme,
+      intro: empty
+        ? 'No account, no profile — this app never asks who you are. Save a room or file a report and it shows up here.'
+        : 'No account, no profile. Just the rooms you keep, what you’ve told other players, and how you like things set.',
+      savedCount: saved.length ? saved.length + (saved.length === 1 ? ' ROOM' : ' ROOMS') : 'NONE YET',
+      saved: saved,
+      noSaved: saved.length === 0,
+      goRooms: () => this.flash('Rooms near me · opening the list.'),
+      reportCount: reports.length ? reports.length + (reports.length === 1 ? ' REPORT' : ' REPORTS') : 'NONE YET',
+      reports: reports,
+      noReports: reports.length === 0,
+      hasReports: reports.length > 0,
+      reportFooter: confirmedCount
+        ? confirmedCount + ' of your reports were confirmed by other players. Nothing here is tied to an identity — the count is just so you know it landed.'
+        : 'Nothing here is tied to an identity. The confirm count is just so you know your report landed.',
+      reminders: reminders,
+      noReminders: reminders.length === 0,
+      themeOpts: [{ id: 'dark', label: 'DARK' }, { id: 'light', label: 'LIGHT' }].map(t => ({
+        label: t.label, active: theme === t.id, inactive: theme !== t.id,
+        onClick: () => this.setState({ theme: t.id }),
+      })),
+      unitOpts: [{ id: 'mi', label: 'MILES' }, { id: 'km', label: 'KM' }].map(u => ({
+        label: u.label, active: units === u.id, inactive: units !== u.id,
+        onClick: () => this.setState({ units: u.id }),
+      })),
+      homeSub: this.HOMES[st.homeIdx % this.HOMES.length] + ' · tap to change',
+      cycleHome: () => this.setState(s => ({ homeIdx: (s.homeIdx + 1) % this.HOMES.length })),
+      notInstalled: !st.installed,
+      onInstall: () => this.setState({ installed: true, toast: 'Added. Poker Map opens from your home screen now.' }),
+      about: [
+        { k: 'Room facts', v: 'Hours, table counts, rake and amenities come from the rooms and public listings, re-checked daily. Each screen shows when it was last verified.' },
+        { k: 'Live waits', v: 'Player reports, always labelled and aged. They expire after 45 minutes, and a lone report is shown as unconfirmed rather than fact.' },
+        { k: 'Official feeds', v: 'Where a room gives us a live feed we mark it OFFICIAL. No room does yet, so you will not see that badge in this build.' },
+        { k: 'Estimates', v: 'Anything modelled is marked ESTIMATE with a range — never a hard number.' },
+        { k: 'Your data', v: 'Location is used on your device to sort by distance. Reports are anonymous. No account, no profile, nothing sold.' },
+      ],
+      onCorrection: () => this.flash('Correction sent to our review queue — thank you.'),
+      navItems: this.NAV.map(n => ({
+        label: n.label, active: n.id === 'me', inactive: n.id !== 'me',
+        onClick: () => { if (n.id !== 'me') this.flash(n.label.charAt(0) + n.label.slice(1).toLowerCase() + ' is next up in the build.'); },
+      })),
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

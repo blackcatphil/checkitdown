@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#191B1E; font-family:Archivo,system-ui,sans-serif; }
+  a { color:inherit; text-decoration:none; border-bottom:1px solid currentColor; opacity:.86; }
+  a:hover { opacity:1; }
+  @keyframes knockR1 { 0% { transform:scale(.3); opacity:0 } 5% { opacity:.9 } 28% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockR2 { 0%, 17% { transform:scale(.3); opacity:0 } 22% { opacity:.9 } 46% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockTap { 0%, 100% { transform:translateY(0) } 4% { transform:translateY(2px) } 10% { transform:translateY(0) } 21% { transform:translateY(2px) } 27% { transform:translateY(0) } }
+  @media (prefers-reduced-motion: reduce) {
+    [style*="knockR1"], [style*="knockR2"], [style*="knockTap"], [style*="animation:ping"] { animation: none !important; }
+    [style*="knockR2"] { opacity: 0 !important; }
+    [style*="knockR1"] { opacity: .62 !important; }
+  }
+  @keyframes ping { 0% { transform:scale(.55); opacity:.85 } 70% { transform:scale(1.6); opacity:0 } 100% { transform:scale(1.6); opacity:0 } }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:24px;padding:34px 40px 10px">
+  <div style="display:flex;flex-direction:column;gap:7px">
+    <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.26em;color:#A98CE8">TURN 4 · LOCKED DIRECTION</span>
+    <span style="font:400 34px/1 'Instrument Serif',serif;color:#F2F4F6">3b in 2b — aubergine, ink, and the knock</span>
+    <span style="font:400 14px/1.5 Archivo,sans-serif;color:rgba(255,255,255,.6);max-width:830px">The knuckles mark sits in the header of the aubergine comp, at the size it will actually run. Everything downstream — landing map, superlatives, tournaments — inherits these values.</span>
+  </div>
+
+  <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:stretch">
+    <div style="flex:1;min-width:400px;background:#14171B;border:1px solid rgba(242,244,246,.12);padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">THE LOCKUP, AT SIZE</span>
+      <div style="display:flex;align-items:center;gap:12px"><svg viewBox="0 0 120 120" width="34" height="34" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg><span style="font:400 26px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span></div>
+      <div style="display:flex;align-items:center;gap:11px"><svg viewBox="0 0 120 120" width="24" height="24" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg><span style="font:400 19px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span></div>
+      <div style="display:flex;align-items:flex-end;gap:12px;padding-top:2px">
+        <svg viewBox="0 0 120 120" width="16" height="16" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg><svg viewBox="0 0 120 120" width="20" height="20" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg><svg viewBox="0 0 120 120" width="28" height="28" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg>
+        <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.5);padding-bottom:3px">16 · 20 · 28 PX</span>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:400px;background:#14171B;border:1px solid rgba(242,244,246,.12);padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">REVERSED · TILE · TAB</span>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:64px;height:64px;border-radius:15px;background:#5E3A93;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 120 120" width="40" height="40" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#F7F4FF"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#F7F4FF" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#F7F4FF" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#F7F4FF"></circle><circle cx="84" cy="60" r="11.5" fill="#F7F4FF" fill-opacity=".55"></circle></g></svg></div>
+        <div style="width:64px;height:64px;border-radius:15px;background:#0A0C0E;border:1px solid rgba(242,244,246,.14);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 120 120" width="40" height="40" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg></div>
+        <div style="display:flex;align-items:center;gap:7px;padding:7px 11px 7px 9px;border-radius:6px 6px 0 0;background:#20252A">
+          <svg viewBox="0 0 120 120" width="16" height="16" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg><span style="font:500 11px/1 Archivo,sans-serif;color:rgba(242,244,246,.8)">checkitdown.com</span>
+        </div>
+      </div>
+      <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.7)">Reversed on aubergine, on ink, and in a tab. Below 16 px the trailing knuckle can drop without losing the mark.</span>
+    </div>
+
+    <div style="flex:1;min-width:400px;background:#14171B;border:1px solid rgba(242,244,246,.12);padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">TOKENS LOCKED</span>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;background:#5E3A93;border-radius:4px"></span><span style="font:500 12px/1 'IBM Plex Mono',monospace;color:#F2F4F6">#5E3A93</span><span style="font:400 12px/1 Archivo,sans-serif;color:rgba(242,244,246,.6)">accent surface · the one action</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;background:#A98CE8;border-radius:4px"></span><span style="font:500 12px/1 'IBM Plex Mono',monospace;color:#F2F4F6">#A98CE8</span><span style="font:400 12px/1 Archivo,sans-serif;color:rgba(242,244,246,.6)">accent type on ink</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;background:#4FBFAE;border-radius:4px"></span><span style="font:500 12px/1 'IBM Plex Mono',monospace;color:#F2F4F6">#4FBFAE</span><span style="font:400 12px/1 Archivo,sans-serif;color:rgba(242,244,246,.6)">value · verified · good</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;background:#0C0E11;border:1px solid rgba(242,244,246,.2);border-radius:4px"></span><span style="font:500 12px/1 'IBM Plex Mono',monospace;color:#F2F4F6">#0C0E11 · #14171B</span><span style="font:400 12px/1 Archivo,sans-serif;color:rgba(242,244,246,.6)">base · surface</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;background:#F2F4F6;border-radius:4px"></span><span style="font:500 12px/1 'IBM Plex Mono',monospace;color:#F2F4F6">#F2F4F6</span><span style="font:400 12px/1 Archivo,sans-serif;color:rgba(242,244,246,.6)">paper type</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+<div id="4a" style="width:1240px;flex:none;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 40px 80px -50px rgba(0,0,0,.9)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#5E3A93">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#F7F4FF">4a</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(255,255,255,.92)">LOCKED · AUBERGINE + THE KNOCK</span>
+        </div>
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(255,255,255,.8)">THE CHOSEN DIRECTION ASSEMBLED — 3b IN THE HEADER, 2b THROUGHOUT</span>
+      </div>
+
+      <div style="background:#0C0E11;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:66px;background:#14171B;border-bottom:1px solid rgba(242,244,246,.12)">
+          <div style="display:flex;align-items:center;gap:11px">
+            <svg viewBox="0 0 120 120" width="30" height="30" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26" stroke="#A98CE8"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg>
+            <span style="font:400 21px/1 'Instrument Serif',serif;letter-spacing:.01em;color:#F2F4F6">Check It Down</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <span style="padding:9px 13px;border-radius:4px;background:rgba(94,58,147,.14);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8">MAP</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">SUPERLATIVES</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">TOURNAMENTS</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">PROMOS</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:284px 1fr;height:364px">
+          <div style="background:#14171B;border-right:1px solid rgba(242,244,246,.12);padding:15px 16px;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">FILTER ROOMS</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#A98CE8;border-bottom:1px solid rgba(94,58,147,.45)">CLEAR</span>
+            </div>
+            <div style="padding:9px 11px;background:rgba(94,58,147,.11);border-left:2px solid #5E3A93;font:600 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ matchLine }}</div>
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45)">GAMES</span>
+              <sc-for list="{{ gamesGroupP }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#F7F4FF">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45);margin-top:3px">FOOD &amp; DRINK</span>
+              <sc-for list="{{ foodGroupP }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#F7F4FF">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:500 11px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.5);margin-top:2px">PARKING · COMFORT · SERVICES</span>
+            </div>
+          </div>
+
+          <div style="position:relative;background:#0A0C0E;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(107deg,rgba(255,255,255,.05) 0 2px,transparent 2px 132px),linear-gradient(17deg,rgba(255,255,255,.035) 0 1px,transparent 1px 88px)"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 46% 74%,rgba(94,58,147,.1) 0%,rgba(5,6,7,.6) 72%)"></div>
+            <sc-for list="{{ pinsP }}" as="p" hint-placeholder-count="8">
+              <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;opacity:{{ p.op }}">
+                <span style="padding:3px 7px;border-radius:4px;background:{{ p.chip }};border:1px solid {{ p.chipLine }};font:600 10px/1 Archivo,sans-serif;color:{{ p.chipInk }};white-space:nowrap">{{ p.name }}</span>
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ p.dot }};box-shadow:0 0 0 3px rgba(10,12,14,.9)"></span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;right:15px;top:15px;width:252px;background:#14171B;border:1px solid rgba(242,244,246,.14);border-radius:5px;box-shadow:0 26px 50px -22px rgba(0,0,0,.9);overflow:hidden">
+              <div style="padding:12px 13px 11px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE"></span><span style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE;animation:ping 2.4s ease-out infinite"></span></span>
+                  <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#4FBFAE">OPEN 24H</span>
+                  <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.5)">· STRIP · 0.2 MI</span>
+                </div>
+                <span style="font:400 24px/1.05 'Instrument Serif',serif;color:#F2F4F6">ARIA</span>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">24 tables · $1/3 – $5/10 NLH</span>
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">10% to $5 · $1 drop · $1.00/hr comps</span>
+                  <span style="font:400 12px/1.35 Archivo,sans-serif;color:rgba(242,244,246,.68)">24-hour tableside food · valet comped with play</span>
+                </div>
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.5)">VERIFIED 1 DAY AGO</span>
+              </div>
+              <div style="padding:11px 13px;background:#5E3A93;border-top:1px solid #A98CE8;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+                <span style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F7F4FF">OPEN FULL DETAILS</span>
+                <span style="font:600 13px/1 Archivo,sans-serif;color:#F7F4FF">&rarr;</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:14px;bottom:12px;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(255,255,255,.5)">TIER B 3D MASSING · 17 ROOMS PLOTTED · SINGLE CLICK = POPUP · DOUBLE CLICK = FULL CARD</span>
+          </div>
+        </div>
+
+        <div style="padding:22px;display:flex;flex-direction:column;gap:15px">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font:400 30px/1 'Instrument Serif',serif;color:#F2F4F6">Just the facts</span>
+              <span style="font:400 13px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.64)">Editorial ranking from our own research. {{ sortNote }}</span>
+            </div>
+            <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:rgba(242,244,246,.06)">
+              <span style="padding:8px 11px;border-radius:3px;background:#20252A;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">{{ sortLabel }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt1 }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt2 }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px">
+            <sc-for list="{{ supers }}" as="s" hint-placeholder-count="5">
+              <div style="padding:13px;background:#14171B;border:1px solid rgba(242,244,246,.12);border-top:2px solid #5E3A93;display:flex;flex-direction:column;gap:7px">
+                <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.55)">{{ s.title }}</span>
+                <span style="font:400 21px/1.05 'Instrument Serif',serif;color:#F2F4F6">{{ s.room }}</span>
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#4FBFAE">{{ s.figure }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#14171B;border:1px solid rgba(242,244,246,.12)">
+            <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(242,244,246,.14);background:rgba(242,244,246,.035)">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">#</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">ROOM</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">RAKE</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">DROP</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">PARKING</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">FOOD</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">TABLES</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">VERIFIED</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(242,244,246,.07);align-items:center" style-hover="background:rgba(94,58,147,.07)">
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInkP }}">{{ r.rank }}</span>
+                <span style="font:400 17px/1.15 'Instrument Serif',serif;color:#F2F4F6">{{ r.room }}</span>
+                <span style="font:600 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeInkP }};border-bottom:{{ r.rakeRuleB }}">{{ r.rake }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.drop }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.parking }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.food }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.tables }}</span>
+                <span style="font:500 11px/1.2 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ r.verInkB }}">{{ r.ver }}</span>
+              </div>
+            </sc-for>
+            <div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">SHOWING 8 OF 17 PERMANENT ROOMS</span>
+              <span style="font:400 11.5px/1 Archivo,sans-serif;color:rgba(242,244,246,.62)">Rake, drop and table counts are room-published or observed — each row carries its own verified date</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:22px;padding:34px 40px 10px">
+  <div style="display:flex;flex-direction:column;gap:7px">
+    <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.26em;color:rgba(255,255,255,.44)">TURN 3 · LOGO 1e, TWO KNUCKLES, WORKED UP</span>
+    <span style="font:400 34px/1 'Instrument Serif',serif;color:#F2F4F6">The knuckles mark, in violet, in situ</span>
+    <span style="font:400 14px/1.5 Archivo,sans-serif;color:rgba(255,255,255,.6);max-width:830px">Three readings of <a href="#1e">1e</a> on the 2a shell: as drawn, with the strike ripple that fixes the small-size problem, and rotated to a truer three-quarter knuckle angle. Shown at header size, in the app bar, over the map, at favicon sizes, and as an app tile.</span>
+  </div>
+
+  <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start">
+
+    <div id="3a" style="width:600px;flex:none;background:#14171B;border-top:3px solid #6D4AC4;display:flex;flex-direction:column">
+      <div style="padding:15px 18px 13px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#B9A3F2">3a</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F2F4F6">AS DRAWN</span>
+        </div>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.7)">Two knuckle points and the felt line they strike. Quiet and very insider — but with no motion in it, at 16px it is simply two dots.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:196px 1fr;border-top:1px solid rgba(242,244,246,.12)">
+        <div style="padding:20px;display:flex;align-items:center;justify-content:center;background:#191D22;border-right:1px solid rgba(242,244,246,.12)">
+          <svg viewBox="0 0 120 120" width="122" height="122" aria-label="Two knuckles, as drawn"><path d="M14 84 C36 79, 84 79, 106 84" fill="none" stroke="#F2F4F6" stroke-opacity=".26" stroke-width="4" stroke-linecap="round"></path><circle cx="45" cy="53" r="15" fill="#8A6BE0"></circle><circle cx="79" cy="58" r="12.5" fill="#8A6BE0" fill-opacity=".6"></circle></svg>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#191D22;border-bottom:1px solid rgba(242,244,246,.1)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><path d="M14 84 C36 79, 84 79, 106 84" fill="none" stroke="#F2F4F6" stroke-opacity=".3" stroke-width="7" stroke-linecap="round"></path><circle cx="45" cy="53" r="16" fill="#F2F4F6"></circle><circle cx="80" cy="58" r="13" fill="#F2F4F6" fill-opacity=".6"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.5)">SINGLE COLOUR</span>
+          </div>
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:14px;background:#0A0C0E;border-bottom:1px solid rgba(255,255,255,.08)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><path d="M14 84 C36 79, 84 79, 106 84" fill="none" stroke="#B9A3F2" stroke-opacity=".4" stroke-width="7" stroke-linecap="round"></path><circle cx="45" cy="53" r="16" fill="#8A6BE0"></circle><circle cx="80" cy="58" r="13" fill="#8A6BE0" fill-opacity=".6"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(255,255,255,.5)">OVER THE MAP</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;align-items:flex-end;gap:12px;background:#191D22">
+            <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><circle cx="44" cy="54" r="24" fill="#8A6BE0"></circle><circle cx="86" cy="62" r="19" fill="#8A6BE0" fill-opacity=".6"></circle></svg>
+            <svg viewBox="0 0 120 120" width="24" height="24" aria-hidden="true"><circle cx="44" cy="54" r="22" fill="#8A6BE0"></circle><circle cx="86" cy="62" r="18" fill="#8A6BE0" fill-opacity=".6"></circle></svg>
+            <svg viewBox="0 0 120 120" width="32" height="32" aria-hidden="true"><path d="M14 86 C36 81, 84 81, 106 86" fill="none" stroke="#B9A3F2" stroke-opacity=".4" stroke-width="6" stroke-linecap="round"></path><circle cx="45" cy="53" r="17" fill="#8A6BE0"></circle><circle cx="80" cy="58" r="14" fill="#8A6BE0" fill-opacity=".6"></circle></svg>
+            <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.5);padding-bottom:3px">16 · 24 · 32 PX</span>
+            <span style="margin-left:auto;padding:4px 7px;background:rgba(242,244,246,.08);font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.66)">READS AS TWO DOTS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3b" style="width:600px;flex:none;background:#14171B;border-top:3px solid #6D4AC4;display:flex;flex-direction:column">
+      <div style="padding:15px 18px 13px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#B9A3F2">3b</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F2F4F6">WITH THE STRIKE</span>
+          <span style="padding:3px 6px;background:rgba(79,191,174,.16);font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#4FBFAE">BEST OF THE THREE</span>
+        </div>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.7)">Two knuckles, two knocks — the leading one lands twice and throws a ring each time. It keeps 1e's insider read, gains the map-ping shape, and at 16px the ring plus dot survives where two bare dots do not.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:196px 1fr;border-top:1px solid rgba(242,244,246,.12)">
+        <div style="padding:20px;display:flex;align-items:center;justify-content:center;background:#191D22;border-right:1px solid rgba(242,244,246,.12)">
+          <svg viewBox="0 0 120 120" width="122" height="122" aria-label="Two knuckles knocking twice"><path d="M10 88 C34 82, 88 82, 110 88" fill="none" stroke="#F2F4F6" stroke-opacity=".24" stroke-width="4" stroke-linecap="round"></path><ellipse cx="44" cy="55" rx="30" ry="25.5" transform="rotate(-8 44 55)" fill="none" stroke="#8A6BE0" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="126 33" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="55" rx="30" ry="25.5" transform="rotate(-8 44 55)" fill="none" stroke="#8A6BE0" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="126 33" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke="#8A6BE0" stroke-opacity=".5" stroke-width="6" stroke-linecap="round" stroke-dasharray="96 26"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="13.5" fill="#8A6BE0"></circle><circle cx="83" cy="60" r="11" fill="#8A6BE0" fill-opacity=".5"></circle></g></svg>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#191D22;border-bottom:1px solid rgba(242,244,246,.1)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#F2F4F6" stroke-opacity=".6" stroke-width="7" stroke-linecap="round" stroke-dasharray="98 27"></ellipse><circle cx="44" cy="53" r="14.5" fill="#F2F4F6"></circle><circle cx="84" cy="60" r="11.5" fill="#F2F4F6" fill-opacity=".55"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.5)">SINGLE COLOUR</span>
+          </div>
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:14px;background:#0A0C0E;border-bottom:1px solid rgba(255,255,255,.08)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#B9A3F2" stroke-opacity=".7" stroke-width="7" stroke-linecap="round" stroke-dasharray="98 27"></ellipse><circle cx="44" cy="53" r="14.5" fill="#8A6BE0"></circle><circle cx="84" cy="60" r="11.5" fill="#8A6BE0" fill-opacity=".55"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(255,255,255,.5)">OVER THE MAP</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;align-items:flex-end;gap:12px;background:#191D22">
+            <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><ellipse cx="46" cy="55" rx="26" ry="22" transform="rotate(-6 46 55)" fill="none" stroke="#8A6BE0" stroke-opacity=".62" stroke-width="13" stroke-linecap="round" stroke-dasharray="110 30"></ellipse><circle cx="46" cy="54" r="20" fill="#8A6BE0"></circle><circle cx="94" cy="64" r="14" fill="#8A6BE0" fill-opacity=".5"></circle></svg>
+            <svg viewBox="0 0 120 120" width="24" height="24" aria-hidden="true"><ellipse cx="45" cy="55" rx="25" ry="21" transform="rotate(-6 45 55)" fill="none" stroke="#8A6BE0" stroke-opacity=".62" stroke-width="10" stroke-linecap="round" stroke-dasharray="106 28"></ellipse><circle cx="45" cy="54" r="17" fill="#8A6BE0"></circle><circle cx="90" cy="63" r="13" fill="#8A6BE0" fill-opacity=".5"></circle></svg>
+            <svg viewBox="0 0 120 120" width="32" height="32" aria-hidden="true"><ellipse cx="44" cy="55" rx="33" ry="28" transform="rotate(-8 44 55)" fill="none" stroke="#8A6BE0" stroke-opacity=".32" stroke-width="6" stroke-linecap="round" stroke-dasharray="126 40"></ellipse><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke="#8A6BE0" stroke-opacity=".65" stroke-width="7" stroke-linecap="round" stroke-dasharray="96 26"></ellipse><circle cx="44" cy="53" r="14" fill="#8A6BE0"></circle><circle cx="84" cy="60" r="11" fill="#8A6BE0" fill-opacity=".5"></circle></svg>
+            <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.5);padding-bottom:3px">16 · 24 · 32 PX</span>
+            <span style="margin-left:auto;padding:4px 7px;background:rgba(79,191,174,.16);font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#4FBFAE">HOLDS AT 16</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3c" style="width:600px;flex:none;background:#14171B;border-top:3px solid #6D4AC4;display:flex;flex-direction:column">
+      <div style="padding:15px 18px 13px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#B9A3F2">3c</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F2F4F6">THREE-QUARTER ANGLE</span>
+        </div>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.7)">Three knuckles at the angle a hand actually meets the table, on a stronger surface line. The most literal gesture — and the most likely to be mistaken for a braille cell or an ellipsis.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:196px 1fr;border-top:1px solid rgba(242,244,246,.12)">
+        <div style="padding:20px;display:flex;align-items:center;justify-content:center;background:#191D22;border-right:1px solid rgba(242,244,246,.12)">
+          <svg viewBox="0 0 120 120" width="122" height="122" aria-label="Three knuckles at a three-quarter angle"><path d="M8 90 C34 83, 90 83, 112 90" fill="none" stroke="#F2F4F6" stroke-opacity=".3" stroke-width="5" stroke-linecap="round"></path><circle cx="34" cy="60" r="12" fill="#8A6BE0"></circle><circle cx="64" cy="51" r="14" fill="#8A6BE0"></circle><circle cx="94" cy="58" r="11" fill="#8A6BE0" fill-opacity=".55"></circle><ellipse cx="64" cy="53" rx="26" ry="21" transform="rotate(-6 64 53)" fill="none" stroke="#8A6BE0" stroke-opacity=".28" stroke-width="4" stroke-linecap="round" stroke-dasharray="60 96"></ellipse></svg>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#191D22;border-bottom:1px solid rgba(242,244,246,.1)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><path d="M8 90 C34 83, 90 83, 112 90" fill="none" stroke="#F2F4F6" stroke-opacity=".34" stroke-width="8" stroke-linecap="round"></path><circle cx="34" cy="60" r="13" fill="#F2F4F6"></circle><circle cx="64" cy="51" r="15" fill="#F2F4F6"></circle><circle cx="94" cy="58" r="12" fill="#F2F4F6" fill-opacity=".55"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.5)">SINGLE COLOUR</span>
+          </div>
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:14px;background:#0A0C0E;border-bottom:1px solid rgba(255,255,255,.08)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><path d="M8 90 C34 83, 90 83, 112 90" fill="none" stroke="#B9A3F2" stroke-opacity=".42" stroke-width="8" stroke-linecap="round"></path><circle cx="34" cy="60" r="13" fill="#8A6BE0"></circle><circle cx="64" cy="51" r="15" fill="#8A6BE0"></circle><circle cx="94" cy="58" r="12" fill="#8A6BE0" fill-opacity=".55"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(255,255,255,.5)">OVER THE MAP</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;align-items:flex-end;gap:12px;background:#191D22">
+            <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><circle cx="26" cy="62" r="18" fill="#8A6BE0"></circle><circle cx="62" cy="50" r="21" fill="#8A6BE0"></circle><circle cx="98" cy="60" r="16" fill="#8A6BE0" fill-opacity=".55"></circle></svg>
+            <svg viewBox="0 0 120 120" width="24" height="24" aria-hidden="true"><circle cx="28" cy="61" r="15" fill="#8A6BE0"></circle><circle cx="63" cy="50" r="18" fill="#8A6BE0"></circle><circle cx="97" cy="59" r="14" fill="#8A6BE0" fill-opacity=".55"></circle></svg>
+            <svg viewBox="0 0 120 120" width="32" height="32" aria-hidden="true"><path d="M8 92 C34 85, 90 85, 112 92" fill="none" stroke="#B9A3F2" stroke-opacity=".42" stroke-width="7" stroke-linecap="round"></path><circle cx="32" cy="60" r="13" fill="#8A6BE0"></circle><circle cx="64" cy="50" r="16" fill="#8A6BE0"></circle><circle cx="96" cy="58" r="12" fill="#8A6BE0" fill-opacity=".55"></circle></svg>
+            <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.5);padding-bottom:3px">16 · 24 · 32 PX</span>
+            <span style="margin-left:auto;padding:4px 7px;background:rgba(242,244,246,.08);font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.66)">READS AS AN ELLIPSIS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:stretch">
+    <div style="width:600px;flex:none;background:#0A0C0E;border:1px solid rgba(242,244,246,.12);padding:0;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:62px;border-bottom:1px solid rgba(242,244,246,.12);background:#14171B">
+        <div style="display:flex;align-items:center;gap:11px">
+          <svg viewBox="0 0 120 120" width="28" height="28" aria-hidden="true"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke="#B9A3F2" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#B9A3F2" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#B9A3F2" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="44" cy="53" r="14.5" fill="#8A6BE0"></circle><circle cx="84" cy="60" r="11.5" fill="#8A6BE0" fill-opacity=".55"></circle></g></svg>
+          <span style="font:400 21px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down</span>
+        </div>
+        <span style="padding:9px 13px;border-radius:4px;background:rgba(109,74,196,.16);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#B9A3F2">MAP</span>
+      </div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:5px">
+        <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.5)">3b IN THE APP BAR</span>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.72)">The ring gives the lockup a horizontal lead-in, so the mark points at the wordmark instead of sitting beside it.</span>
+      </div>
+    </div>
+
+    <div style="width:600px;flex:none;background:#14171B;border:1px solid rgba(242,244,246,.12);padding:18px 20px;display:flex;gap:18px;align-items:center">
+      <div style="display:flex;gap:12px">
+        <div style="width:66px;height:66px;border-radius:15px;background:#6D4AC4;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 120 120" width="42" height="42" aria-hidden="true"><ellipse cx="46" cy="55" rx="25" ry="21" transform="rotate(-6 46 55)" fill="none" stroke="#F7F4FF" stroke-opacity=".5" stroke-width="8" stroke-linecap="round" stroke-dasharray="105 28"></ellipse><ellipse cx="46" cy="55" rx="26" ry="22" transform="rotate(-6 46 55)" fill="none" stroke="#F7F4FF" stroke-width="9" stroke-linecap="round" stroke-dasharray="109 29" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="46" cy="55" rx="26" ry="22" transform="rotate(-6 46 55)" fill="none" stroke="#F7F4FF" stroke-width="9" stroke-linecap="round" stroke-dasharray="109 29" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="46" cy="54" r="17" fill="#F7F4FF"></circle><circle cx="92" cy="63" r="13" fill="#F7F4FF" fill-opacity=".62"></circle></g></svg>
+        </div>
+        <div style="width:66px;height:66px;border-radius:15px;background:#0A0C0E;border:1px solid rgba(242,244,246,.14);display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 120 120" width="42" height="42" aria-hidden="true"><ellipse cx="46" cy="55" rx="25" ry="21" transform="rotate(-6 46 55)" fill="none" stroke="#B9A3F2" stroke-opacity=".5" stroke-width="8" stroke-linecap="round" stroke-dasharray="105 28"></ellipse><ellipse cx="46" cy="55" rx="26" ry="22" transform="rotate(-6 46 55)" fill="none" stroke="#B9A3F2" stroke-width="9" stroke-linecap="round" stroke-dasharray="109 29" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="46" cy="55" rx="26" ry="22" transform="rotate(-6 46 55)" fill="none" stroke="#B9A3F2" stroke-width="9" stroke-linecap="round" stroke-dasharray="109 29" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="46" cy="54" r="17" fill="#8A6BE0"></circle><circle cx="92" cy="63" r="13" fill="#8A6BE0" fill-opacity=".6"></circle></g></svg>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;flex:1">
+        <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.5)">APP TILE · BOTH FILLS</span>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.72)">Reversed on violet and on ink. The trailing knuckle can drop entirely below 16px without losing the mark.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:18px;padding:18px 20px;background:#14171B;border-left:3px solid #6D4AC4;max-width:1222px">
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:250px;flex:1">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">MY READ</span>
+      <span style="font:400 15px/1.5 Archivo,sans-serif;color:#F2F4F6"><a href="#3b">3b</a>. Bare knuckles are the more honest gesture but they carry no motion, and a logo has to say something happened. One ring off the leading knuckle keeps the insider read and gets the map ping for free.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:250px;flex:1">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">AGAINST 1d</span>
+      <span style="font:400 15px/1.5 Archivo,sans-serif;color:rgba(242,244,246,.8)">1d is the cleaner symbol and the safer favicon; <a href="#3b">3b</a> is the more specific one — it is a hand, not a signal. If we want people to ask what the mark is, 3b. If we want it to disappear into the UI, 1d.</span>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:26px;padding:34px 40px 10px">
+  <div style="display:flex;flex-direction:column;gap:7px">
+    <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.26em;color:rgba(255,255,255,.44)">TURN 2 · 1b WITH A DARK PURPLE ACCENT</span>
+    <span style="font:400 34px/1 'Instrument Serif',serif;color:#F2F4F6">Same dark comp, purple instead of vermilion</span>
+    <span style="font:400 14px/1.5 Archivo,sans-serif;color:rgba(255,255,255,.6);max-width:820px">Identical layout, data and type to <a href="#1b">1b</a> — only the accent moves, so the table is a fair comparison. Purple needs two values on ink: a saturated surface for fills and a lighter tint for text, since a dark purple set as type on near-black falls below contrast. The value colour moves too: purple and steel blue sit close enough in hue that <a href="#2a">2a</a> pairs with teal, while <a href="#2b">2b</a> keeps steel blue against a darker aubergine.</span>
+  </div>
+  <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+<div id="2a" style="width:1240px;flex:none;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 40px 80px -50px rgba(0,0,0,.9)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#6D4AC4">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#F7F4FF">2a</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(255,255,255,.92)">INK &amp; DEEP VIOLET · DARK UI</span>
+        </div>
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(255,255,255,.8)">VIOLET IDENTITY · TEAL FOR VALUE · THE MOODIER READ</span>
+      </div>
+
+      <div style="background:#0C0E11;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:66px;background:#14171B;border-bottom:1px solid rgba(242,244,246,.12)">
+          <div style="display:flex;align-items:center;gap:11px">
+            <svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true"><ellipse cx="58" cy="63" rx="46" ry="41" transform="rotate(-8 58 63)" fill="none" stroke="#B9A3F2" stroke-opacity=".32" stroke-width="6" stroke-linecap="round" stroke-dasharray="196 44"></ellipse><ellipse cx="59" cy="61" rx="31" ry="27" transform="rotate(-6 59 61)" fill="none" stroke="#B9A3F2" stroke-opacity=".64" stroke-width="7" stroke-linecap="round" stroke-dasharray="146 28"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#B9A3F2" stroke-width="8" stroke-linecap="round"></ellipse><circle cx="60" cy="60" r="7" fill="#B9A3F2"></circle></svg>
+            <span style="font:400 21px/1 'Instrument Serif',serif;letter-spacing:.01em;color:#F2F4F6">Check It Down</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <span style="padding:9px 13px;border-radius:4px;background:rgba(109,74,196,.14);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#B9A3F2">MAP</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">SUPERLATIVES</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">TOURNAMENTS</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">PROMOS</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:284px 1fr;height:364px">
+          <div style="background:#14171B;border-right:1px solid rgba(242,244,246,.12);padding:15px 16px;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">FILTER ROOMS</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#B9A3F2;border-bottom:1px solid rgba(109,74,196,.45)">CLEAR</span>
+            </div>
+            <div style="padding:9px 11px;background:rgba(109,74,196,.11);border-left:2px solid #6D4AC4;font:600 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ matchLine }}</div>
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45)">GAMES</span>
+              <sc-for list="{{ gamesGroupV }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#F7F4FF">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45);margin-top:3px">FOOD &amp; DRINK</span>
+              <sc-for list="{{ foodGroupV }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#F7F4FF">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:500 11px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.5);margin-top:2px">PARKING · COMFORT · SERVICES</span>
+            </div>
+          </div>
+
+          <div style="position:relative;background:#0A0C0E;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(107deg,rgba(255,255,255,.05) 0 2px,transparent 2px 132px),linear-gradient(17deg,rgba(255,255,255,.035) 0 1px,transparent 1px 88px)"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 46% 74%,rgba(109,74,196,.1) 0%,rgba(5,6,7,.6) 72%)"></div>
+            <sc-for list="{{ pinsV }}" as="p" hint-placeholder-count="8">
+              <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;opacity:{{ p.op }}">
+                <span style="padding:3px 7px;border-radius:4px;background:{{ p.chip }};border:1px solid {{ p.chipLine }};font:600 10px/1 Archivo,sans-serif;color:{{ p.chipInk }};white-space:nowrap">{{ p.name }}</span>
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ p.dot }};box-shadow:0 0 0 3px rgba(10,12,14,.9)"></span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;right:15px;top:15px;width:252px;background:#14171B;border:1px solid rgba(242,244,246,.14);border-radius:5px;box-shadow:0 26px 50px -22px rgba(0,0,0,.9);overflow:hidden">
+              <div style="padding:12px 13px 11px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE"></span><span style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE;animation:ping 2.4s ease-out infinite"></span></span>
+                  <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#4FBFAE">OPEN 24H</span>
+                  <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.5)">· STRIP · 0.2 MI</span>
+                </div>
+                <span style="font:400 24px/1.05 'Instrument Serif',serif;color:#F2F4F6">ARIA</span>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">24 tables · $1/3 – $5/10 NLH</span>
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">10% to $5 · $1 drop · $1.00/hr comps</span>
+                  <span style="font:400 12px/1.35 Archivo,sans-serif;color:rgba(242,244,246,.68)">24-hour tableside food · valet comped with play</span>
+                </div>
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.5)">VERIFIED 1 DAY AGO</span>
+              </div>
+              <div style="padding:11px 13px;background:#6D4AC4;border-top:1px solid #B9A3F2;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+                <span style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F7F4FF">OPEN FULL DETAILS</span>
+                <span style="font:600 13px/1 Archivo,sans-serif;color:#F7F4FF">&rarr;</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:14px;bottom:12px;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(255,255,255,.5)">TIER B 3D MASSING · 17 ROOMS PLOTTED · SINGLE CLICK = POPUP · DOUBLE CLICK = FULL CARD</span>
+          </div>
+        </div>
+
+        <div style="padding:22px;display:flex;flex-direction:column;gap:15px">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font:400 30px/1 'Instrument Serif',serif;color:#F2F4F6">Just the facts</span>
+              <span style="font:400 13px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.64)">Editorial ranking from our own research. {{ sortNote }}</span>
+            </div>
+            <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:rgba(242,244,246,.06)">
+              <span style="padding:8px 11px;border-radius:3px;background:#20252A;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">{{ sortLabel }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt1 }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt2 }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px">
+            <sc-for list="{{ supers }}" as="s" hint-placeholder-count="5">
+              <div style="padding:13px;background:#14171B;border:1px solid rgba(242,244,246,.12);border-top:2px solid #6D4AC4;display:flex;flex-direction:column;gap:7px">
+                <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.55)">{{ s.title }}</span>
+                <span style="font:400 21px/1.05 'Instrument Serif',serif;color:#F2F4F6">{{ s.room }}</span>
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#4FBFAE">{{ s.figure }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#14171B;border:1px solid rgba(242,244,246,.12)">
+            <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(242,244,246,.14);background:rgba(242,244,246,.035)">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">#</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">ROOM</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">RAKE</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">DROP</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">PARKING</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">FOOD</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">TABLES</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">VERIFIED</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(242,244,246,.07);align-items:center" style-hover="background:rgba(109,74,196,.07)">
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInkV }}">{{ r.rank }}</span>
+                <span style="font:400 17px/1.15 'Instrument Serif',serif;color:#F2F4F6">{{ r.room }}</span>
+                <span style="font:600 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeInkV }};border-bottom:{{ r.rakeRuleB }}">{{ r.rake }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.drop }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.parking }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.food }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.tables }}</span>
+                <span style="font:500 11px/1.2 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ r.verInkB }}">{{ r.ver }}</span>
+              </div>
+            </sc-for>
+            <div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">SHOWING 8 OF 17 PERMANENT ROOMS</span>
+              <span style="font:400 11.5px/1 Archivo,sans-serif;color:rgba(242,244,246,.62)">Rake, drop and table counts are room-published or observed — each row carries its own verified date</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+<div id="2b" style="width:1240px;flex:none;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 40px 80px -50px rgba(0,0,0,.9)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#5E3A93">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#F7F4FF">2b</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(255,255,255,.92)">INK &amp; AUBERGINE · DARK UI</span>
+        </div>
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(255,255,255,.8)">DARKER, QUIETER PURPLE · STEEL BLUE FOR VALUE</span>
+      </div>
+
+      <div style="background:#0C0E11;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:66px;background:#14171B;border-bottom:1px solid rgba(242,244,246,.12)">
+          <div style="display:flex;align-items:center;gap:11px">
+            <svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true"><ellipse cx="58" cy="63" rx="46" ry="41" transform="rotate(-8 58 63)" fill="none" stroke="#A98CE8" stroke-opacity=".32" stroke-width="6" stroke-linecap="round" stroke-dasharray="196 44"></ellipse><ellipse cx="59" cy="61" rx="31" ry="27" transform="rotate(-6 59 61)" fill="none" stroke="#A98CE8" stroke-opacity=".64" stroke-width="7" stroke-linecap="round" stroke-dasharray="146 28"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#A98CE8" stroke-width="8" stroke-linecap="round"></ellipse><circle cx="60" cy="60" r="7" fill="#A98CE8"></circle></svg>
+            <span style="font:400 21px/1 'Instrument Serif',serif;letter-spacing:.01em;color:#F2F4F6">Check It Down</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <span style="padding:9px 13px;border-radius:4px;background:rgba(94,58,147,.14);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8">MAP</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">SUPERLATIVES</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">TOURNAMENTS</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">PROMOS</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:284px 1fr;height:364px">
+          <div style="background:#14171B;border-right:1px solid rgba(242,244,246,.12);padding:15px 16px;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">FILTER ROOMS</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#A98CE8;border-bottom:1px solid rgba(94,58,147,.45)">CLEAR</span>
+            </div>
+            <div style="padding:9px 11px;background:rgba(94,58,147,.11);border-left:2px solid #5E3A93;font:600 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ matchLine }}</div>
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45)">GAMES</span>
+              <sc-for list="{{ gamesGroupP }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#F7F4FF">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45);margin-top:3px">FOOD &amp; DRINK</span>
+              <sc-for list="{{ foodGroupP }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#F7F4FF">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:500 11px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.5);margin-top:2px">PARKING · COMFORT · SERVICES</span>
+            </div>
+          </div>
+
+          <div style="position:relative;background:#0A0C0E;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(107deg,rgba(255,255,255,.05) 0 2px,transparent 2px 132px),linear-gradient(17deg,rgba(255,255,255,.035) 0 1px,transparent 1px 88px)"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 46% 74%,rgba(94,58,147,.1) 0%,rgba(5,6,7,.6) 72%)"></div>
+            <sc-for list="{{ pinsP }}" as="p" hint-placeholder-count="8">
+              <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;opacity:{{ p.op }}">
+                <span style="padding:3px 7px;border-radius:4px;background:{{ p.chip }};border:1px solid {{ p.chipLine }};font:600 10px/1 Archivo,sans-serif;color:{{ p.chipInk }};white-space:nowrap">{{ p.name }}</span>
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ p.dot }};box-shadow:0 0 0 3px rgba(10,12,14,.9)"></span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;right:15px;top:15px;width:252px;background:#14171B;border:1px solid rgba(242,244,246,.14);border-radius:5px;box-shadow:0 26px 50px -22px rgba(0,0,0,.9);overflow:hidden">
+              <div style="padding:12px 13px 11px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE"></span><span style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE;animation:ping 2.4s ease-out infinite"></span></span>
+                  <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#4FBFAE">OPEN 24H</span>
+                  <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.5)">· STRIP · 0.2 MI</span>
+                </div>
+                <span style="font:400 24px/1.05 'Instrument Serif',serif;color:#F2F4F6">ARIA</span>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">24 tables · $1/3 – $5/10 NLH</span>
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">10% to $5 · $1 drop · $1.00/hr comps</span>
+                  <span style="font:400 12px/1.35 Archivo,sans-serif;color:rgba(242,244,246,.68)">24-hour tableside food · valet comped with play</span>
+                </div>
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.5)">VERIFIED 1 DAY AGO</span>
+              </div>
+              <div style="padding:11px 13px;background:#5E3A93;border-top:1px solid #A98CE8;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+                <span style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F7F4FF">OPEN FULL DETAILS</span>
+                <span style="font:600 13px/1 Archivo,sans-serif;color:#F7F4FF">&rarr;</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:14px;bottom:12px;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(255,255,255,.5)">TIER B 3D MASSING · 17 ROOMS PLOTTED · SINGLE CLICK = POPUP · DOUBLE CLICK = FULL CARD</span>
+          </div>
+        </div>
+
+        <div style="padding:22px;display:flex;flex-direction:column;gap:15px">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font:400 30px/1 'Instrument Serif',serif;color:#F2F4F6">Just the facts</span>
+              <span style="font:400 13px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.64)">Editorial ranking from our own research. {{ sortNote }}</span>
+            </div>
+            <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:rgba(242,244,246,.06)">
+              <span style="padding:8px 11px;border-radius:3px;background:#20252A;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">{{ sortLabel }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt1 }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt2 }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px">
+            <sc-for list="{{ supers }}" as="s" hint-placeholder-count="5">
+              <div style="padding:13px;background:#14171B;border:1px solid rgba(242,244,246,.12);border-top:2px solid #5E3A93;display:flex;flex-direction:column;gap:7px">
+                <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.55)">{{ s.title }}</span>
+                <span style="font:400 21px/1.05 'Instrument Serif',serif;color:#F2F4F6">{{ s.room }}</span>
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#4FBFAE">{{ s.figure }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#14171B;border:1px solid rgba(242,244,246,.12)">
+            <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(242,244,246,.14);background:rgba(242,244,246,.035)">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">#</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">ROOM</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">RAKE</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">DROP</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">PARKING</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">FOOD</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">TABLES</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">VERIFIED</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(242,244,246,.07);align-items:center" style-hover="background:rgba(94,58,147,.07)">
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInkP }}">{{ r.rank }}</span>
+                <span style="font:400 17px/1.15 'Instrument Serif',serif;color:#F2F4F6">{{ r.room }}</span>
+                <span style="font:600 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeInkP }};border-bottom:{{ r.rakeRuleB }}">{{ r.rake }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.drop }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.parking }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.food }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.tables }}</span>
+                <span style="font:500 11px/1.2 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ r.verInkB }}">{{ r.ver }}</span>
+              </div>
+            </sc-for>
+            <div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">SHOWING 8 OF 17 PERMANENT ROOMS</span>
+              <span style="font:400 11.5px/1 Archivo,sans-serif;color:rgba(242,244,246,.62)">Rake, drop and table counts are room-published or observed — each row carries its own verified date</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:18px;padding:18px 20px;background:#14171B;border-left:3px solid #6D4AC4;max-width:1240px">
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:250px;flex:1">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">WHAT PURPLE BUYS</span>
+      <span style="font:400 15px/1.5 Archivo,sans-serif;color:#F2F4F6">It is the emptiest space in the category — no Vegas poker room and no competitor owns it, and it never reads as a warning, so the superlatives table gets its full colour vocabulary back.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:250px;flex:1">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">WHAT IT COSTS</span>
+      <span style="font:400 15px/1.5 Archivo,sans-serif;color:rgba(242,244,246,.8)">Purple carries less urgency than vermilion, so the single primary action pulls softer — <a href="#2a">2a</a> holds it, <a href="#2b">2b</a> starts to recede. Purple also runs one shade from casino-lounge velvet; keeping it cool and desaturated is what stops that.</span>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:26px;padding:34px 40px 60px">
+  <div style="display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.26em;color:rgba(255,255,255,.44)">TURN 1 · PALETTE + LOGO DECISION</span>
+      <span style="font:400 40px/1 'Instrument Serif',serif;color:#F2F4F6">Check It Down — direction board</span>
+      <span style="font:400 14px/1.5 Archivo,sans-serif;color:rgba(255,255,255,.6);max-width:760px">Three palette comps of the landing map and the superlatives table, then four logo directions. Judge the palette on the table, not the map. Every figure below is researched-placeholder data, not a live feed.</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+
+    <!-- ================= 1a · INK + VERMILION, LIGHT ================= -->
+    <div id="1a" style="width:1240px;flex:none;display:flex;flex-direction:column;gap:0;border-radius:6px;overflow:hidden;box-shadow:0 40px 80px -50px rgba(0,0,0,.9)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#DE3C14">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#fff">1a</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(255,255,255,.86)">INK &amp; VERMILION · LIGHT UI</span>
+        </div>
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(255,255,255,.8)">THE DIFFERENTIATING BET — NO COMPETITOR IS LIGHT</span>
+      </div>
+
+      <div style="background:#F5F6F7;display:flex;flex-direction:column">
+        <!-- app header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:66px;background:#FFF;border-bottom:1px solid rgba(13,16,19,.12)">
+          <div style="display:flex;align-items:center;gap:11px">
+            <svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true"><ellipse cx="58" cy="63" rx="46" ry="41" transform="rotate(-8 58 63)" fill="none" stroke="#DE3C14" stroke-opacity=".3" stroke-width="6" stroke-linecap="round" stroke-dasharray="196 44"></ellipse><ellipse cx="59" cy="61" rx="31" ry="27" transform="rotate(-6 59 61)" fill="none" stroke="#DE3C14" stroke-opacity=".62" stroke-width="7" stroke-linecap="round" stroke-dasharray="146 28"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#DE3C14" stroke-width="8" stroke-linecap="round"></ellipse><circle cx="60" cy="60" r="7" fill="#DE3C14"></circle></svg>
+            <span style="font:400 21px/1 'Instrument Serif',serif;letter-spacing:.01em;color:#0D1013">Check It Down</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <span style="padding:9px 13px;border-radius:4px;background:rgba(222,60,20,.09);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#DE3C14">MAP</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(13,16,19,.6)">SUPERLATIVES</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(13,16,19,.6)">TOURNAMENTS</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(13,16,19,.6)">PROMOS</span>
+          </div>
+        </div>
+
+        <!-- map band -->
+        <div style="display:grid;grid-template-columns:284px 1fr;gap:0;height:364px">
+          <div style="background:#FFF;border-right:1px solid rgba(13,16,19,.12);padding:15px 16px;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(13,16,19,.55)">FILTER ROOMS</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#DE3C14;border-bottom:1px solid rgba(222,60,20,.4)">CLEAR</span>
+            </div>
+            <div style="padding:9px 11px;background:rgba(222,60,20,.07);border-left:2px solid #DE3C14;font:600 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#0D1013">{{ matchLine }}</div>
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(13,16,19,.45)">GAMES</span>
+              <sc-for list="{{ gamesGroup }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#fff">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(13,16,19,.45);margin-top:3px">FOOD &amp; DRINK</span>
+              <sc-for list="{{ foodGroup }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#fff">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:500 11px/1.3 Archivo,sans-serif;color:rgba(13,16,19,.5);margin-top:2px">PARKING · COMFORT · SERVICES</span>
+            </div>
+          </div>
+
+          <div style="position:relative;background:#0F1214;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(107deg,rgba(255,255,255,.055) 0 2px,transparent 2px 132px),linear-gradient(17deg,rgba(255,255,255,.04) 0 1px,transparent 1px 88px)"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 46% 74%,rgba(222,60,20,.09) 0%,rgba(6,8,9,.55) 72%)"></div>
+            <sc-for list="{{ pins }}" as="p" hint-placeholder-count="8">
+              <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;opacity:{{ p.op }}">
+                <span style="padding:3px 7px;border-radius:4px;background:{{ p.chip }};border:1px solid {{ p.chipLine }};font:600 10px/1 Archivo,sans-serif;color:{{ p.chipInk }};white-space:nowrap">{{ p.name }}</span>
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ p.dot }};box-shadow:0 0 0 3px rgba(15,18,20,.9)"></span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;right:15px;top:15px;width:252px;background:#FFF;border-radius:5px;box-shadow:0 26px 50px -22px rgba(0,0,0,.85);overflow:hidden">
+              <div style="padding:12px 13px 11px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:#1F6C8C"></span><span style="position:absolute;inset:0;border-radius:50%;background:#1F6C8C;animation:ping 2.4s ease-out infinite"></span></span>
+                  <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#1F6C8C">OPEN 24H</span>
+                  <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.5)">· STRIP · 0.2 MI</span>
+                </div>
+                <span style="font:400 24px/1.05 'Instrument Serif',serif;color:#0D1013">ARIA</span>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(13,16,19,.78)">24 tables · $1/3 – $5/10 NLH</span>
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(13,16,19,.78)">10% to $5 · $1 drop · $1.00/hr comps</span>
+                  <span style="font:400 12px/1.35 Archivo,sans-serif;color:rgba(13,16,19,.66)">24-hour tableside food · valet comped with play</span>
+                </div>
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(13,16,19,.5)">VERIFIED 1 DAY AGO</span>
+              </div>
+              <div style="padding:11px 13px;background:#DE3C14;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+                <span style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#fff">OPEN FULL DETAILS</span>
+                <span style="font:600 13px/1 Archivo,sans-serif;color:#fff">&rarr;</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:14px;bottom:12px;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(255,255,255,.5)">TIER B 3D MASSING · 17 ROOMS PLOTTED · SINGLE CLICK = POPUP · DOUBLE CLICK = FULL CARD</span>
+          </div>
+        </div>
+
+        <!-- superlatives -->
+        <div style="padding:22px;display:flex;flex-direction:column;gap:15px">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font:400 30px/1 'Instrument Serif',serif;color:#0D1013">Just the facts</span>
+              <span style="font:400 13px/1.4 Archivo,sans-serif;color:rgba(13,16,19,.62)">Editorial ranking from our own research. {{ sortNote }}</span>
+            </div>
+            <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:rgba(13,16,19,.05)">
+              <span style="padding:8px 11px;border-radius:3px;background:#FFF;box-shadow:0 1px 2px rgba(0,0,0,.1);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#0D1013">{{ sortLabel }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">{{ sortAlt1 }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">{{ sortAlt2 }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px">
+            <sc-for list="{{ supers }}" as="s" hint-placeholder-count="5">
+              <div style="padding:13px;background:#FFF;border:1px solid rgba(13,16,19,.12);border-top:2px solid #DE3C14;display:flex;flex-direction:column;gap:7px">
+                <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(13,16,19,.55)">{{ s.title }}</span>
+                <span style="font:400 21px/1.05 'Instrument Serif',serif;color:#0D1013">{{ s.room }}</span>
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#1F6C8C">{{ s.figure }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#FFF;border:1px solid rgba(13,16,19,.12)">
+            <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(13,16,19,.14);background:rgba(13,16,19,.03)">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">#</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">ROOM</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#0D1013">RAKE</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">DROP</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">PARKING</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">FOOD</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">TABLES</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">VERIFIED</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(13,16,19,.08);align-items:center" style-hover="background:rgba(222,60,20,.045)">
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInkA }}">{{ r.rank }}</span>
+                <span style="font:400 17px/1.15 'Instrument Serif',serif;color:#0D1013">{{ r.room }}</span>
+                <span style="font:600 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeInkA }};border-bottom:{{ r.rakeRule }}">{{ r.rake }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(13,16,19,.8)">{{ r.drop }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(13,16,19,.78)">{{ r.parking }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(13,16,19,.78)">{{ r.food }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(13,16,19,.8)">{{ r.tables }}</span>
+                <span style="font:500 11px/1.2 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ r.verInkA }}">{{ r.ver }}</span>
+              </div>
+            </sc-for>
+            <div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.55)">SHOWING 8 OF 17 PERMANENT ROOMS</span>
+              <span style="font:400 11.5px/1 Archivo,sans-serif;color:rgba(13,16,19,.6)">Rake, drop and table counts are room-published or observed — each row carries its own verified date</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 1b · INK + VERMILION, DARK ================= -->
+    <div id="1b" style="width:1240px;flex:none;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 40px 80px -50px rgba(0,0,0,.9)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#F04E22">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#170703">1b</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(23,7,3,.82)">INK &amp; VERMILION · DARK UI</span>
+        </div>
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(23,7,3,.72)">SAFER · STILL GOLD-FREE · CARRIES THE BUILT MOBILE WORK</span>
+      </div>
+
+      <div style="background:#0C0E11;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:66px;background:#14171B;border-bottom:1px solid rgba(242,244,246,.12)">
+          <div style="display:flex;align-items:center;gap:11px">
+            <svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true"><ellipse cx="58" cy="63" rx="46" ry="41" transform="rotate(-8 58 63)" fill="none" stroke="#F04E22" stroke-opacity=".32" stroke-width="6" stroke-linecap="round" stroke-dasharray="196 44"></ellipse><ellipse cx="59" cy="61" rx="31" ry="27" transform="rotate(-6 59 61)" fill="none" stroke="#F04E22" stroke-opacity=".64" stroke-width="7" stroke-linecap="round" stroke-dasharray="146 28"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#F04E22" stroke-width="8" stroke-linecap="round"></ellipse><circle cx="60" cy="60" r="7" fill="#F04E22"></circle></svg>
+            <span style="font:400 21px/1 'Instrument Serif',serif;letter-spacing:.01em;color:#F2F4F6">Check It Down</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <span style="padding:9px 13px;border-radius:4px;background:rgba(240,78,34,.14);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F04E22">MAP</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">SUPERLATIVES</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">TOURNAMENTS</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.62)">PROMOS</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:284px 1fr;height:364px">
+          <div style="background:#14171B;border-right:1px solid rgba(242,244,246,.12);padding:15px 16px;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">FILTER ROOMS</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#F04E22;border-bottom:1px solid rgba(240,78,34,.45)">CLEAR</span>
+            </div>
+            <div style="padding:9px 11px;background:rgba(240,78,34,.11);border-left:2px solid #F04E22;font:600 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ matchLine }}</div>
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45)">GAMES</span>
+              <sc-for list="{{ gamesGroupD }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#170703">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.45);margin-top:3px">FOOD &amp; DRINK</span>
+              <sc-for list="{{ foodGroupD }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#170703">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:500 11px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.5);margin-top:2px">PARKING · COMFORT · SERVICES</span>
+            </div>
+          </div>
+
+          <div style="position:relative;background:#0A0C0E;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(107deg,rgba(255,255,255,.05) 0 2px,transparent 2px 132px),linear-gradient(17deg,rgba(255,255,255,.035) 0 1px,transparent 1px 88px)"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 46% 74%,rgba(240,78,34,.1) 0%,rgba(5,6,7,.6) 72%)"></div>
+            <sc-for list="{{ pinsD }}" as="p" hint-placeholder-count="8">
+              <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;opacity:{{ p.op }}">
+                <span style="padding:3px 7px;border-radius:4px;background:{{ p.chip }};border:1px solid {{ p.chipLine }};font:600 10px/1 Archivo,sans-serif;color:{{ p.chipInk }};white-space:nowrap">{{ p.name }}</span>
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ p.dot }};box-shadow:0 0 0 3px rgba(10,12,14,.9)"></span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;right:15px;top:15px;width:252px;background:#14171B;border:1px solid rgba(242,244,246,.14);border-radius:5px;box-shadow:0 26px 50px -22px rgba(0,0,0,.9);overflow:hidden">
+              <div style="padding:12px 13px 11px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:#6FB6D4"></span><span style="position:absolute;inset:0;border-radius:50%;background:#6FB6D4;animation:ping 2.4s ease-out infinite"></span></span>
+                  <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#6FB6D4">OPEN 24H</span>
+                  <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.5)">· STRIP · 0.2 MI</span>
+                </div>
+                <span style="font:400 24px/1.05 'Instrument Serif',serif;color:#F2F4F6">ARIA</span>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">24 tables · $1/3 – $5/10 NLH</span>
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">10% to $5 · $1 drop · $1.00/hr comps</span>
+                  <span style="font:400 12px/1.35 Archivo,sans-serif;color:rgba(242,244,246,.68)">24-hour tableside food · valet comped with play</span>
+                </div>
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.5)">VERIFIED 1 DAY AGO</span>
+              </div>
+              <div style="padding:11px 13px;background:#F04E22;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+                <span style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#170703">OPEN FULL DETAILS</span>
+                <span style="font:600 13px/1 Archivo,sans-serif;color:#170703">&rarr;</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:14px;bottom:12px;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(255,255,255,.5)">TIER B 3D MASSING · 17 ROOMS PLOTTED · SINGLE CLICK = POPUP · DOUBLE CLICK = FULL CARD</span>
+          </div>
+        </div>
+
+        <div style="padding:22px;display:flex;flex-direction:column;gap:15px">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font:400 30px/1 'Instrument Serif',serif;color:#F2F4F6">Just the facts</span>
+              <span style="font:400 13px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.64)">Editorial ranking from our own research. {{ sortNote }}</span>
+            </div>
+            <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:rgba(242,244,246,.06)">
+              <span style="padding:8px 11px;border-radius:3px;background:#20252A;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">{{ sortLabel }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt1 }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">{{ sortAlt2 }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px">
+            <sc-for list="{{ supers }}" as="s" hint-placeholder-count="5">
+              <div style="padding:13px;background:#14171B;border:1px solid rgba(242,244,246,.12);border-top:2px solid #F04E22;display:flex;flex-direction:column;gap:7px">
+                <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.55)">{{ s.title }}</span>
+                <span style="font:400 21px/1.05 'Instrument Serif',serif;color:#F2F4F6">{{ s.room }}</span>
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#6FB6D4">{{ s.figure }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#14171B;border:1px solid rgba(242,244,246,.12)">
+            <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(242,244,246,.14);background:rgba(242,244,246,.035)">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">#</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">ROOM</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F2F4F6">RAKE</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">DROP</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">PARKING</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">FOOD</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">TABLES</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">VERIFIED</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(242,244,246,.07);align-items:center" style-hover="background:rgba(240,78,34,.07)">
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInkB }}">{{ r.rank }}</span>
+                <span style="font:400 17px/1.15 'Instrument Serif',serif;color:#F2F4F6">{{ r.room }}</span>
+                <span style="font:600 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeInkB }};border-bottom:{{ r.rakeRuleB }}">{{ r.rake }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.drop }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.parking }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.8)">{{ r.food }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.82)">{{ r.tables }}</span>
+                <span style="font:500 11px/1.2 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ r.verInkB }}">{{ r.ver }}</span>
+              </div>
+            </sc-for>
+            <div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.55)">SHOWING 8 OF 17 PERMANENT ROOMS</span>
+              <span style="font:400 11.5px/1 Archivo,sans-serif;color:rgba(242,244,246,.62)">Rake, drop and table counts are room-published or observed — each row carries its own verified date</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 1c · CONTROL: RED / BLACK / GOLD ================= -->
+    <sc-if value="{{ showControl }}" hint-placeholder-val="{{ true }}">
+    <div id="1c" style="width:1240px;flex:none;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;box-shadow:0 40px 80px -50px rgba(0,0,0,.9)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#26282B">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#F2F4F6">1c</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(242,244,246,.8)">CONTROL · RED / BLACK / GOLD</span>
+        </div>
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.6)">THE OBVIOUS CHOICE — SHOWN SO THE DECISION IS INFORMED, NOT ASSERTED</span>
+      </div>
+
+      <div style="background:#0B0B0C;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:66px;background:#141314;border-bottom:1px solid rgba(201,162,74,.34)">
+          <div style="display:flex;align-items:center;gap:11px">
+            <svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true"><ellipse cx="58" cy="63" rx="46" ry="41" transform="rotate(-8 58 63)" fill="none" stroke="#C9A24A" stroke-opacity=".38" stroke-width="6" stroke-linecap="round" stroke-dasharray="196 44"></ellipse><ellipse cx="59" cy="61" rx="31" ry="27" transform="rotate(-6 59 61)" fill="none" stroke="#C9A24A" stroke-opacity=".7" stroke-width="7" stroke-linecap="round" stroke-dasharray="146 28"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#C9A24A" stroke-width="8" stroke-linecap="round"></ellipse><circle cx="60" cy="60" r="7" fill="#B3122C"></circle></svg>
+            <span style="font:400 21px/1 'Instrument Serif',serif;letter-spacing:.01em;color:#EDE7DA">Check It Down</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <span style="padding:9px 13px;border-radius:4px;background:rgba(179,18,44,.2);border:1px solid rgba(201,162,74,.4);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#C9A24A">MAP</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(237,231,218,.62)">SUPERLATIVES</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(237,231,218,.62)">TOURNAMENTS</span>
+            <span style="padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(237,231,218,.62)">PROMOS</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:284px 1fr;height:364px">
+          <div style="background:#141314;border-right:1px solid rgba(201,162,74,.3);padding:15px 16px;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#C9A24A">FILTER ROOMS</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(237,231,218,.6);border-bottom:1px solid rgba(237,231,218,.3)">CLEAR</span>
+            </div>
+            <div style="padding:9px 11px;background:rgba(179,18,44,.18);border-left:2px solid #B3122C;font:600 13px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#EDE7DA">{{ matchLine }}</div>
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(201,162,74,.75)">GAMES</span>
+              <sc-for list="{{ gamesGroupC }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#0B0B0C">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(201,162,74,.75);margin-top:3px">FOOD &amp; DRINK</span>
+              <sc-for list="{{ foodGroupC }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:9px;min-height:26px">
+                  <span style="width:15px;height:15px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#0B0B0C">{{ o.tick }}</span>
+                  <span style="font:{{ o.weight }} 13px/1.2 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                </div>
+              </sc-for>
+              <span style="font:500 11px/1.3 Archivo,sans-serif;color:rgba(237,231,218,.5);margin-top:2px">PARKING · COMFORT · SERVICES</span>
+            </div>
+          </div>
+
+          <div style="position:relative;background:#08080A;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(107deg,rgba(201,162,74,.07) 0 2px,transparent 2px 132px),linear-gradient(17deg,rgba(201,162,74,.05) 0 1px,transparent 1px 88px)"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 46% 74%,rgba(179,18,44,.14) 0%,rgba(4,4,5,.62) 72%)"></div>
+            <sc-for list="{{ pinsC }}" as="p" hint-placeholder-count="8">
+              <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;opacity:{{ p.op }}">
+                <span style="padding:3px 7px;border-radius:4px;background:{{ p.chip }};border:1px solid {{ p.chipLine }};font:600 10px/1 Archivo,sans-serif;color:{{ p.chipInk }};white-space:nowrap">{{ p.name }}</span>
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ p.dot }};box-shadow:0 0 0 3px rgba(8,8,10,.9)"></span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;right:15px;top:15px;width:252px;background:#141314;border:1px solid rgba(201,162,74,.42);border-radius:5px;box-shadow:0 26px 50px -22px rgba(0,0,0,.9);overflow:hidden">
+              <div style="padding:12px 13px 11px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:#4ECB93"></span><span style="position:absolute;inset:0;border-radius:50%;background:#4ECB93;animation:ping 2.4s ease-out infinite"></span></span>
+                  <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#4ECB93">OPEN 24H</span>
+                  <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(237,231,218,.5)">· STRIP · 0.2 MI</span>
+                </div>
+                <span style="font:400 24px/1.05 'Instrument Serif',serif;color:#EDE7DA">ARIA</span>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(237,231,218,.82)">24 tables · $1/3 – $5/10 NLH</span>
+                  <span style="font:500 12px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(237,231,218,.82)">10% to $5 · $1 drop · $1.00/hr comps</span>
+                  <span style="font:400 12px/1.35 Archivo,sans-serif;color:rgba(237,231,218,.66)">24-hour tableside food · valet comped with play</span>
+                </div>
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(237,231,218,.5)">VERIFIED 1 DAY AGO</span>
+              </div>
+              <div style="padding:11px 13px;background:linear-gradient(180deg,#D9B45C,#C9A24A);display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+                <span style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#17130A">OPEN FULL DETAILS</span>
+                <span style="font:600 13px/1 Archivo,sans-serif;color:#17130A">&rarr;</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:14px;bottom:12px;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(237,231,218,.5)">TIER B 3D MASSING · 17 ROOMS PLOTTED · SINGLE CLICK = POPUP · DOUBLE CLICK = FULL CARD</span>
+          </div>
+        </div>
+
+        <div style="padding:22px;display:flex;flex-direction:column;gap:15px">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font:400 30px/1 'Instrument Serif',serif;color:#EDE7DA">Just the facts</span>
+              <span style="font:400 13px/1.4 Archivo,sans-serif;color:rgba(237,231,218,.64)">Editorial ranking from our own research. {{ sortNote }}</span>
+            </div>
+            <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:rgba(237,231,218,.06)">
+              <span style="padding:8px 11px;border-radius:3px;background:linear-gradient(180deg,#D9B45C,#C9A24A);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#17130A">{{ sortLabel }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(237,231,218,.55)">{{ sortAlt1 }}</span>
+              <span style="padding:8px 11px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(237,231,218,.55)">{{ sortAlt2 }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px">
+            <sc-for list="{{ supers }}" as="s" hint-placeholder-count="5">
+              <div style="padding:13px;background:#141314;border:1px solid rgba(201,162,74,.32);border-top:2px solid #C9A24A;display:flex;flex-direction:column;gap:7px">
+                <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(201,162,74,.85)">{{ s.title }}</span>
+                <span style="font:400 21px/1.05 'Instrument Serif',serif;color:#EDE7DA">{{ s.room }}</span>
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#4ECB93">{{ s.figure }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#141314;border:1px solid rgba(201,162,74,.3)">
+            <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(201,162,74,.3);background:rgba(201,162,74,.07)">
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(201,162,74,.8)">#</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(201,162,74,.8)">ROOM</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#C9A24A">RAKE</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(201,162,74,.8)">DROP</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(201,162,74,.8)">PARKING</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(201,162,74,.8)">FOOD</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(201,162,74,.8)">TABLES</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(201,162,74,.8)">VERIFIED</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:44px 1.6fr 1.2fr .66fr 1.2fr 1.5fr .7fr 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(237,231,218,.07);align-items:center" style-hover="background:rgba(201,162,74,.06)">
+                <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInkC }}">{{ r.rank }}</span>
+                <span style="font:400 17px/1.15 'Instrument Serif',serif;color:#EDE7DA">{{ r.room }}</span>
+                <span style="font:600 13px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeInkC }}">{{ r.rake }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(237,231,218,.82)">{{ r.drop }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(237,231,218,.8)">{{ r.parking }}</span>
+                <span style="font:400 12.5px/1.3 Archivo,sans-serif;color:rgba(237,231,218,.8)">{{ r.food }}</span>
+                <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(237,231,218,.82)">{{ r.tables }}</span>
+                <span style="font:500 11px/1.2 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ r.verInkC }}">{{ r.ver }}</span>
+              </div>
+            </sc-for>
+            <div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(237,231,218,.55)">SHOWING 8 OF 17 PERMANENT ROOMS</span>
+              <span style="font:400 11.5px/1 Archivo,sans-serif;color:rgba(237,231,218,.62)">Rake, drop and table counts are room-published or observed — each row carries its own verified date</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+
+  <!-- ================= LOGO DIRECTIONS ================= -->
+  <div style="display:flex;flex-direction:column;gap:7px;margin-top:16px">
+    <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.26em;color:rgba(255,255,255,.44)">LOGO DIRECTIONS · THE KNOCK, NOT A CHECKMARK</span>
+    <span style="font:400 14px/1.5 Archivo,sans-serif;color:rgba(255,255,255,.6);max-width:820px">Checking is a physical knock on the table, and a knock makes rings — the same shape as a map ping. Each mark below is shown at header size, at 16px in a browser tab, in single colour, and over the dark map. Rings are deliberately irregular and open so they read as impact on a soft surface, not a broadcast signal.</span>
+  </div>
+
+  <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start">
+    <div id="1d" style="width:600px;flex:none;background:#F5F6F7;border-top:3px solid #DE3C14;display:flex;flex-direction:column">
+      <div style="padding:15px 18px 13px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#DE3C14">1d</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#0D1013">THE KNOCK RIPPLE</span>
+          <span style="padding:3px 6px;background:rgba(31,108,140,.12);font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#1F6C8C">RECOMMENDED</span>
+        </div>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(13,16,19,.68)">A tap point with rings radiating out. Reads at once as a knuckle on felt, a map pin and a live pulse. Ownable, favicon-scalable, zero casino cliché.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:196px 1fr;border-top:1px solid rgba(13,16,19,.12)">
+        <div style="padding:20px;display:flex;align-items:center;justify-content:center;background:#FFF;border-right:1px solid rgba(13,16,19,.12)">
+          <svg viewBox="0 0 120 120" width="122" height="122" aria-label="Check It Down knock ripple mark"><ellipse cx="57" cy="64" rx="47" ry="41" transform="rotate(-9 57 64)" fill="none" stroke="#DE3C14" stroke-opacity=".2" stroke-width="5" stroke-linecap="round" stroke-dasharray="198 44"></ellipse><ellipse cx="59" cy="61.5" rx="31.5" ry="27" transform="rotate(-6 59 61.5)" fill="none" stroke="#DE3C14" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="132 35" style="transform-box:fill-box;transform-origin:center;animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="59" cy="61.5" rx="31.5" ry="27" transform="rotate(-6 59 61.5)" fill="none" stroke="#DE3C14" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="132 35" style="transform-box:fill-box;transform-origin:center;animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) infinite"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#DE3C14" stroke-opacity=".85" stroke-width="8" stroke-linecap="round"></ellipse><g style="transform-box:fill-box;transform-origin:center;animation:knockTap 3.4s ease-in-out infinite"><circle cx="60" cy="60" r="7" fill="#DE3C14"></circle></g></svg>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#FFF;border-bottom:1px solid rgba(13,16,19,.1)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><ellipse cx="57" cy="64" rx="47" ry="41" transform="rotate(-9 57 64)" fill="none" stroke="#0D1013" stroke-opacity=".3" stroke-width="7" stroke-linecap="round" stroke-dasharray="198 44"></ellipse><ellipse cx="59" cy="61.5" rx="31.5" ry="27" transform="rotate(-6 59 61.5)" fill="none" stroke="#0D1013" stroke-opacity=".62" stroke-width="8" stroke-linecap="round" stroke-dasharray="148 27"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#0D1013" stroke-width="9" stroke-linecap="round"></ellipse><circle cx="60" cy="60" r="7.5" fill="#0D1013"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#0D1013">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.5)">SINGLE COLOUR · INK</span>
+          </div>
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:14px;background:#0F1214;border-bottom:1px solid rgba(255,255,255,.08)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><ellipse cx="57" cy="64" rx="47" ry="41" transform="rotate(-9 57 64)" fill="none" stroke="#F5F6F7" stroke-opacity=".32" stroke-width="7" stroke-linecap="round" stroke-dasharray="198 44"></ellipse><ellipse cx="59" cy="61.5" rx="31.5" ry="27" transform="rotate(-6 59 61.5)" fill="none" stroke="#F5F6F7" stroke-opacity=".64" stroke-width="8" stroke-linecap="round" stroke-dasharray="148 27"></ellipse><ellipse cx="60" cy="60" rx="17" ry="14.5" transform="rotate(-4 60 60)" fill="none" stroke="#F5F6F7" stroke-width="9" stroke-linecap="round"></ellipse><circle cx="60" cy="60" r="7.5" fill="#F5F6F7"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F5F6F7">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(255,255,255,.5)">OVER THE MAP</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:16px;background:#FFF">
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 10px 6px 8px;border-radius:6px 6px 0 0;background:#E9EBEE">
+              <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><ellipse cx="59" cy="61.5" rx="33" ry="28" transform="rotate(-6 59 61.5)" fill="none" stroke="#DE3C14" stroke-opacity=".55" stroke-width="12" stroke-linecap="round" stroke-dasharray="150 28"></ellipse><circle cx="60" cy="60" r="15" fill="#DE3C14"></circle></svg>
+              <span style="font:500 11px/1 Archivo,sans-serif;color:rgba(13,16,19,.75)">checkitdown.com</span>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:10px">
+              <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><ellipse cx="59" cy="61.5" rx="33" ry="28" transform="rotate(-6 59 61.5)" fill="none" stroke="#DE3C14" stroke-opacity=".55" stroke-width="12" stroke-linecap="round" stroke-dasharray="150 28"></ellipse><circle cx="60" cy="60" r="15" fill="#DE3C14"></circle></svg>
+              <svg viewBox="0 0 120 120" width="24" height="24" aria-hidden="true"><ellipse cx="59" cy="61.5" rx="32" ry="27.5" transform="rotate(-6 59 61.5)" fill="none" stroke="#DE3C14" stroke-opacity=".55" stroke-width="10" stroke-linecap="round" stroke-dasharray="150 28"></ellipse><circle cx="60" cy="60" r="12" fill="#DE3C14"></circle></svg>
+              <svg viewBox="0 0 120 120" width="32" height="32" aria-hidden="true"><ellipse cx="57" cy="64" rx="47" ry="41" transform="rotate(-9 57 64)" fill="none" stroke="#DE3C14" stroke-opacity=".3" stroke-width="7" stroke-linecap="round" stroke-dasharray="198 44"></ellipse><ellipse cx="59" cy="61.5" rx="31.5" ry="27" transform="rotate(-6 59 61.5)" fill="none" stroke="#DE3C14" stroke-opacity=".62" stroke-width="8" stroke-linecap="round" stroke-dasharray="148 27"></ellipse><circle cx="60" cy="60" r="9" fill="#DE3C14"></circle></svg>
+              <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(13,16,19,.5);padding-bottom:3px">16 · 24 · 32 PX</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1e" style="width:600px;flex:none;background:#F5F6F7;border-top:3px solid rgba(13,16,19,.3);display:flex;flex-direction:column">
+      <div style="padding:15px 18px 13px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#DE3C14">1e</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#0D1013">TWO KNUCKLES</span>
+        </div>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(13,16,19,.68)">The tap itself: two knuckle points and the surface line they strike. Very insider, extremely simple — but at 16px it can read as two dots rather than a gesture.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:196px 1fr;border-top:1px solid rgba(13,16,19,.12)">
+        <div style="padding:20px;display:flex;align-items:center;justify-content:center;background:#FFF;border-right:1px solid rgba(13,16,19,.12)">
+          <svg viewBox="0 0 120 120" width="122" height="122" aria-label="Two knuckles mark"><path d="M14 84 C36 79, 84 79, 106 84" fill="none" stroke="#0D1013" stroke-opacity=".28" stroke-width="4" stroke-linecap="round"></path><circle cx="45" cy="53" r="15" fill="#DE3C14"></circle><circle cx="79" cy="58" r="12.5" fill="#DE3C14" fill-opacity=".62"></circle><ellipse cx="45" cy="55" rx="27" ry="22" transform="rotate(-6 45 55)" fill="none" stroke="#DE3C14" stroke-opacity=".3" stroke-width="4" stroke-linecap="round" stroke-dasharray="120 26"></ellipse></svg>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#FFF;border-bottom:1px solid rgba(13,16,19,.1)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><path d="M14 84 C36 79, 84 79, 106 84" fill="none" stroke="#0D1013" stroke-opacity=".34" stroke-width="7" stroke-linecap="round"></path><circle cx="45" cy="53" r="16" fill="#0D1013"></circle><circle cx="80" cy="58" r="13" fill="#0D1013" fill-opacity=".6"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#0D1013">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.5)">SINGLE COLOUR · INK</span>
+          </div>
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:14px;background:#0F1214;border-bottom:1px solid rgba(255,255,255,.08)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><path d="M14 84 C36 79, 84 79, 106 84" fill="none" stroke="#F5F6F7" stroke-opacity=".34" stroke-width="7" stroke-linecap="round"></path><circle cx="45" cy="53" r="16" fill="#F5F6F7"></circle><circle cx="80" cy="58" r="13" fill="#F5F6F7" fill-opacity=".6"></circle></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F5F6F7">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(255,255,255,.5)">OVER THE MAP</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:16px;background:#FFF">
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 10px 6px 8px;border-radius:6px 6px 0 0;background:#E9EBEE">
+              <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><circle cx="44" cy="54" r="24" fill="#DE3C14"></circle><circle cx="86" cy="62" r="19" fill="#DE3C14" fill-opacity=".6"></circle></svg>
+              <span style="font:500 11px/1 Archivo,sans-serif;color:rgba(13,16,19,.75)">checkitdown.com</span>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:10px">
+              <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><circle cx="44" cy="54" r="24" fill="#DE3C14"></circle><circle cx="86" cy="62" r="19" fill="#DE3C14" fill-opacity=".6"></circle></svg>
+              <svg viewBox="0 0 120 120" width="24" height="24" aria-hidden="true"><circle cx="44" cy="54" r="22" fill="#DE3C14"></circle><circle cx="86" cy="62" r="18" fill="#DE3C14" fill-opacity=".6"></circle></svg>
+              <svg viewBox="0 0 120 120" width="32" height="32" aria-hidden="true"><path d="M14 86 C36 81, 84 81, 106 86" fill="none" stroke="#DE3C14" stroke-opacity=".35" stroke-width="6" stroke-linecap="round"></path><circle cx="45" cy="53" r="17" fill="#DE3C14"></circle><circle cx="80" cy="58" r="14" fill="#DE3C14" fill-opacity=".6"></circle></svg>
+              <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(13,16,19,.5);padding-bottom:3px">16 · 24 · 32 PX</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1f" style="width:600px;flex:none;background:#F5F6F7;border-top:3px solid rgba(13,16,19,.3);display:flex;flex-direction:column">
+      <div style="padding:15px 18px 13px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#DE3C14">1f</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#0D1013">KNOCK + DOWN</span>
+        </div>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(13,16,19,.68)">The ripple resolving into a downward chevron — captures the whole phrase, and the descent doubles as a map pin. Slightly busier at small sizes.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:196px 1fr;border-top:1px solid rgba(13,16,19,.12)">
+        <div style="padding:20px;display:flex;align-items:center;justify-content:center;background:#FFF;border-right:1px solid rgba(13,16,19,.12)">
+          <svg viewBox="0 0 120 120" width="122" height="122" aria-label="Knock and down mark"><ellipse cx="58" cy="52" rx="45" ry="34" transform="rotate(-7 58 52)" fill="none" stroke="#DE3C14" stroke-opacity=".26" stroke-width="5" stroke-linecap="round" stroke-dasharray="112 130"></ellipse><ellipse cx="59" cy="51" rx="30" ry="23" transform="rotate(-5 59 51)" fill="none" stroke="#DE3C14" stroke-opacity=".55" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="78 90"></ellipse><circle cx="60" cy="48" r="7" fill="#DE3C14"></circle><path d="M34 68 L60 100 L86 68" fill="none" stroke="#DE3C14" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#FFF;border-bottom:1px solid rgba(13,16,19,.1)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><ellipse cx="59" cy="51" rx="32" ry="24" transform="rotate(-5 59 51)" fill="none" stroke="#0D1013" stroke-opacity=".55" stroke-width="8" stroke-linecap="round" stroke-dasharray="80 92"></ellipse><circle cx="60" cy="48" r="8" fill="#0D1013"></circle><path d="M34 68 L60 100 L86 68" fill="none" stroke="#0D1013" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#0D1013">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.5)">SINGLE COLOUR · INK</span>
+          </div>
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:14px;background:#0F1214;border-bottom:1px solid rgba(255,255,255,.08)">
+            <svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><ellipse cx="59" cy="51" rx="32" ry="24" transform="rotate(-5 59 51)" fill="none" stroke="#F5F6F7" stroke-opacity=".55" stroke-width="8" stroke-linecap="round" stroke-dasharray="80 92"></ellipse><circle cx="60" cy="48" r="8" fill="#F5F6F7"></circle><path d="M34 68 L60 100 L86 68" fill="none" stroke="#F5F6F7" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font:400 22px/1 'Instrument Serif',serif;color:#F5F6F7">Check It Down</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(255,255,255,.5)">OVER THE MAP</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:16px;background:#FFF">
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 10px 6px 8px;border-radius:6px 6px 0 0;background:#E9EBEE">
+              <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><circle cx="60" cy="42" r="16" fill="#DE3C14"></circle><path d="M32 62 L60 100 L88 62" fill="none" stroke="#DE3C14" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span style="font:500 11px/1 Archivo,sans-serif;color:rgba(13,16,19,.75)">checkitdown.com</span>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:10px">
+              <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><circle cx="60" cy="42" r="16" fill="#DE3C14"></circle><path d="M32 62 L60 100 L88 62" fill="none" stroke="#DE3C14" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <svg viewBox="0 0 120 120" width="24" height="24" aria-hidden="true"><circle cx="60" cy="44" r="13" fill="#DE3C14"></circle><path d="M32 64 L60 100 L88 64" fill="none" stroke="#DE3C14" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <svg viewBox="0 0 120 120" width="32" height="32" aria-hidden="true"><ellipse cx="59" cy="51" rx="32" ry="24" transform="rotate(-5 59 51)" fill="none" stroke="#DE3C14" stroke-opacity=".5" stroke-width="7" stroke-linecap="round" stroke-dasharray="80 92"></ellipse><circle cx="60" cy="47" r="9" fill="#DE3C14"></circle><path d="M34 68 L60 100 L86 68" fill="none" stroke="#DE3C14" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(13,16,19,.5);padding-bottom:3px">16 · 24 · 32 PX</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1g" style="width:600px;flex:none;background:#F5F6F7;border-top:3px solid rgba(13,16,19,.3);display:flex;flex-direction:column">
+      <div style="padding:15px 18px 13px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#DE3C14">1g</span>
+          <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#0D1013">WORDMARK-INTEGRATED</span>
+        </div>
+        <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(13,16,19,.68)">The ripple replaces the dot of the "i" in IT. Strongest as a full lockup; needs 1d as its standalone mark, since the wordmark cannot be a favicon.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:196px 1fr;border-top:1px solid rgba(13,16,19,.12)">
+        <div style="padding:20px;display:flex;align-items:center;justify-content:center;background:#FFF;border-right:1px solid rgba(13,16,19,.12)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="font:400 27px/1 'Instrument Serif',serif;letter-spacing:.03em;color:#0D1013">CHECK</span>
+            <span style="position:relative;font:400 27px/1 'Instrument Serif',serif;letter-spacing:.03em;color:#0D1013">
+              <span style="position:absolute;left:-4px;top:-2px;width:15px;height:15px;display:block">
+                <svg viewBox="0 0 120 120" width="15" height="15" aria-hidden="true"><ellipse cx="59" cy="61" rx="34" ry="29" transform="rotate(-6 59 61)" fill="none" stroke="#DE3C14" stroke-opacity=".5" stroke-width="13" stroke-linecap="round" stroke-dasharray="152 30"></ellipse><circle cx="60" cy="60" r="17" fill="#DE3C14"></circle></svg>
+              </span>ıT</span>
+            <span style="font:400 27px/1 'Instrument Serif',serif;letter-spacing:.03em;color:#0D1013">DOWN</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#FFF;border-bottom:1px solid rgba(13,16,19,.1)">
+            <span style="position:relative;font:400 21px/1 'Instrument Serif',serif;letter-spacing:.05em;color:#0D1013">CHECK ı<span style="position:absolute;left:58px;top:-2px;display:block"><svg viewBox="0 0 120 120" width="12" height="12" aria-hidden="true"><ellipse cx="59" cy="61" rx="34" ry="29" transform="rotate(-6 59 61)" fill="none" stroke="#0D1013" stroke-opacity=".5" stroke-width="14" stroke-linecap="round" stroke-dasharray="152 30"></ellipse><circle cx="60" cy="60" r="18" fill="#0D1013"></circle></svg></span>T DOWN</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(13,16,19,.5)">SINGLE COLOUR · INK</span>
+          </div>
+          <div style="padding:13px 16px;display:flex;align-items:center;gap:11px;background:#0F1214;border-bottom:1px solid rgba(255,255,255,.08)">
+            <span style="position:relative;font:400 21px/1 'Instrument Serif',serif;letter-spacing:.05em;color:#F5F6F7">CHECK ı<span style="position:absolute;left:58px;top:-2px;display:block"><svg viewBox="0 0 120 120" width="12" height="12" aria-hidden="true"><ellipse cx="59" cy="61" rx="34" ry="29" transform="rotate(-6 59 61)" fill="none" stroke="#F04E22" stroke-opacity=".62" stroke-width="14" stroke-linecap="round" stroke-dasharray="152 30"></ellipse><circle cx="60" cy="60" r="18" fill="#F04E22"></circle></svg></span>T DOWN</span>
+            <span style="margin-left:auto;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(255,255,255,.5)">OVER THE MAP</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;background:#FFF">
+            <span style="font:400 12px/1.4 Archivo,sans-serif;color:rgba(13,16,19,.66);max-width:250px">At favicon size the wordmark collapses — pair it with the 1d mark.</span>
+            <div style="display:flex;align-items:flex-end;gap:10px;margin-left:auto">
+              <svg viewBox="0 0 120 120" width="16" height="16" aria-hidden="true"><ellipse cx="59" cy="61.5" rx="33" ry="28" transform="rotate(-6 59 61.5)" fill="none" stroke="#DE3C14" stroke-opacity=".55" stroke-width="12" stroke-linecap="round" stroke-dasharray="150 28"></ellipse><circle cx="60" cy="60" r="15" fill="#DE3C14"></circle></svg>
+              <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(13,16,19,.5);padding-bottom:3px">FALLS BACK TO 1d</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:18px;padding:18px 20px;background:#14171B;border-left:3px solid #F04E22;max-width:1240px">
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:250px;flex:1">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">MY RECOMMENDATION</span>
+      <span style="font:400 15px/1.5 Archivo,sans-serif;color:#F2F4F6">Palette <a href="#1a">1a</a> — light UI, ink text, vermilion accent, steel blue for value. It's the only comp that doesn't read as a casino, and the dark 3D map gains contrast sitting in a paper interface. Mark <a href="#1d">1d</a>, with <a href="#1g">1g</a> as the full lockup.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:250px;flex:1">
+      <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.55)">WHY THE CONTROL FAILS</span>
+      <span style="font:400 15px/1.5 Archivo,sans-serif;color:rgba(242,244,246,.78)">In <a href="#1c">1c</a> the gold table chrome makes every row feel promoted by the house, and the green "good" figure plus red brand puts a traffic light in a ranked table. It looks like the casinos it's meant to audit.</span>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;tableSort&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rake&quot;,&quot;tables&quot;,&quot;food&quot;,&quot;parking&quot;],&quot;default&quot;:&quot;rake&quot;,&quot;tsType&quot;:&quot;'rake' | 'tables' | 'food' | 'parking'&quot;,&quot;section&quot;:&quot;Superlatives table&quot;},&quot;dimNonMatching&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Map filter&quot;},&quot;showControl&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Comps&quot;}}">
+class Component extends DCLogic {
+  rooms() {
+    return [
+      { room: 'Orleans',            rakeCost: 9.3,  rake: '10% to $3',      rakeType: 'pot',  drop: '$1', comps: '$2.00', compsN: 2.0,  parking: 'Free self + valet', food: 'Full menu, tableside', foodScore: 4, tables: 35, ver: '2 DAYS AGO', verified: true },
+      { room: 'South Point',        rakeCost: 11.1, rake: '10% to $4',      rakeType: 'pot',  drop: '$1', comps: '$1.60', compsN: 1.6,  parking: 'Free self + valet', food: 'Tableside · 3 outlets', foodScore: 3, tables: 8,  ver: '3 DAYS AGO', verified: true },
+      { room: 'Green Valley Ranch', rakeCost: 11.5, rake: '10% to $4',      rakeType: 'pot',  drop: '$1', comps: '$1.50', compsN: 1.5,  parking: 'Free self',         food: 'Tableside',            foodScore: 2, tables: 9,  ver: '4 DAYS AGO', verified: true },
+      { room: 'Red Rock',           rakeCost: 11.7, rake: '10% to $4',      rakeType: 'pot',  drop: '$1', comps: '$1.40', compsN: 1.4,  parking: 'Free self',         food: 'Tableside',            foodScore: 2, tables: 12, ver: '3 DAYS AGO', verified: true },
+      { room: 'Venetian',           rakeCost: 13.7, rake: '10% to $5',      rakeType: 'pot',  drop: '$1', comps: '$1.00', compsN: 1.0,  parking: 'Validated self',    food: '3 menus, seat delivery', foodScore: 5, tables: 59, ver: 'YESTERDAY', verified: true },
+      { room: 'ARIA',               rakeCost: 13.7, rake: '10% to $5',      rakeType: 'pot',  drop: '$1', comps: '$1.00', compsN: 1.0,  parking: 'Valet with play',   food: '24h tableside',        foodScore: 4, tables: 24, ver: 'YESTERDAY', verified: true },
+      { room: 'Bellagio',           rakeCost: 15.6, rake: '10% to $5',      rakeType: 'pot',  drop: '$2', comps: '$0.75', compsN: 0.75, parking: 'Valet with play',   food: 'Tableside',            foodScore: 3, tables: 37, ver: '2 DAYS AGO', verified: true },
+      { room: 'Wynn/Encore',        rakeCost: 23.0, rake: '~$12 / half hr', rakeType: 'time', drop: '—',  comps: '$1.00', compsN: 1.0,  parking: 'Valet with play',   food: 'Wazuzu, Jardin',       foodScore: 4, tables: 28, ver: 'UNVERIFIED',  verified: false }
+    ];
+  }
+
+  renderVals() {
+    const sort = this.props.tableSort || 'rake';
+    const dim = this.props.dimNonMatching !== false;
+    const list = this.rooms().slice();
+    if (sort === 'tables') list.sort((a, b) => b.tables - a.tables);
+    else if (sort === 'food') list.sort((a, b) => b.foodScore - a.foodScore);
+    else if (sort === 'parking') list.sort((a, b) => a.parking.localeCompare(b.parking));
+    else list.sort((a, b) => a.rakeCost - b.rakeCost);
+
+    const rows = list.map((r, i) => {
+      const lead = i === 0;
+      const est = !r.verified;
+      return Object.assign({}, r, {
+        rank: String(i + 1),
+        rankInkA: lead ? '#DE3C14' : 'rgba(13,16,19,.5)',
+        rankInkB: lead ? '#F04E22' : 'rgba(242,244,246,.5)',
+        rankInkC: lead ? '#C9A24A' : 'rgba(237,231,218,.5)',
+        rankInkV: lead ? '#B9A3F2' : 'rgba(242,244,246,.5)',
+        rankInkP: lead ? '#A98CE8' : 'rgba(242,244,246,.5)',
+        rakeInkV: est ? 'rgba(242,244,246,.6)' : lead ? '#4FBFAE' : '#F2F4F6',
+        rakeInkP: est ? 'rgba(242,244,246,.6)' : lead ? '#4FBFAE' : '#F2F4F6',
+        rakeInkA: est ? 'rgba(13,16,19,.6)' : lead ? '#1F6C8C' : '#0D1013',
+        rakeInkB: est ? 'rgba(242,244,246,.6)' : lead ? '#6FB6D4' : '#F2F4F6',
+        rakeInkC: est ? 'rgba(237,231,218,.6)' : lead ? '#4ECB93' : '#EDE7DA',
+        rakeRule: est ? '1px dotted rgba(13,16,19,.45)' : 'none',
+        rakeRuleB: est ? '1px dotted rgba(242,244,246,.45)' : 'none',
+        verInkA: est ? 'rgba(13,16,19,.6)' : 'rgba(13,16,19,.62)',
+        verInkB: est ? 'rgba(242,244,246,.58)' : 'rgba(242,244,246,.62)',
+        verInkC: est ? '#C9A24A' : 'rgba(237,231,218,.62)'
+      });
+    });
+
+    const labels = { rake: 'RAKE', tables: 'TABLES', food: 'FOOD', parking: 'PARKING' };
+    const alts = Object.keys(labels).filter(k => k !== sort).map(k => labels[k]);
+    const notes = {
+      rake: 'Ordered by rake: cap first, then jackpot drop.',
+      tables: 'Ordered by table count.',
+      food: 'Ordered by depth of food service.',
+      parking: 'Ordered by what parking actually costs a player.'
+    };
+
+    const matchRooms = ['Orleans', 'South Point', 'Green Valley Ranch', 'Red Rock', 'ARIA', 'Venetian'];
+    const pinSpec = [
+      { name: 'Venetian', x: 52, y: 24 }, { name: 'Wynn/Encore', x: 64, y: 62 },
+      { name: 'Bellagio', x: 45, y: 45 }, { name: 'ARIA', x: 36, y: 57 },
+      { name: 'MGM Grand', x: 52, y: 70 }, { name: 'Orleans', x: 18, y: 63 },
+      { name: 'Golden Nugget', x: 84, y: 82 }, { name: 'Red Rock', x: 12, y: 30 }
+    ];
+    const mkPins = (theme) => pinSpec.map(p => {
+      const on = !dim || matchRooms.indexOf(p.name) !== -1;
+      if (theme === 'v' || theme === 'p') {
+        const acc = theme === 'v' ? '#8A6BE0' : '#7B58B8';
+        return Object.assign({}, p, {
+          op: on ? 1 : 0.2,
+          dot: on ? acc : 'rgba(242,244,246,.42)',
+          chip: on ? 'rgba(255,255,255,.94)' : 'rgba(20,23,27,.66)',
+          chipLine: on ? 'rgba(13,16,19,.14)' : 'rgba(242,244,246,.16)',
+          chipInk: on ? '#0D1013' : 'rgba(242,244,246,.66)'
+        });
+      }
+      if (theme === 'c') return Object.assign({}, p, {
+        op: on ? 1 : 0.2,
+        dot: on ? '#B3122C' : 'rgba(237,231,218,.4)',
+        chip: on ? 'rgba(20,19,20,.9)' : 'rgba(20,19,20,.55)',
+        chipLine: on ? 'rgba(201,162,74,.6)' : 'rgba(237,231,218,.14)',
+        chipInk: on ? '#EDE7DA' : 'rgba(237,231,218,.6)'
+      });
+      const v = theme === 'b' ? '#F04E22' : '#DE3C14';
+      return Object.assign({}, p, {
+        op: on ? 1 : 0.2,
+        dot: on ? v : 'rgba(242,244,246,.42)',
+        chip: on ? 'rgba(255,255,255,.94)' : 'rgba(20,23,27,.66)',
+        chipLine: on ? 'rgba(13,16,19,.14)' : 'rgba(242,244,246,.16)',
+        chipInk: on ? '#0D1013' : 'rgba(242,244,246,.66)'
+      });
+    });
+
+    const boxes = (theme, items) => items.map(it => {
+      const on = it.on;
+      if (theme === 'c') return { label: it.label, tick: on ? '✓' : '', box: on ? '#C9A24A' : 'transparent', line: on ? '#C9A24A' : 'rgba(237,231,218,.3)', ink: on ? '#EDE7DA' : 'rgba(237,231,218,.66)', weight: on ? 600 : 400 };
+      if (theme === 'b' || theme === 'v' || theme === 'p') {
+        const acc = theme === 'b' ? '#F04E22' : theme === 'v' ? '#6D4AC4' : '#5E3A93';
+        return { label: it.label, tick: on ? '✓' : '', box: on ? acc : 'transparent', line: on ? acc : 'rgba(242,244,246,.3)', ink: on ? '#F2F4F6' : 'rgba(242,244,246,.66)', weight: on ? 600 : 400 };
+      }
+      return { label: it.label, tick: on ? '✓' : '', box: on ? '#DE3C14' : 'transparent', line: on ? '#DE3C14' : 'rgba(13,16,19,.3)', ink: on ? '#0D1013' : 'rgba(13,16,19,.66)', weight: on ? 600 : 400 };
+    });
+    const games = [{ label: "No-Limit Hold'em", on: true }, { label: 'Pot-Limit Omaha', on: false }, { label: 'Limit and mixed', on: false }];
+    const foods = [{ label: 'Tableside food', on: true }, { label: 'Cocktail service', on: false }];
+
+    return {
+      rows,
+      supers: [
+        { title: 'LOWEST RAKE', room: 'Orleans', figure: '10% to $3' },
+        { title: 'BEST FOOD', room: 'Venetian', figure: '3 menus, delivered' },
+        { title: 'MOST TABLES', room: 'Venetian', figure: '59 tables' }
+      ],
+      sortLabel: labels[sort], sortAlt1: alts[0], sortAlt2: alts[1], sortNote: notes[sort],
+      matchLine: dim ? '6 of 17 rooms match' : '17 of 17 rooms shown',
+      pins: mkPins('a'), pinsD: mkPins('b'), pinsC: mkPins('c'), pinsV: mkPins('v'), pinsP: mkPins('p'),
+      gamesGroupV: boxes('v', games), foodGroupV: boxes('v', foods),
+      gamesGroupP: boxes('p', games), foodGroupP: boxes('p', foods),
+      gamesGroup: boxes('a', games), foodGroup: boxes('a', foods),
+      gamesGroupD: boxes('b', games), foodGroupD: boxes('b', foods),
+      gamesGroupC: boxes('c', games), foodGroupC: boxes('c', foods),
+      showControl: this.props.showControl !== false
+    };
+  }
+}
+</script>
+</body>
+</html>

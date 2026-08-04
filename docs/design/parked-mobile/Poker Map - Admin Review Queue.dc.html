@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-scrim:rgba(4,6,5,0.66);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93; --pm-caution:#D9A23F; --pm-alert:#D9603F;
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+  </style>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<div data-admin-root="1" data-screen-label="Admin review queue" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div style="position:sticky;top:0;z-index:30;padding:58px 16px 11px;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:6px;height:6px;flex:none;border-radius:50%;background:var(--pm-brass)"></span>
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-brass)">INTERNAL · REVIEW QUEUE</span>
+      </div>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ clock }}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:11px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ t.onClick }}" style="height:46px;box-sizing:border-box;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--pm-seg);border:1px solid var(--pm-line-2);cursor:pointer">
+            <span style="font:700 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink)">{{ t.label }}</span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ t.countInk }}">{{ t.count }}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ t.inactive }}">
+          <div onClick="{{ t.onClick }}" style="height:46px;box-sizing:border-box;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-1)">{{ t.label }}</span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ t.countInk }}">{{ t.count }}</span>
+          </div>
+        </sc-if>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ isQueue }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;gap:7px;overflow-x:auto;padding:13px 16px 3px;scrollbar-width:none">
+      <sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="5">
+        <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}"><div onClick="{{ c.onClick }}" style="flex:none;height:36px;padding:0 12px;border-radius:10px;display:flex;align-items:center;gap:7px;background:rgba(201,162,74,0.14);border:1px solid var(--pm-brass);cursor:pointer"><span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass-2);white-space:nowrap">{{ c.label }}</span><span style="font:500 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-brass-2)">{{ c.count }}</span></div></sc-if>
+        <sc-if value="{{ c.inactive }}"><div onClick="{{ c.onClick }}" style="flex:none;height:36px;padding:0 12px;border-radius:10px;display:flex;align-items:center;gap:7px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-1);white-space:nowrap">{{ c.label }}</span><span style="font:500 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ c.count }}</span></div></sc-if>
+      </sc-for>
+    </div>
+
+    <div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:10px">
+      <sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+        <div style="border-radius:14px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid {{ it.border }};padding:12px 13px;display:flex;flex-direction:column;gap:11px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="flex:none;padding:4px 6px;border-radius:5px;background:var(--pm-fill-1);border:1px solid var(--pm-line-2);font:600 7.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ it.type }}</span>
+            <span style="flex:1;min-width:0;font:500 12px/1.2 Archivo,sans-serif;color:var(--pm-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.room }}</span>
+            <span style="flex:none;padding:4px 7px;border-radius:5px;background:{{ it.confBg }};border:1px solid {{ it.confLine }};font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.08em;font-variant-numeric:tabular-nums;color:{{ it.confInk }}">{{ it.conf }}</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">{{ it.field }}</span>
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="flex:1;min-width:0;padding:8px 10px;border-radius:8px;background:var(--pm-fill-1);font:400 11px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);text-decoration:line-through;text-decoration-color:var(--pm-line-3);overflow:hidden;text-overflow:ellipsis">{{ it.oldVal }}</span>
+              <span style="flex:none;font:400 13px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&#8594;</span>
+              <span style="flex:1;min-width:0;padding:8px 10px;border-radius:8px;background:rgba(78,203,147,0.06);border:1px solid rgba(78,203,147,0.24);font:500 11px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-2);overflow:hidden;text-overflow:ellipsis">{{ it.newVal }}</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <a href="{{ it.href }}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 9px;border-radius:8px;border:1px solid rgba(201,162,74,0.32);font:500 9.5px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">{{ it.source }}<span style="font:400 9px/1 'IBM Plex Mono',monospace;opacity:.85">&#8599;</span></a>
+            <span style="font:400 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.04em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ it.fetched }}</span>
+          </div>
+
+          <div style="display:flex;gap:8px;padding-top:2px;border-top:1px solid var(--pm-line-1)">
+            <div onClick="{{ it.onApprove }}" style="flex:1;height:44px;margin-top:9px;border-radius:11px;border:1px solid rgba(78,203,147,0.4);display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer" style-hover="background:rgba(78,203,147,0.1)">
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;color:var(--pm-live)">&#10003;</span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-live)">APPROVE</span>
+            </div>
+            <div onClick="{{ it.onEdit }}" style="flex:none;height:44px;margin-top:9px;padding:0 13px;border-radius:11px;border:1px solid var(--pm-line-2);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-1)" style-hover="border-color:var(--pm-line-3);color:var(--pm-ink-2)">EDIT</div>
+            <div onClick="{{ it.onReject }}" style="flex:none;height:44px;margin-top:9px;padding:0 13px;border-radius:11px;border:1px solid rgba(217,96,63,0.36);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-alert)" style-hover="background:rgba(217,96,63,0.1)">REJECT</div>
+          </div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ queueEmpty }}">
+        <div style="display:flex;flex-direction:column;gap:10px;padding:28px 18px;border-radius:14px;border:1px dashed var(--pm-src-empty-line)">
+          <span style="font:400 19px/1.2 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Queue clear</span>
+          <span style="font:400 12px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ emptyLine }}</span>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStale }}">
+    <div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:11px">
+      <span style="font:400 12px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Records past their freshness threshold. Oldest first — anything here is currently showing a stale badge to users.</span>
+      <sc-for list="{{ stale }}" as="s" hint-placeholder-count="4">
+        <div style="border-radius:13px;background:var(--pm-fill-1);border:1px solid {{ s.border }};padding:12px 13px;display:flex;align-items:center;gap:11px">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:500 12px/1.2 Archivo,sans-serif;color:var(--pm-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.label }}</span>
+            <span style="font:400 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.06em;font-variant-numeric:tabular-nums;color:{{ s.ageInk }}">{{ s.age }}</span>
+          </div>
+          <div onClick="{{ s.onRefetch }}" style="flex:none;height:44px;padding:0 12px;border-radius:11px;border:1px solid rgba(201,162,74,0.4);display:flex;align-items:center;cursor:pointer;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">RE-FETCH</div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSources }}">
+    <div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:11px">
+      <span style="font:400 12px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Source health. A failing scraper is why data goes stale, so this is the first place to look when the queue dries up.</span>
+      <sc-for list="{{ sources }}" as="src" hint-placeholder-count="5">
+        <div style="border-radius:13px;background:var(--pm-fill-1);border:1px solid {{ src.border }};padding:12px 13px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="flex:none;width:6px;height:6px;border-radius:50%;background:{{ src.dot }}"></span>
+            <span style="flex:1;min-width:0;font:500 12px/1.2 Archivo,sans-serif;color:var(--pm-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ src.name }}</span>
+            <span style="flex:none;font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:{{ src.statusInk }}">{{ src.status }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font:400 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.04em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ src.last }}</span>
+            <span style="font:400 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.04em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ src.pending }}</span>
+          </div>
+          <sc-if value="{{ src.hasError }}">
+            <span style="font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:var(--pm-alert);padding:7px 9px;border-radius:8px;background:rgba(217,96,63,0.07);border:1px solid rgba(217,96,63,0.24);text-wrap:pretty">{{ src.error }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <div style="height:140px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:16px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+    <sc-if value="{{ canBulk }}">
+      <div style="padding:11px 14px 30px">
+        <div onClick="{{ onBulk }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">{{ bulkCta }}</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ bulkSub }}</span>
+          </div>
+          <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noBulk }}">
+      <div style="padding:15px 16px 32px;display:flex;align-items:center;gap:9px">
+        <span style="flex:1;min-width:0;font:400 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:0.02em;color:var(--pm-dim-2);text-wrap:pretty">{{ footNote }}</span>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'queue', type: 'all', done: {}, refetched: {}, toast: null, tick: 0 };
+
+  TABS = [{ id: 'queue', label: 'QUEUE' }, { id: 'stale', label: 'STALE' }, { id: 'sources', label: 'SOURCES' }];
+  TYPES = [
+    { id: 'all', label: 'ALL' }, { id: 'tourney', label: 'TOURNEYS' }, { id: 'promo', label: 'PROMOS' },
+    { id: 'cash', label: 'CASH' }, { id: 'amenity', label: 'AMENITIES' }, { id: 'hours', label: 'HOURS' },
+  ];
+
+  /* PLACEHOLDER proposed changes — shape mirrors the pending_changes table */
+  ITEMS = [
+    { id: 1, type: 'promo', kind: 'promo', room: 'Golden Nugget', field: 'BAD BEAT JACKPOT · AMOUNT', oldVal: '$46,880', newVal: '$47,200', conf: 96, source: 'goldennugget.com/poker', href: 'https://www.goldennugget.com/las-vegas/casino/poker/', mins: 14 },
+    { id: 2, type: 'tourney', kind: 'tourney', room: 'Venetian', field: 'DAILY 11:00 · GUARANTEE', oldVal: '$30,000 GTD', newVal: '$40,000 GTD', conf: 91, source: 'venetian.com/poker', href: 'https://www.venetianlasvegas.com/casino/poker.html', mins: 38 },
+    { id: 3, type: 'cash', kind: 'cash', room: 'Caesars Palace', field: '$1/3 NLH · RAKE CAP', oldVal: 'unconfirmed', newVal: '10% to $5 · $1 drop', conf: 74, source: 'pokeratlas.com/caesars', href: 'https://www.pokeratlas.com/poker-room/caesars-palace-las-vegas', mins: 62 },
+    { id: 4, type: 'hours', kind: 'hours', room: 'Skyline', field: 'OPENING HOURS', oldVal: 'Open 24h', newVal: 'Daily 10:00–02:00', conf: 68, source: 'player report ×3', href: 'https://www.pokeratlas.com/poker-room/skyline-casino-henderson', mins: 95 },
+    { id: 5, type: 'amenity', kind: 'amenity', room: 'ARIA', field: 'MASSAGE RATE', oldVal: '$2/min', newVal: '$2.50/min', conf: 58, source: 'player report ×1', href: 'https://aria.mgmresorts.com/en/casino/poker.html', mins: 140 },
+    { id: 6, type: 'promo', kind: 'promo', room: 'Orleans', field: 'MONTHLY FREEROLL · DATE', oldVal: 'First Sunday', newVal: 'First Saturday', conf: 88, source: 'orleanscasino.com', href: 'https://www.orleanscasino.com/casino/poker', mins: 175 },
+    { id: 7, type: 'tourney', kind: 'tourney', room: 'Wynn/Encore', field: 'WYNN CLASSIC · DAY 1B TIME', oldVal: '12:10p', newVal: '12:00p', conf: 93, source: 'wynnpoker.com', href: 'https://www.wynnlasvegas.com/casino/poker', mins: 210 },
+  ];
+
+  STALE = [
+    { id: 's1', label: 'Santa Fe Station · cash game rake', hours: 38, threshold: 36 },
+    { id: 's2', label: 'Skyline · promotions', hours: 44, threshold: 36 },
+    { id: 's3', label: 'Boulder Station · tournament schedule', hours: 52, threshold: 24 },
+    { id: 's4', label: 'Golden Nugget · amenities', hours: 20 * 24, threshold: 7 * 24 },
+    { id: 's5', label: 'Mandalay Bay · hours', hours: 14, threshold: 36 },
+  ];
+
+  SOURCES = [
+    { name: 'PokerAtlas · room pages', status: 'OK', lastMins: 22, pending: 2 },
+    { name: 'Room websites · 17 crawlers', status: 'PARTIAL', lastMins: 41, pending: 3, error: '3 of 17 failed: Horseshoe (403), Skyline (timeout), Westgate (markup changed)' },
+    { name: 'Bravo Poker Live feed', status: 'FAILING', lastMins: 1580, pending: 0, error: 'No successful fetch in 26h — endpoint returning 502. Waits are falling back to player reports.' },
+    { name: 'Player reports', status: 'OK', lastMins: 1, pending: 0 },
+    { name: 'WSOP series schedule', status: 'IDLE', lastMins: 60 * 24 * 9, pending: 0 },
+  ];
+
+  componentDidMount() { this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 30000); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.toastTimer); }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  ageTxt(mins) {
+    if (mins < 60) return 'fetched ' + mins + 'm ago';
+    if (mins < 60 * 24) return 'fetched ' + Math.floor(mins / 60) + 'h ago';
+    return 'fetched ' + Math.floor(mins / (60 * 24)) + 'd ago';
+  }
+  hoursTxt(h) { return h < 48 ? h + 'h old' : Math.floor(h / 24) + 'd old'; }
+
+  act(id, verb) {
+    this.setState(st => ({ done: Object.assign({}, st.done, { [id]: verb }) }));
+    const it = this.ITEMS.filter(x => x.id === id)[0];
+    this.flash(verb === 'approve' ? it.room + ' · ' + it.field.toLowerCase() + ' published.'
+      : verb === 'reject' ? it.room + ' · change rejected, source flagged.'
+      : it.room + ' · opening the value for a manual edit.');
+  }
+
+  renderVals() {
+    const st = this.state;
+    const pending = this.ITEMS.filter(i => !st.done[i.id]);
+    const shown = pending.filter(i => st.type === 'all' || i.type === st.type);
+    const high = pending.filter(i => i.conf >= 90);
+    const staleLeft = this.STALE.filter(s => !st.refetched[s.id]);
+    const failing = this.SOURCES.filter(s => s.status === 'FAILING' || s.status === 'PARTIAL').length;
+
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      clock: pending.length + ' PENDING · ' + staleLeft.length + ' STALE',
+      tabs: this.TABS.map(t => ({
+        label: t.label,
+        count: t.id === 'queue' ? pending.length : t.id === 'stale' ? staleLeft.length : failing + '/' + this.SOURCES.length,
+        countInk: t.id === 'sources' && failing ? 'var(--pm-caution)' : t.id === 'stale' && staleLeft.length ? 'var(--pm-caution)' : 'var(--pm-dim-1)',
+        active: st.tab === t.id, inactive: st.tab !== t.id,
+        onClick: () => this.setState({ tab: t.id }),
+      })),
+      isQueue: st.tab === 'queue',
+      isStale: st.tab === 'stale',
+      isSources: st.tab === 'sources',
+      typeChips: this.TYPES.map(t => ({
+        label: t.label,
+        count: t.id === 'all' ? pending.length : pending.filter(i => i.type === t.id).length,
+        active: st.type === t.id, inactive: st.type !== t.id,
+        onClick: () => this.setState({ type: t.id }),
+      })),
+      items: shown.map(i => ({
+        type: i.type.toUpperCase(),
+        room: i.room,
+        field: i.field,
+        oldVal: i.oldVal,
+        newVal: i.newVal,
+        conf: i.conf + '%',
+        confBg: i.conf >= 90 ? 'rgba(78,203,147,0.1)' : i.conf >= 70 ? 'rgba(217,162,63,0.1)' : 'rgba(217,96,63,0.08)',
+        confLine: i.conf >= 90 ? 'rgba(78,203,147,0.32)' : i.conf >= 70 ? 'rgba(217,162,63,0.32)' : 'rgba(217,96,63,0.3)',
+        confInk: i.conf >= 90 ? 'var(--pm-live)' : i.conf >= 70 ? 'var(--pm-caution)' : 'var(--pm-alert)',
+        border: i.conf >= 90 ? 'var(--pm-line-1)' : i.conf < 70 ? 'rgba(217,96,63,0.22)' : 'var(--pm-line-1)',
+        source: i.source,
+        href: i.href,
+        fetched: this.ageTxt(i.mins),
+        onApprove: () => this.act(i.id, 'approve'),
+        onReject: () => this.act(i.id, 'reject'),
+        onEdit: () => this.act(i.id, 'edit'),
+      })),
+      queueEmpty: shown.length === 0,
+      emptyLine: pending.length === 0
+        ? 'Nothing waiting. Every proposed change has been published, rejected or edited — users are seeing current data.'
+        : 'Nothing of this type. ' + pending.length + ' change' + (pending.length === 1 ? '' : 's') + ' still waiting under other categories.',
+      stale: staleLeft.map(s => ({
+        label: s.label,
+        age: this.hoursTxt(s.hours) + ' · threshold ' + this.hoursTxt(s.threshold),
+        ageInk: s.hours > s.threshold * 1.5 ? 'var(--pm-alert)' : 'var(--pm-caution)',
+        border: s.hours > s.threshold * 1.5 ? 'rgba(217,96,63,0.24)' : 'rgba(217,162,63,0.24)',
+        onRefetch: () => { this.setState(x => ({ refetched: Object.assign({}, x.refetched, { [s.id]: true }) })); this.flash(s.label + ' · re-fetch queued.'); },
+      })),
+      sources: this.SOURCES.map(s => ({
+        name: s.name,
+        status: s.status,
+        statusInk: s.status === 'OK' ? 'var(--pm-live)' : s.status === 'FAILING' ? 'var(--pm-alert)' : s.status === 'PARTIAL' ? 'var(--pm-caution)' : 'var(--pm-dim-1)',
+        dot: s.status === 'OK' ? 'var(--pm-live)' : s.status === 'FAILING' ? 'var(--pm-alert)' : s.status === 'PARTIAL' ? 'var(--pm-caution)' : 'var(--pm-line-3)',
+        border: s.status === 'FAILING' ? 'rgba(217,96,63,0.24)' : 'var(--pm-line-1)',
+        last: 'last ok ' + this.ageTxt(s.lastMins).replace('fetched ', ''),
+        pending: s.pending + ' in queue',
+        hasError: !!s.error,
+        error: s.error,
+      })),
+      canBulk: st.tab === 'queue' && high.length > 0,
+      noBulk: !(st.tab === 'queue' && high.length > 0),
+      bulkCta: 'APPROVE ' + high.length + ' HIGH-CONFIDENCE',
+      bulkSub: '90%+ confidence, official sources only · one tap',
+      onBulk: () => {
+        this.setState(x => {
+          const done = Object.assign({}, x.done);
+          high.forEach(i => { done[i.id] = 'approve'; });
+          return { done: done };
+        });
+        this.flash(high.length + ' changes published. Everything below 90% still needs a look.');
+      },
+      footNote: st.tab === 'queue'
+        ? 'Nothing at 90%+ to bulk-approve — the rest needs a human on each one.'
+        : st.tab === 'stale'
+          ? 'Users see a stale badge and a re-check prompt on anything in this list.'
+          : 'A failing source is the usual cause of a quiet queue. Fix the crawler before trusting the freshness numbers.',
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="What to do the first time you sit down in a Las Vegas poker room: getting on the list, buying chips, tipping, and the etiquette nobody explains.">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: underline; text-decoration-color: rgba(201,162,74,0.4); text-underline-offset: 3px; }
+    a:hover { color: #E3C578; text-decoration-color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93; --pm-caution:#D9A23F;
+      --pm-promo-1:rgba(20,54,40,0.9); --pm-promo-2:rgba(17,32,26,0.45); --pm-promo-line:rgba(78,203,147,0.13);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#F2EFE6; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(242,239,230,0.94);
+      --pm-ink:#14180F; --pm-ink-2:#20261C; --pm-ink-3:rgba(20,24,15,0.88);
+      --pm-dim-1:rgba(20,24,15,0.74); --pm-dim-2:rgba(20,24,15,0.66); --pm-dim-3:rgba(20,24,15,0.5); --pm-dim-4:rgba(20,24,15,0.42);
+      --pm-line-1:rgba(20,24,15,0.1); --pm-line-2:rgba(20,24,15,0.16); --pm-line-3:rgba(20,24,15,0.28); --pm-fill-1:rgba(20,24,15,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52; --pm-caution:#8A5B0F;
+      --pm-promo-1:rgba(214,231,220,0.9); --pm-promo-2:rgba(232,238,231,0.6); --pm-promo-line:rgba(15,123,82,0.22);
+    }
+  </style>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Article","headline":"How to play poker in a Vegas room","description":"What to do the first time you sit down in a Las Vegas poker room: getting on the list, buying chips, tipping, and the etiquette nobody explains.","author":{"@type":"Organization","name":"Poker Map"},"publisher":{"@type":"Organization","name":"Poker Map"},"datePublished":"2026-08-03","articleSection":"Guides","about":{"@type":"Thing","name":"Las Vegas poker rooms"}}
+  </script>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<article data-article-root="1" data-screen-label="Article" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div data-article-header="1" style="position:sticky;top:0;z-index:30;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="padding:58px 14px 10px;display:flex;align-items:center;gap:10px">
+      <div onClick="{{ onBack }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 17px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-1)" style-hover="border-color:var(--pm-line-3);color:var(--pm-ink)">&#8249;</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass)">GUIDE</span>
+        <span style="font:500 12px/1.2 Archivo,sans-serif;color:var(--pm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ title }}</span>
+      </div>
+      <div onClick="{{ toggleContents }}" style="flex:none;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;cursor:pointer;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)" style-hover="border-color:rgba(201,162,74,0.5);color:var(--pm-brass)">{{ contentsCta }}</div>
+    </div>
+    <sc-if value="{{ contentsOpen }}">
+      <div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:2px;animation:pmFade .2s ease both">
+        <sc-for list="{{ contents }}" as="c" hint-placeholder-count="6">
+          <div onClick="{{ c.onClick }}" style="min-height:44px;display:flex;align-items:center;gap:10px;padding:0 4px;border-bottom:1px solid var(--pm-fill-1);cursor:pointer" style-hover="background:var(--pm-fill-1)">
+            <span style="flex:none;width:20px;font:500 9.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-3)">{{ c.n }}</span>
+            <span style="flex:1;min-width:0;font:400 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-3)">{{ c.label }}</span>
+            <span style="flex:none;font:400 12px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">&#8250;</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <header style="padding:30px 22px 0;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-2)">{{ kicker }}</span>
+    </div>
+    <h1 style="margin:0;font:400 40px/1.02 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink);text-wrap:pretty">How to play poker in a Vegas room</h1>
+    <p style="margin:0;font:400 15.5px/1.6 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Nobody explains any of this at the desk. Here is what actually happens between walking in and getting dealt a hand — and the handful of things that mark you out as new.</p>
+  </header>
+
+  <div style="padding:22px 22px 0">
+    <div style="height:1px;background:linear-gradient(90deg,rgba(201,162,74,0.5),rgba(201,162,74,0))"></div>
+  </div>
+
+  <div style="padding:24px 22px 0;display:flex;flex-direction:column;gap:30px">
+
+    <section data-sec="list" style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font:400 27px/1.1 'Instrument Serif',Georgia,serif;letter-spacing:-0.01em;color:var(--pm-ink)">Getting on the list</h2>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">Walk to the podium — the desk at the front of the room — and say the game you want. “One-three, please.” That's it. They'll ask for initials and a first name, not ID, and your name goes on a screen you can read from the rail.</p>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">If there's a wait, ask two questions: how many are ahead of you, and whether they'll text you. Most rooms will. Then go and do something else — nobody stands at the podium for forty minutes. Some rooms let you join the list from your phone before you arrive; <a href="#">the rooms that do are marked in the list</a>.</p>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px 15px;border-radius:13px;background:linear-gradient(97deg,var(--pm-promo-1) 0%,var(--pm-promo-2) 100%);border:1px solid var(--pm-promo-line)">
+        <span style="flex:none;width:7px;height:7px;margin-top:5px;background:var(--pm-brass);transform:rotate(45deg)"></span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-brass-3)">WORTH KNOWING</span>
+          <span style="font:400 13px/1.55 Archivo,sans-serif;color:var(--pm-ink-2);text-wrap:pretty">Being on two lists at two rooms is normal and nobody minds. Take the first seat that opens and call the other room to drop off.</span>
+        </div>
+      </div>
+    </section>
+
+    <section data-sec="chips" style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font:400 27px/1.1 'Instrument Serif',Georgia,serif;letter-spacing:-0.01em;color:var(--pm-ink)">Buying chips</h2>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">You don't need chips before you sit. Take the seat, put your cash on the table in front of you, and tell the dealer how much you're playing. A chip runner brings your stack in a minute or two and you can play with cash in the meantime — cash plays, in Nevada, at the amount you announce.</p>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">Buy in for more than the minimum if you can. A $100 stack in a $1/3 game leaves you no room to play after one raise, and every stack at the table will have you covered. The <a href="#">buy-in range for every room and stake</a> is on each room's page.</p>
+    </section>
+
+    <section data-sec="tipping" style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font:400 27px/1.1 'Instrument Serif',Georgia,serif;letter-spacing:-0.01em;color:var(--pm-ink)">Tipping, honestly</h2>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">Dealers are tipped out of pots you win — roughly a dollar a hand, a little more on a big one, nothing on a pot you take without a flop. It isn't optional in practice, and it comes out of the rake-paying economy you're already in, so factor it in when you work out what a session costs.</p>
+      <div style="display:flex;flex-direction:column;gap:0;border-radius:13px;border:1px solid var(--pm-line-1);background:var(--pm-fill-1);padding:13px 15px">
+        <sc-for list="{{ tips }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--pm-fill-1)">
+            <span style="flex:none;width:112px;font:400 11px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2)">{{ t.k }}</span>
+            <span style="flex:1;min-width:0;font:400 12.5px/1.5 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-3);text-wrap:pretty">{{ t.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">Drinks are free while you're playing. The server will find you; tip a dollar or two a drink and she'll find you faster.</p>
+    </section>
+
+    <section data-sec="joining" style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font:400 27px/1.1 'Instrument Serif',Georgia,serif;letter-spacing:-0.01em;color:var(--pm-ink)">Sitting down mid-game</h2>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">You'll be sent to a table that's already running. Take the empty seat, hand your money forward, and wait for the blind to pass you — or post it now if you'd rather play immediately. Either is fine; say which.</p>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">Ask the dealer anything. What's the straddle rule here, is there a must-post, where's the button. Dealers answer this fifty times a shift and would rather you asked than guessed. Room-by-room, <a href="#">we list straddle and must-post rules</a> so you can read them before you sit.</p>
+    </section>
+
+    <section data-sec="dont" style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font:400 27px/1.1 'Instrument Serif',Georgia,serif;letter-spacing:-0.01em;color:var(--pm-ink)">What actually annoys people</h2>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <sc-for list="{{ dont }}" as="d" hint-placeholder-count="5">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-radius:12px;border:1px solid rgba(217,162,63,0.26);background:rgba(217,162,63,0.05)">
+            <span style="flex:none;font:600 11px/1.3 'IBM Plex Mono',monospace;color:var(--pm-caution)">&times;</span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+              <span style="font:600 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2)">{{ d.k }}</span>
+              <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ d.v }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">None of it is about skill. Angle-free, in turn, chips visible, phone down when you're in a hand — do that and nobody at the table can tell how long you've been playing.</p>
+    </section>
+
+    <section data-sec="cost" style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font:400 27px/1.1 'Instrument Serif',Georgia,serif;letter-spacing:-0.01em;color:var(--pm-ink)">What it costs to sit there</h2>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">The house takes a cut of each pot — the rake — usually 10% capped at four or five dollars, sometimes with a dollar or two on top for the jackpot. Spread across a full table that's real money per hour, and it varies by room more than most players realise.</p>
+      <p style="margin:0;font:400 15px/1.68 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">Comps run the other way: most rooms credit you a couple of dollars an hour toward food. <a href="#">We price every room and stake side by side</a>, with the arithmetic shown, because a $4 cap with no jackpot drop is a meaningfully cheaper seat than a $5 cap with two.</p>
+    </section>
+  </div>
+
+  <div style="padding:34px 22px 0">
+    <div style="border-radius:17px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid rgba(201,162,74,0.3);padding:18px;display:flex;flex-direction:column;gap:15px">
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">NOW GO AND PLAY</span>
+        <span style="font:400 24px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-wrap:pretty">17 rooms are open right now</span>
+        <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Sorted by how far you'd walk, with what's running, what it rakes and who's waiting.</span>
+      </div>
+      <div onClick="{{ onRooms }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+        <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:#1B1509"></span><span style="position:absolute;inset:0;border-radius:50%;background:rgba(27,21,9,0.75);animation:pmPing 2.4s ease-out infinite"></span></span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">FIND ROOMS NEAR ME</span>
+          <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.66)">No account · no app store</span>
+        </div>
+        <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+      </div>
+      <div onClick="{{ onCash }}" style="height:46px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+        <span style="font:600 11px/1 Archivo,sans-serif;letter-spacing:0.09em;color:var(--pm-ink-2)">COMPARE RAKE AND COMPS</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:26px 22px 0;display:flex;flex-direction:column;gap:11px">
+    <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-dim-1)">READ NEXT</span>
+    <sc-for list="{{ next }}" as="n" hint-placeholder-count="3">
+      <div onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:12px;min-height:52px;padding:11px 0;border-bottom:1px solid var(--pm-line-1);cursor:pointer" style-hover="opacity:.85">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <span style="font:400 16px/1.2 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ n.title }}</span>
+          <span style="font:400 11px/1.35 Archivo,sans-serif;color:var(--pm-dim-1)">{{ n.blurb }}</span>
+        </div>
+        <span style="flex:none;font:400 14px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">&#8250;</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="padding:24px 22px 0;display:flex;flex-direction:column;align-items:center;gap:8px">
+    <div onClick="{{ onCorrection }}" style="height:36px;display:flex;align-items:center;cursor:pointer">
+      <span style="font:400 10.5px/1 Archivo,sans-serif;color:var(--pm-dim-2);text-decoration:underline;text-decoration-color:var(--pm-line-3);text-underline-offset:3px">Something wrong here? Tell us</span>
+    </div>
+    <span style="font:500 9.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2);text-align:center;text-wrap:pretty">{{ footer }}</span>
+  </div>
+
+  <div style="height:150px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:16px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+    <div style="padding:9px 6px 30px;display:flex">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.onClick }}" style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer">
+          <sc-if value="{{ n.active }}" hint-placeholder-val="{{ true }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:var(--pm-brass)"></span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-ink)">{{ n.label }}</span>
+          </sc-if>
+          <sc-if value="{{ n.inactive }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:transparent"></span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ n.label }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</article>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { contents: false, toast: null };
+
+  CONTENTS = [
+    { key: 'list', label: 'Getting on the list' },
+    { key: 'chips', label: 'Buying chips' },
+    { key: 'tipping', label: 'Tipping, honestly' },
+    { key: 'joining', label: 'Sitting down mid-game' },
+    { key: 'dont', label: 'What actually annoys people' },
+    { key: 'cost', label: 'What it costs to sit there' },
+  ];
+
+  TIPS = [
+    { k: 'Dealer', v: '$1 a pot you win, $2–3 on a big one, nothing when you take it pre-flop' },
+    { k: 'Cocktail server', v: '$1–2 a drink, more on the first round' },
+    { k: 'Chip runner', v: '$1 when they bring your stack' },
+    { k: 'Massage', v: 'Around $2 a minute, tip 20% on top' },
+    { k: 'Cashing out', v: 'Nothing at the cage — that one is free' },
+  ];
+
+  DONT = [
+    { k: 'Acting out of turn', v: 'The single thing that irritates a table. Watch the player to your right, not the dealer.' },
+    { k: 'Hiding your big chips', v: 'Keep your highest denominations on top and visible. It is a rule, not a courtesy.' },
+    { k: 'Splashing the pot', v: 'Put your bet in a stack in front of you and let the dealer pull it in.' },
+    { k: 'Slowrolling', v: 'If you have the winner, turn it over. Everything else is theatre nobody enjoys.' },
+    { k: 'Phone in a live hand', v: 'Fine at the table, not while you are in the pot. Most rooms enforce it.' },
+  ];
+
+  NEXT = [
+    { title: 'Rake, explained', blurb: 'What the house takes, why the cap matters more than the percentage' },
+    { title: 'A first-timer\u2019s Vegas poker week', blurb: 'Which rooms on which days, and what to skip' },
+    { title: 'Tournaments vs cash for a first trip', blurb: 'Where $300 goes furthest, honestly' },
+  ];
+
+  NAV = [{ id: 'rooms', label: 'ROOMS' }, { id: 'tourneys', label: 'TOURNEYS' }, { id: 'cash', label: 'CASH' }, { id: 'promos', label: 'PROMOS' }, { id: 'me', label: 'ME' }];
+
+  componentWillUnmount() { clearTimeout(this.toastTimer); }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  jump(key) {
+    const root = document.querySelector('[data-article-root]');
+    if (!root) return;
+    const el = root.querySelector('[data-sec="' + key + '"]');
+    let scroller = root.parentElement;
+    while (scroller && scroller.scrollHeight <= scroller.clientHeight + 4 && scroller.parentElement) scroller = scroller.parentElement;
+    const header = root.querySelector('[data-article-header]');
+    if (!el || !scroller) return;
+    const chrome = header ? header.getBoundingClientRect().height : 130;
+    const delta = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - (chrome + 14);
+    scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+    this.setState({ contents: false });
+  }
+
+  renderVals() {
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: this.props.theme === 'light' ? 'light' : 'dark',
+      title: 'How to play poker in a Vegas room',
+      meta: 'What to do the first time you sit down in a Las Vegas poker room: getting on the list, buying chips, tipping, and the etiquette nobody explains.',
+      kicker: 'FIRST TIME IN A ROOM · 6 MIN READ',
+      contentsOpen: this.state.contents,
+      contentsCta: this.state.contents ? 'CLOSE' : 'CONTENTS',
+      toggleContents: () => this.setState(s => ({ contents: !s.contents })),
+      contents: this.CONTENTS.map((c, i) => ({
+        n: String(i + 1).padStart(2, '0'),
+        label: c.label,
+        onClick: () => this.jump(c.key),
+      })),
+      tips: this.TIPS,
+      dont: this.DONT,
+      next: this.NEXT.map(n => ({ title: n.title, blurb: n.blurb, onClick: () => this.flash(n.title + ' · not written yet.') })),
+      onRooms: () => this.flash('Rooms near me · opening the list.'),
+      onCash: () => this.flash('Cash · opening the rake comparison.'),
+      onBack: () => this.flash('Back to guides.'),
+      onCorrection: () => this.flash('Thanks — sent to our review queue.'),
+      footer: 'WRITTEN BY PLAYERS WHO PLAY THESE ROOMS · UPDATED AUGUST 2026 · NOT AFFILIATED WITH ANY CASINO · 21+',
+      navItems: this.NAV.map(n => ({
+        label: n.label, active: false, inactive: true,
+        onClick: () => this.flash(n.label.charAt(0) + n.label.slice(1).toLowerCase() + ' · opening.'),
+      })),
+      toast: this.state.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

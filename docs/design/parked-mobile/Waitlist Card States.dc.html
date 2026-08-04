@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0}
+body{background:radial-gradient(120% 80% at 50% 0%,#12140f 0%,#0a0b09 55%,#070806 100%);font-family:Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#c9a24a;text-decoration:none}
+a:hover{color:#e3c578}
+</style>
+</helmet>
+<div style="min-height:100vh;box-sizing:border-box;padding:44px 48px 56px;display:flex;flex-direction:column;gap:34px;color:#EDEAE0;font-family:Archivo,system-ui,sans-serif">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+    <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.22em;color:#C9A24A">POKER MAP ALPHA · ROOM CARD · WAITLIST CAPABILITY</span>
+    <h1 style="margin:0;font:400 40px/1.05 'Instrument Serif',Georgia,serif;letter-spacing:-0.015em;color:#F4F1E8">Two card states, one rhythm</h1>
+    <p style="margin:0;font:400 14px/1.55 Archivo,sans-serif;color:rgba(237,234,224,0.55);text-wrap:pretty">Waitlist is a per-room capability. The default card carries no trace of it — the footer row is freshness on the left, stakes on the right. When a room grants access, the stakes slot yields to a brass action in the same 44px row, so card height and list rhythm never change.</p>
+  </div>
+
+  <div style="display:flex;gap:44px;flex-wrap:wrap;align-items:flex-start">
+    <div style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:24px;height:24px;border-radius:50%;border:1px solid rgba(237,234,224,0.22);display:flex;align-items:center;justify-content:center;font:500 11px/1 'IBM Plex Mono',monospace;color:rgba(237,234,224,0.7)">1</span>
+        <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:#F4F1E8">DEFAULT · NO WAITLIST</span>
+      </div>
+      <dc-import name="Poker Map - Rooms Near Me" waitlist-access="off" expand-room="2" frame-height="1120" show-ticker="false" hint-size="430px,1140px"></dc-import>
+      <div style="display:flex;flex-direction:column;gap:9px;padding:16px 17px;border-radius:14px;background:rgba(237,234,224,0.035);border:1px solid rgba(237,234,224,0.07)">
+        <span style="font:500 11.5px/1.5 Archivo,sans-serif;color:rgba(237,234,224,0.62)">Footer row reads freshness → rake. Nothing missing, nothing disabled.</span>
+        <span style="font:500 11.5px/1.5 Archivo,sans-serif;color:rgba(237,234,224,0.62)">Expanded, the only action is Directions — quiet, outlined, full width.</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:24px;height:24px;border-radius:50%;background:rgba(201,162,74,0.14);border:1px solid rgba(201,162,74,0.45);display:flex;align-items:center;justify-content:center;font:500 11px/1 'IBM Plex Mono',monospace;color:#E3C578">2</span>
+        <span style="font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:#E3C578">WAITLIST ENABLED · WYNN + WESTGATE</span>
+      </div>
+      <dc-import name="Poker Map - Rooms Near Me" waitlist-access="partial" expand-room="7" frame-height="1120" show-ticker="false" hint-size="430px,1140px"></dc-import>
+      <div style="display:flex;flex-direction:column;gap:9px;padding:16px 17px;border-radius:14px;background:rgba(201,162,74,0.06);border:1px solid rgba(201,162,74,0.18)">
+        <span style="font:500 11.5px/1.5 Archivo,sans-serif;color:rgba(237,234,224,0.72)">Collapsed: a brass-outlined pill with a live count, same row, same height.</span>
+        <span style="font:500 11.5px/1.5 Archivo,sans-serif;color:rgba(237,234,224,0.72)">Expanded: filled brass, lit top edge, press travel, live seat detail — the one element that acts rather than reports.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:12px;padding-top:6px">
+    <div style="flex:1;min-width:250px;display:flex;flex-direction:column;gap:7px;padding:17px 18px;border-radius:14px;background:rgba(237,234,224,0.03);border:1px solid rgba(237,234,224,0.07)">
+      <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:rgba(237,234,224,0.35)">RULE · FOOTPRINT</span>
+      <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:rgba(237,234,224,0.6)">Footer row is min-height 44px in both states, so an enabled card is exactly as tall as a default one.</span>
+    </div>
+    <div style="flex:1;min-width:250px;display:flex;flex-direction:column;gap:7px;padding:17px 18px;border-radius:14px;background:rgba(237,234,224,0.03);border:1px solid rgba(237,234,224,0.07)">
+      <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:rgba(237,234,224,0.35)">RULE · ONE ACTION</span>
+      <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:rgba(237,234,224,0.6)">Brass fill is reserved for the waitlist commit. Everything else on the card is felt, ivory or grey — data, not buttons.</span>
+    </div>
+    <div style="flex:1;min-width:250px;display:flex;flex-direction:column;gap:7px;padding:17px 18px;border-radius:14px;background:rgba(237,234,224,0.03);border:1px solid rgba(237,234,224,0.07)">
+      <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:rgba(237,234,224,0.35)">RULE · CLOSED ROOMS</span>
+      <span style="font:400 12.5px/1.5 Archivo,sans-serif;color:rgba(237,234,224,0.6)">A closed room falls back to the default card even where access exists — no CTA that can’t be honoured right now.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1040,&quot;height&quot;:1320}}"></script>
+</body>
+</html>

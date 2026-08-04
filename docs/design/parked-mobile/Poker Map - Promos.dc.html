@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    @keyframes pmClimb { 0%,100% { transform: translateY(0); opacity: .85 } 50% { transform: translateY(-2px); opacity: 1 } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-float:rgba(13,17,14,0.94); --pm-scrim:rgba(4,6,5,0.66);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93; --pm-value:#4ECB93; --pm-caution:#D9A23F;
+      --pm-promo-1:rgba(20,54,40,0.9); --pm-promo-2:rgba(17,32,26,0.45); --pm-promo-line:rgba(78,203,147,0.13);
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#EFECE3; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(239,236,227,0.94); --pm-float:rgba(255,255,255,0.96); --pm-scrim:rgba(24,28,20,0.42);
+      --pm-ink:#171C13; --pm-ink-2:#232A1D; --pm-ink-3:rgba(23,28,19,0.86);
+      --pm-dim-1:rgba(23,28,19,0.72); --pm-dim-2:rgba(23,28,19,0.66); --pm-dim-3:rgba(23,28,19,0.5); --pm-dim-4:rgba(23,28,19,0.42);
+      --pm-line-1:rgba(23,28,19,0.1); --pm-line-2:rgba(23,28,19,0.16); --pm-line-3:rgba(23,28,19,0.28); --pm-fill-1:rgba(23,28,19,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52; --pm-value:#0F7B52; --pm-caution:#8A5B0F;
+      --pm-promo-1:rgba(214,231,220,0.9); --pm-promo-2:rgba(232,238,231,0.6); --pm-promo-line:rgba(15,123,82,0.22);
+      --pm-src-empty-line:rgba(23,28,19,0.18);
+    }
+  </style>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<div data-promos-root="1" data-screen-label="Promos" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div data-promos-header="1" style="position:sticky;top:0;z-index:30;padding:58px 18px 13px;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="display:flex;align-items:center;gap:11px">
+      <div style="flex:1;min-width:0;display:flex;align-items:center;gap:7px">
+        <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass);animation:pmPing 2.6s ease-out infinite"></span></span>
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-brass)">CHASING FROM</span>
+        <span style="font:500 11px/1 Archivo,sans-serif;color:var(--pm-dim-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ location }}</span>
+      </div>
+      <div onClick="{{ cycleSort }}" style="flex:none;height:44px;padding:0 13px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;gap:8px;cursor:pointer" style-hover="border-color:rgba(201,162,74,0.5)">
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ sortLabel }}</span>
+        <span style="font:400 9px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">&#8645;</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px">
+      <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="6">
+        <sc-if value="{{ k.active }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ k.onClick }}" style="height:46px;box-sizing:border-box;padding:0 6px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.5)">
+            <span style="font:700 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.11em;color:#17130A;white-space:nowrap">{{ k.label }}</span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.7)">{{ k.count }}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ k.inactive }}">
+          <div onClick="{{ k.onClick }}" style="height:46px;box-sizing:border-box;padding:0 6px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+            <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.11em;color:var(--pm-dim-1);white-space:nowrap">{{ k.label }}</span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ k.count }}</span>
+          </div>
+        </sc-if>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <h1 style="margin:0;font:400 35px/0.98 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink)">Worth chasing</h1>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="position:relative;width:5px;height:5px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live);animation:pmPing 2.2s ease-out infinite"></span></span>
+      <span style="font:500 11px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:0.02em;color:var(--pm-dim-1)">{{ ticker }}</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;overflow-x:auto;padding:16px 18px 4px;scrollbar-width:none">
+    <sc-for list="{{ chips }}" as="c" hint-placeholder-count="4">
+      <sc-if value="{{ c.active }}"><div onClick="{{ c.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;gap:7px;background:rgba(201,162,74,0.14);border:1px solid var(--pm-brass);cursor:pointer"><span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass-2);white-space:nowrap">{{ c.label }}</span><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:var(--pm-brass-2)">&#10003;</span></div></sc-if>
+      <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ true }}"><div onClick="{{ c.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)"><span style="font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-1);white-space:nowrap">{{ c.label }}</span></div></sc-if>
+    </sc-for>
+  </div>
+
+  <div style="padding:14px 18px 0;display:flex;flex-direction:column;gap:22px">
+    <sc-for list="{{ groups }}" as="grp" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">{{ grp.title }}</span>
+          <span style="flex:1;height:1px;background:var(--pm-line-1)"></span>
+          <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ grp.count }}</span>
+        </div>
+        <sc-for list="{{ grp.items }}" as="p" hint-placeholder-count="3">
+          <div style="border-radius:17px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid {{ p.border }};box-shadow:0 10px 26px -14px rgba(0,0,0,0.85);overflow:hidden">
+            <div style="padding:14px 15px 13px;display:flex;flex-direction:column;gap:13px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="width:7px;height:7px;flex:none;background:var(--pm-brass);transform:rotate(45deg)"></span>
+                <span style="flex:1;min-width:0;font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.kindLabel }}</span>
+                <sc-if value="{{ p.climbing }}">
+                  <span style="flex:none;display:flex;align-items:center;gap:5px;padding:4px 7px;border-radius:6px;background:rgba(78,203,147,0.08);border:1px solid rgba(78,203,147,0.28)">
+                    <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-live)">CLIMBING</span>
+                    <span style="font:400 9px/1 'IBM Plex Mono',monospace;color:var(--pm-live);animation:pmClimb 1.8s ease-in-out infinite">&#8593;</span>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ p.fresh }}" hint-placeholder-val="{{ true }}">
+                  <span style="flex:none;font:400 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ p.verified }}</span>
+                </sc-if>
+                <sc-if value="{{ p.stale }}">
+                  <span style="flex:none;display:flex;align-items:center;gap:5px">
+                    <span style="width:14px;height:14px;border-radius:50%;background:rgba(201,162,74,0.14);display:flex;align-items:center;justify-content:center;font:600 8.5px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">!</span>
+                    <span style="font:400 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-brass-3);white-space:nowrap">{{ p.verified }}</span>
+                  </span>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
+                  <span style="font:500 {{ p.moneySize }} 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;color:{{ p.moneyInk }}">{{ p.money }}</span>
+                  <span style="font:400 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">{{ p.offer }}</span>
+                </div>
+                <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+                  <span style="font:500 15px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ p.timerColor }}">{{ p.timer }}</span>
+                  <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-2)">{{ p.timerNote }}</span>
+                </div>
+              </div>
+
+              <sc-if value="{{ p.hitConfirmed }}">
+                <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;background:rgba(201,162,74,0.09);border:1px solid rgba(201,162,74,0.4)">
+                  <span style="flex:none;width:6px;height:6px;background:var(--pm-brass);transform:rotate(45deg)"></span>
+                  <span style="flex:1;min-width:0;font:500 10.5px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-brass-2);text-wrap:pretty">{{ p.hitText }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ p.pendingClaim }}">
+                <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;border:1px dashed rgba(78,203,147,0.2)">
+                  <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:rgba(78,203,147,0.62);white-space:nowrap">PLAYER-REPORTED</span>
+                  <span style="flex:1;min-width:0;font:400 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.pendingText }}</span>
+                  <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ p.pendingAge }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ p.hasEligibility }}">
+                <span style="font:400 10.5px/1.4 Archivo,sans-serif;color:var(--pm-dim-1);padding:8px 10px;border-radius:9px;background:var(--pm-fill-1)">{{ p.eligibility }}</span>
+              </sc-if>
+
+              <div style="display:flex;align-items:center;gap:10px;padding-top:2px;border-top:1px solid var(--pm-line-1)">
+                <div onClick="{{ p.onRoom }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer">
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <span style="font:400 15px/1.1 'Instrument Serif',Georgia,serif;color:var(--pm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.room }}</span>
+                    <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ p.roomMeta }}</span>
+                  </div>
+                  <span style="flex:none;font:400 15px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">&#8250;</span>
+                </div>
+                <sc-if value="{{ p.armed }}">
+                  <div onClick="{{ p.onNotify }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 13px;border-radius:12px;display:flex;align-items:center;gap:7px;background:rgba(201,162,74,0.16);border:1px solid var(--pm-brass);cursor:pointer">
+                    <span style="font:600 9px/1 'IBM Plex Mono',monospace;color:var(--pm-brass-2)">&#10003;</span>
+                    <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass-2);white-space:nowrap">SAVED</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ p.notArmed }}" hint-placeholder-val="{{ true }}">
+                  <div onClick="{{ p.onNotify }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 13px;border-radius:12px;display:flex;align-items:center;border:1px solid rgba(201,162,74,0.4);cursor:pointer" style-hover="background:rgba(201,162,74,0.12)">
+                    <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass);white-space:nowrap">REMIND ME</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+
+    <sc-if value="{{ isEmpty }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:13px;padding:34px 20px;border-radius:17px;border:1px dashed var(--pm-src-empty-line)">
+        <span style="font:400 21px/1.2 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">Nothing matches that</span>
+        <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:250px">No promotion fits those filters right now. Promos change through the day — try again after the next drop.</span>
+        <div onClick="{{ clearFilters }}" style="height:44px;padding:0 17px;border-radius:12px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">CLEAR FILTERS</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="padding:24px 18px 0">
+    <div style="padding:13px 14px;border-radius:12px;border:1px dashed var(--pm-line-2);display:flex;align-items:center;gap:11px">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+        <span style="font:500 11.5px/1.35 Archivo,sans-serif;color:var(--pm-dim-1)">Promo ended, or a jackpot just hit?</span>
+        <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-2)">PLAYERS KNOW FIRST · 3 SECONDS</span>
+      </div>
+      <div onClick="{{ openReport }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 14px;border-radius:11px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">REPORT</div>
+    </div>
+  </div>
+
+  <div style="height:150px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ sheetOpen }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;height:{{ frameH }}px;z-index:60;display:flex;flex-direction:column;justify-content:flex-end;background:var(--pm-scrim);animation:pmFade .18s ease both">
+        <div onClick="{{ closeSheet }}" style="flex:1"></div>
+        <div style="border-radius:22px 22px 0 0;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border-top:1px solid rgba(201,162,74,0.28);box-shadow:0 -20px 44px -14px rgba(0,0,0,0.95);padding:16px 16px 30px;display:flex;flex-direction:column;gap:15px">
+          <sc-if value="{{ sheetAsk }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass)">REPORT PROMO · ANONYMOUS</span>
+                <span style="font:400 25px/1.1 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ sheetTitle }}</span>
+                <span style="font:400 11px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ sheetSub }}</span>
+              </div>
+              <div onClick="{{ closeSheet }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 16px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&times;</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+              <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="4">
+                <div onClick="{{ b.onClick }}" style="height:56px;border-radius:13px;border:1px solid var(--pm-line-2);background:var(--pm-fill-1);display:flex;align-items:center;justify-content:center;text-align:center;padding:0 8px;cursor:pointer;font:600 10.5px/1.25 'IBM Plex Mono',monospace;letter-spacing:0.09em;color:var(--pm-ink-2)" style-hover="border-color:rgba(201,162,74,0.6);background:rgba(201,162,74,0.1);color:var(--pm-brass-2)" style-active="transform:translateY(1px)">{{ b.label }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <span style="font:400 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:0.06em;color:var(--pm-dim-2)">One tap · no account</span>
+              <span onClick="{{ nextPromo }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass);cursor:pointer;white-space:nowrap">DIFFERENT PROMO?</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sheetThanks }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:13px;padding:14px 0 6px;animation:pmFade .22s ease both">
+              <span style="width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#E2BE6C,#C89B3D);display:flex;align-items:center;justify-content:center;font:600 22px/1 'IBM Plex Mono',monospace;color:#17130A;box-shadow:0 0 0 6px rgba(201,162,74,0.14),0 12px 26px -10px rgba(201,162,74,0.75)">&#10003;</span>
+              <span style="font:400 24px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">{{ thanksLine }}</span>
+              <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:250px">{{ thanksSub }}</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:{{ toastLift }}px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+    <sc-if value="{{ hasArmed }}">
+      <div style="padding:11px 14px 9px;border-bottom:1px solid var(--pm-line-1)">
+        <div onClick="{{ confirmNotify }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+          <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:#1B1509"></span><span style="position:absolute;inset:0;border-radius:50%;background:rgba(27,21,9,0.75);animation:pmPing 2.4s ease-out infinite"></span></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">{{ notifyCta }}</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ notifySub }}</span>
+          </div>
+          <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+        </div>
+      </div>
+    </sc-if>
+    <div style="padding:9px 6px 30px;display:flex">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.onClick }}" style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer">
+          <sc-if value="{{ n.active }}" hint-placeholder-val="{{ true }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:var(--pm-brass)"></span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-ink)">{{ n.label }}</span>
+          </sc-if>
+          <sc-if value="{{ n.inactive }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:transparent"></span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ n.label }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;location&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;The Cosmopolitan&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Context&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  /* claims: high-stakes reports (ended / hit) need a second player before they read as fact */
+  state = { kind: 'all', chips: [], sort: 'soonest', tick: 0, armed: {}, sheet: null, sheetDone: false,
+    claims: { 11: { kind: 'hit', n: 1, mins: 14 } }, sheetOutcome: null, toast: null };
+
+  KINDS = [
+    { id: 'all', label: 'ALL' }, { id: 'high', label: 'HIGH HAND' }, { id: 'badbeat', label: 'BAD BEAT' },
+    { id: 'freeroll', label: 'FREEROLL' }, { id: 'splash', label: 'SPLASH' }, { id: 'locals', label: 'LOCALS RATE' },
+  ];
+  KIND_LABEL = { high: 'HIGH HAND', badbeat: 'BAD BEAT JACKPOT', freeroll: 'FREEROLL', splash: 'SPLASH POT', locals: 'LOCALS RATE' };
+  CHIPS = [
+    { id: 'walk', label: 'Walkable' }, { id: 'strip', label: 'Strip only' },
+    { id: 'nolimit', label: 'No stake minimum' }, { id: 'big', label: 'Over $1,000' },
+  ];
+  BUCKETS = ['STILL RUNNING', 'PROMO ENDED', 'JACKPOT HIT', 'TIME CHANGED'];
+  BUCKET_TEXT = {
+    'STILL RUNNING': 'confirmed still running',
+    'PROMO ENDED': 'reported ended',
+    'JACKPOT HIT': 'reported hit',
+    'TIME CHANGED': 'reported a time change',
+  };
+  /* these two send people chasing — or stop them chasing — so they never display on one report */
+  CORROBORATE = { 'PROMO ENDED': 'ended', 'JACKPOT HIT': 'hit' };
+
+  /* PLACEHOLDER promotion data — plausible, not sourced. money in dollars, secs = time to next event */
+  PROMOS = [
+    { id: 1, kind: 'high', money: 1000, room: 'Venetian', area: 'strip', dist: 1.3, walk: 26, when: 'now', secs: 840, note: 'NEXT PAY', elig: 'Any $1/2 or higher · quads or better', offer: 'Highest hand every hour, around the clock', verifiedH: 3, minStake: 2 },
+    { id: 2, kind: 'splash', money: 100, room: 'Venetian', area: 'strip', dist: 1.3, walk: 26, when: 'now', secs: 690, note: 'NEXT DROP', elig: '$1/2 tables only · must be dealt in', offer: 'Splash pot on the top of every hour', verifiedH: 3, minStake: 2 },
+    { id: 3, kind: 'high', money: 300, room: 'ARIA', area: 'strip', dist: 0.2, walk: 4, when: 'now', secs: 1120, note: 'NEXT PAY', elig: 'Seated at $1/3 or higher', offer: 'High hand every 30 minutes, 10a to 6p', verifiedH: 2, minStake: 3 },
+    { id: 4, kind: 'freeroll', money: 5000, room: 'Orleans', area: 'offstrip', dist: 2.7, walk: 54, drive: 9, when: 'now', secs: 2280, note: 'REG OPEN', elig: '40 hours played this month qualifies', offer: 'Monthly players freeroll · 3 flights', verifiedH: 6, minStake: 0 },
+    { id: 5, kind: 'badbeat', money: 47200, room: 'Golden Nugget', area: 'downtown', dist: 4.4, walk: 0, drive: 13, when: 'standing', secs: 0, note: 'CLIMBING', elig: 'Aces full beaten · both hole cards played', offer: 'Valley’s largest bad-beat jackpot', verifiedH: 8, climbing: true, minStake: 2 },
+    { id: 6, kind: 'badbeat', money: 12400, room: 'ARIA', area: 'strip', dist: 0.2, walk: 4, when: 'standing', secs: 0, note: 'CLIMBING', elig: 'Aces full beaten · all games qualify', offer: 'Progressive bad beat across every table', verifiedH: 2, climbing: true, minStake: 3 },
+    { id: 7, kind: 'high', money: 500, room: 'Wynn/Encore', area: 'strip', dist: 1.7, walk: 34, drive: 8, when: 'today', secs: 5220, note: 'NEXT PAY', elig: 'Quads minimum · any stake', offer: 'High hand hourly, noon to midnight', verifiedH: 1, minStake: 0 },
+    { id: 8, kind: 'splash', money: 250, room: 'MGM Grand', area: 'strip', dist: 1.1, walk: 22, when: 'today', secs: 7500, note: 'NEXT DROP', elig: '$1/2 and $2/5 · dealt-in players only', offer: 'Splash pots every two hours after 4p', verifiedH: 5, minStake: 2 },
+    { id: 9, kind: 'locals', money: 3, room: 'South Point', area: 'locals', dist: 7.6, walk: 0, drive: 17, when: 'standing', secs: 0, note: 'ALL DAY', elig: 'Nevada ID required', offer: 'Locals comp rate, per hour played', verifiedH: 9, perHour: true, minStake: 0 },
+    { id: 10, kind: 'locals', money: 3, room: 'ARIA', area: 'strip', dist: 0.2, walk: 4, when: 'standing', secs: 0, note: 'ALL DAY', elig: 'Nevada ID · $1/3 and up', offer: 'Locals comp rate on the Strip', verifiedH: 2, perHour: true, minStake: 3 },
+    { id: 11, kind: 'badbeat', money: 8900, room: 'Red Rock', area: 'locals', dist: 11.8, walk: 0, drive: 22, when: 'standing', secs: 0, note: 'CLIMBING', elig: 'Aces full beaten · $1/2 and up', offer: 'Bad beat plus a $1,000 second-place share', verifiedH: 7, climbing: true, minStake: 2 },
+    { id: 12, kind: 'freeroll', money: 2500, room: 'Boulder Station', area: 'locals', dist: 6.3, walk: 0, drive: 15, when: 'week', secs: 0, sched: 'Sundays 11a', note: 'SUNDAYS', elig: '25 hours played in the week', offer: 'Weekly players freeroll', verifiedH: 26, minStake: 0 },
+    { id: 13, kind: 'high', money: 200, room: 'Horseshoe', area: 'strip', dist: 0.6, walk: 12, when: 'today', secs: 3900, note: 'NEXT PAY', elig: 'Straight flush or better', offer: 'High hand every 30 minutes, 2p to 10p', verifiedH: 40, minStake: 2 },
+    { id: 14, kind: 'splash', money: 500, room: 'Bellagio', area: 'strip', dist: 0.4, walk: 8, when: 'week', secs: 0, sched: 'Fridays from 8p', note: 'FRIDAYS', elig: '$2/5 and up · one per hour', offer: 'Bomb-pot Fridays with a splash', verifiedH: 5, minStake: 5 },
+    { id: 15, kind: 'freeroll', money: 10000, room: 'Westgate', area: 'offstrip', dist: 2.4, walk: 0, drive: 8, when: 'week', secs: 0, sched: 'Saturdays 10a', note: 'SATURDAYS', elig: 'Invite from 50 hours played', offer: 'Monthly $10K freeroll, first Saturday', verifiedH: 12, minStake: 0 },
+    { id: 16, kind: 'locals', money: 2, room: 'Green Valley Ranch', area: 'locals', dist: 9.6, walk: 0, drive: 19, when: 'standing', secs: 0, note: 'ALL DAY', elig: 'Nevada ID · any stake', offer: 'Locals rate plus $5 food credit hourly', verifiedH: 11, perHour: true, minStake: 0 },
+  ];
+
+  GROUPS = [
+    { id: 'now', title: 'RIGHT NOW' }, { id: 'today', title: 'LATER TODAY' },
+    { id: 'week', title: 'THIS WEEK' }, { id: 'standing', title: 'STANDING' },
+  ];
+  NAV = [{ id: 'rooms', label: 'ROOMS' }, { id: 'tourneys', label: 'TOURNEYS' }, { id: 'cash', label: 'CASH' }, { id: 'promos', label: 'PROMOS' }, { id: 'me', label: 'ME' }];
+  SORTS = [{ id: 'soonest', label: 'SOONEST' }, { id: 'biggest', label: 'BIGGEST $' }, { id: 'nearest', label: 'NEAREST' }];
+
+  componentDidMount() { this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 1000); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.toastTimer); clearTimeout(this.sheetTimer); }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  money(n, perHour) {
+    const s = '$' + n.toLocaleString('en-US');
+    return perHour ? s + '/hr' : s;
+  }
+  clock(secs) {
+    const t = Math.max(0, secs);
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? h + ':' + pad(m) + ':' + pad(s) : pad(m) + ':' + pad(s);
+  }
+  ageTxt(h) {
+    if (h < 1) return 'verified just now';
+    if (h < 12) return 'verified ' + h + 'h ago';
+    if (h < 24) return 'verified today';
+    if (h < 36) return 'verified yesterday';
+    return 'verified ' + Math.floor(h / 24) + 'd ago · re-check';
+  }
+
+  claim(id) { return this.state.claims[id] || null; }
+  confirmed(id) { const c = this.claim(id); return c && c.n >= 2 ? c.kind : null; }
+
+  visible() {
+    const st = this.state;
+    return this.PROMOS.filter(p => {
+      if (this.confirmed(p.id) === 'ended') return false;   /* gone — a confirmed end removes it */
+      if (st.kind !== 'all' && p.kind !== st.kind) return false;
+      if (st.chips.indexOf('walk') >= 0 && !(p.walk && p.walk <= 25)) return false;
+      if (st.chips.indexOf('strip') >= 0 && p.area !== 'strip') return false;
+      if (st.chips.indexOf('nolimit') >= 0 && p.minStake > 0) return false;
+      if (st.chips.indexOf('big') >= 0 && p.money <= 1000) return false;
+      return true;
+    });
+  }
+
+  sorted(list) {
+    const s = this.state.sort;
+    const c = list.slice();
+    if (s === 'biggest') return c.sort((a, b) => b.money - a.money);
+    if (s === 'nearest') return c.sort((a, b) => a.dist - b.dist);
+    return c.sort((a, b) => (a.secs || 1e9) - (b.secs || 1e9));
+  }
+
+  submit(bucket) {
+    const kind = this.CORROBORATE[bucket];
+    this.setState(st => {
+      const id = st.sheet;
+      const prev = st.claims[id];
+      let claims = st.claims, outcome = 'ok';
+      if (kind) {
+        const n = prev && prev.kind === kind ? prev.n + 1 : 1;
+        claims = Object.assign({}, st.claims, { [id]: { kind: kind, n: n, mins: 0 } });
+        outcome = n >= 2 ? 'confirmed' : 'pending';
+      } else if (bucket === 'STILL RUNNING' && prev) {
+        claims = Object.assign({}, st.claims);
+        delete claims[id];                                   /* a live confirmation clears a lone claim */
+      }
+      return { claims: claims, sheetDone: true, sheetOutcome: outcome, sheetKind: kind || null };
+    });
+    clearTimeout(this.sheetTimer);
+    this.sheetTimer = setTimeout(() => this.setState({ sheet: null, sheetDone: false }), 2700);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const all = this.visible();
+    const armedIds = Object.keys(st.armed).filter(k => st.armed[k]);
+    const totalOnBoard = this.PROMOS.filter(p => p.kind === 'badbeat' && !this.confirmed(p.id)).reduce((n, p) => n + p.money, 0);
+    const payingSoon = this.PROMOS.filter(p => p.when === 'now' && this.confirmed(p.id) !== 'ended').length;
+
+    const decorate = p => {
+      const secs = p.secs ? Math.max(0, p.secs - st.tick) : 0;
+      const ageH = p.verifiedH + Math.floor(st.tick / 3600);
+      const big = p.kind === 'badbeat';
+      const cl = this.claim(p.id);
+      const conf = this.confirmed(p.id);
+      const claimAge = cl ? (cl.mins || 0) + Math.floor(st.tick / 60) : 0;
+      return {
+        id: p.id,
+        pendingClaim: !!(cl && cl.n < 2),
+        pendingText: cl ? (cl.kind === 'hit' ? '1 report · jackpot hit · unconfirmed' : '1 report · promo ended · unconfirmed') : '',
+        pendingAge: cl ? (claimAge < 1 ? 'just now' : claimAge + 'm ago') : '',
+        hitConfirmed: conf === 'hit',
+        hitText: cl ? 'JACKPOT HIT · confirmed by ' + cl.n + ' players · stays until the room updates' : '',
+        kindLabel: this.KIND_LABEL[p.kind] + (p.perHour ? ' · COMPS' : ''),
+        money: this.money(p.money, p.perHour),
+        moneySize: big ? '34px/1' : p.money >= 1000 ? '27px/1' : '23px/1',
+        offer: p.offer,
+        room: p.room,
+        roomMeta: p.dist.toFixed(1) + ' MI · ' + (p.walk && p.walk <= 25 ? p.walk + ' MIN WALK' : (p.drive || Math.round(p.dist * 2.4)) + ' MIN DRIVE'),
+        timer: conf === 'hit' ? 'PAID' : p.secs ? this.clock(secs) : (p.sched || 'ALWAYS ON'),
+        timerNote: p.note,
+        timerColor: p.secs && secs < 900 ? 'var(--pm-brass-2)' : 'var(--pm-ink-3)',
+        eligibility: p.elig,
+        hasEligibility: !!p.elig,
+        climbing: !!p.climbing,
+        verified: this.ageTxt(ageH),
+        fresh: ageH < 36,
+        stale: ageH >= 36,
+        border: conf === 'hit' ? 'rgba(201,162,74,0.5)' : big ? 'rgba(201,162,74,0.34)' : 'var(--pm-line-1)',
+        moneyInk: conf === 'hit' ? 'var(--pm-dim-1)' : 'var(--pm-ink)',
+        armed: !!st.armed[p.id],
+        notArmed: !st.armed[p.id],
+        onNotify: () => this.setState(s => {
+          const on = !s.armed[p.id];
+          return { armed: Object.assign({}, s.armed, { [p.id]: on }) };
+        }),
+        onRoom: () => this.flash(p.room + ' · opening room detail.'),
+      };
+    };
+
+    const groups = this.GROUPS.map(g => {
+      const items = this.sorted(all.filter(p => p.when === g.id));
+      return { title: g.title, count: items.length + (items.length === 1 ? ' PROMO' : ' PROMOS'), items: items.map(decorate), any: items.length > 0 };
+    }).filter(g => g.any);
+
+    const sheetPromo = this.PROMOS.filter(p => p.id === st.sheet)[0];
+
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: this.props.theme === 'light' ? 'light' : 'dark',
+      location: this.props.location || 'The Cosmopolitan',
+      ticker: '$' + totalOnBoard.toLocaleString('en-US') + ' on the jackpot boards · ' + payingSoon + ' paying within the hour',
+      kinds: this.KINDS.map(k => ({
+        label: k.label,
+        count: k.id === 'all' ? this.PROMOS.filter(p => this.confirmed(p.id) !== 'ended').length : this.PROMOS.filter(p => p.kind === k.id && this.confirmed(p.id) !== 'ended').length,
+        active: st.kind === k.id,
+        inactive: st.kind !== k.id,
+        onClick: () => this.setState({ kind: k.id }),
+      })),
+      chips: this.CHIPS.map(c => ({
+        label: c.label,
+        active: st.chips.indexOf(c.id) >= 0,
+        inactive: st.chips.indexOf(c.id) < 0,
+        onClick: () => this.setState(s => ({ chips: s.chips.indexOf(c.id) >= 0 ? s.chips.filter(x => x !== c.id) : s.chips.concat([c.id]) })),
+      })),
+      sortLabel: (this.SORTS.filter(s => s.id === st.sort)[0] || this.SORTS[0]).label,
+      cycleSort: () => this.setState(s => {
+        const i = this.SORTS.map(x => x.id).indexOf(s.sort);
+        return { sort: this.SORTS[(i + 1) % this.SORTS.length].id };
+      }),
+      groups: groups,
+      isEmpty: all.length === 0,
+      clearFilters: () => this.setState({ kind: 'all', chips: [] }),
+      hasArmed: armedIds.length > 0,
+      notifyCta: 'REMIND ME · ' + armedIds.length + (armedIds.length === 1 ? ' PROMO' : ' PROMOS'),
+      notifySub: 'Saved on this device · no push in this build',
+      confirmNotify: () => this.flash('Saved on this device — you’ll find these under ME. No push yet; your pick is logged anonymously so we know what to alert first.'),
+      toastLift: armedIds.length > 0 ? 182 : 104,
+      openReport: () => this.setState({ sheet: (all[0] || this.PROMOS[0]).id, sheetDone: false }),
+      sheetOpen: st.sheet !== null,
+      sheetAsk: st.sheet !== null && !st.sheetDone,
+      sheetThanks: st.sheet !== null && st.sheetDone,
+      sheetTitle: sheetPromo ? sheetPromo.room + ' · ' + this.KIND_LABEL[sheetPromo.kind] : '',
+      sheetSub: sheetPromo ? this.money(sheetPromo.money, sheetPromo.perHour) + ' · ' + sheetPromo.note.toLowerCase() : '',
+      buckets: this.BUCKETS.map(b => ({ label: b, onClick: () => this.submit(b) })),
+      thanksLine: st.sheetOutcome === 'pending' ? 'Logged — one more confirms it'
+        : st.sheetOutcome === 'confirmed' ? 'Confirmed by two players'
+        : sheetPromo ? sheetPromo.room + ' is fresh again' : '',
+      thanksSub: st.sheetOutcome === 'pending' ? 'A jackpot hit or a dead promo sends people the wrong way, so we show it as unconfirmed until a second player agrees.'
+        : st.sheetOutcome === 'confirmed' ? 'It now reads as fact, and stays that way until the room’s own data updates.'
+        : 'Everyone chasing this one just got the update.',
+      closeSheet: () => { clearTimeout(this.sheetTimer); this.setState({ sheet: null, sheetDone: false }); },
+      nextPromo: () => this.setState(s => {
+        const ids = all.map(p => p.id);
+        const i = ids.indexOf(s.sheet);
+        return { sheet: ids[(i + 1) % ids.length] };
+      }),
+      navItems: this.NAV.map(n => ({
+        label: n.label, active: n.id === 'promos', inactive: n.id !== 'promos',
+        onClick: () => { if (n.id !== 'promos') this.flash(n.label.charAt(0) + n.label.slice(1).toLowerCase() + ' is next up in the build.'); },
+      })),
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

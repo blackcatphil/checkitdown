@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing:border-box }
+  html, body { margin:0; height:100%; background:#0C0E11; font-family:Archivo,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#A98CE8; text-decoration:none; border-bottom:1px solid rgba(169,140,232,.4); }
+  a:hover { color:#C4AEF5; }
+  ::-webkit-scrollbar { width:10px; height:10px }
+  ::-webkit-scrollbar-thumb { background:rgba(242,244,246,.14); border-radius:6px }
+  @keyframes knockR1 { 0% { transform:scale(.3); opacity:0 } 5% { opacity:.9 } 28% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockR2 { 0%, 17% { transform:scale(.3); opacity:0 } 22% { opacity:.9 } 46% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockTap { 0%, 100% { transform:translateY(0) } 4% { transform:translateY(2px) } 10% { transform:translateY(0) } 21% { transform:translateY(2px) } 27% { transform:translateY(0) } }
+  .knock .kr { opacity:0 }
+  .knock.knocking .kr1 { animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) 1 both }
+  .knock.knocking .kr2 { animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) 1 both }
+  .knock.knocking .kt { animation:knockTap 3.4s ease-in-out 1 both }
+  @media (prefers-reduced-motion: reduce) { .kr, .kt { animation:none !important } .kr1 { opacity:.62 !important } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#0C0E11;display:flex;flex-direction:column">
+
+  <div style="height:64px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#14171B;border-bottom:1px solid rgba(242,244,246,.12);position:sticky;top:0;z-index:40">
+    <div style="display:flex;align-items:center;gap:26px;min-width:0;flex:0 1 auto">
+      <div class="knock" ref="{{ knockRef }}" onMouseEnter="{{ replayKnock }}" style="display:flex;align-items:center;gap:11px;min-height:44px;cursor:pointer">
+        <svg viewBox="0 0 120 120" width="30" height="30" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26"></ellipse><ellipse class="kr kr1" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><ellipse class="kr kr2" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><g class="kt" style="transform-box:fill-box;transform-origin:center"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg>
+        <span style="font:400 21px/1 'Instrument Serif',serif;color:#F2F4F6;white-space:nowrap">Check It Down</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:2px">
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">MAP</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;border-radius:4px;background:rgba(94,58,147,.24);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8;cursor:pointer;white-space:nowrap">JUST THE FACTS</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">TOURNAMENTS</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">PROMOS</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;min-width:0;flex:0 1 auto">
+      <sc-if value="{{ hasCompare }}">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid #A98CE8;background:rgba(94,58,147,.22);white-space:nowrap">
+          <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8">{{ headerChip }}</span>
+        </div>
+      </sc-if>
+      <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6);white-space:nowrap">{{ statusLine }}</span>
+    </div>
+  </div>
+
+  <div style="max-width:1240px;width:100%;margin:0 auto;padding:30px 20px 60px;display:flex;flex-direction:column;gap:22px">
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h1 style="margin:0;font:400 44px/1 'Instrument Serif',serif;color:#F2F4F6">Just the facts</h1>
+        <span style="font:400 14px/1.5 Archivo,sans-serif;color:rgba(242,244,246,.72);max-width:660px">What every poker room in the valley actually charges and offers, ranked. Observed and published facts only — no modelled hourly costs, no user reviews. {{ sortNote }}</span>
+      </div>
+      <span style="font:500 11px/1.5 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.58);text-align:right;white-space:pre-line">{{ freshLine }}</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      <sc-for list="{{ supers }}" as="s" hint-placeholder-count="4">
+        <a href="{{ s.href }}" onClick="{{ s.pick }}" id="{{ s.id }}" style="{{ s.card }}">
+          <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:{{ s.labelInk }}">{{ s.title }}</span>
+          <span style="font:400 24px/1.05 'Instrument Serif',serif;color:#F2F4F6">{{ s.room }}</span>
+          <span style="font:600 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#4FBFAE">{{ s.figure }}</span>
+        </a>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ excludedLine }}">
+      <div style="padding:12px 14px;background:rgba(242,244,246,.04);border-left:2px solid rgba(242,244,246,.28);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <span style="font:500 12.5px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.82)">{{ excludedLine }}</span>
+        <span style="font:500 11px/1 Archivo,sans-serif;color:rgba(242,244,246,.6);border-bottom:1px solid rgba(242,244,246,.3);cursor:pointer" style-hover="color:#F2F4F6">Report a correction</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasCompare }}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 15px;background:rgba(94,58,147,.16);border:1px solid rgba(169,140,232,.35);flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#A98CE8">{{ compareHeading }}</span>
+          <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.82)">{{ compareBlurb }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span onClick="{{ clearCompare }}" style="padding:11px 14px;border:1px solid rgba(242,244,246,.22);font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.82);cursor:pointer;white-space:nowrap" style-hover="border-color:rgba(242,244,246,.45);color:#F2F4F6">CLEAR SET</span>
+          <span onClick="{{ toggleOnly }}" style="{{ onlyBtnStyle }}" style-hover="filter:brightness(1.12)">{{ onlyBtnLabel }}</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="border:1px solid rgba(242,244,246,.12);background:#14171B">
+      <div style="position:sticky;top:64px;z-index:20;background:#191D22;border-bottom:1px solid rgba(242,244,246,.16);display:grid;grid-template-columns:112px minmax(0,1.55fr) minmax(0,1.2fr) minmax(0,.62fr) minmax(0,1.25fr) minmax(0,1.55fr) minmax(0,.78fr) minmax(0,1fr);gap:12px;padding:12px 16px">
+        <span style="font:600 9.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#4FBFAE;white-space:nowrap">{{ rankHeader }}</span>
+        <span style="font:600 9.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">ROOM</span>
+        <sc-for list="{{ cols }}" as="c" hint-placeholder-count="6">
+          <span onClick="{{ c.sort }}" style="{{ c.style }}" style-hover="color:#F2F4F6">{{ c.label }}</span>
+        </sc-for>
+      </div>
+
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="17">
+        <div style="{{ r.rowStyle }}" style-hover="background:rgba(94,58,147,.12)">
+          <span style="font:600 13.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rankInk }}">{{ r.rank }}</span>
+          <div style="display:flex;align-items:baseline;gap:9px;min-width:0">
+            <span style="font:400 18px/1.15 'Instrument Serif',serif;color:#F2F4F6">{{ r.room }}</span>
+            <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.58);white-space:nowrap">{{ r.area }}</span>
+          </div>
+          <span style="font:600 13.5px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.rakeInk }};border-bottom:{{ r.rakeRule }};align-self:flex-start">{{ r.rake }}</span>
+          <span style="font:500 13.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.84)">{{ r.drop }}</span>
+          <span style="font:400 12.5px/1.35 Archivo,sans-serif;color:{{ r.parkInk }}">{{ r.parking }}</span>
+          <span style="font:400 12.5px/1.35 Archivo,sans-serif;color:{{ r.foodInk }}">{{ r.food }}</span>
+          <span style="font:500 13.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ r.tablesInk }}">{{ r.tables }}</span>
+          <span style="font:500 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ r.verInk }}">{{ r.ver }}</span>
+        </div>
+      </sc-for>
+
+      <div style="padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">{{ countLine }}</span>
+        <span style="font:400 11.5px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.6)">Rake, drop, parking and table counts are room-published or observed — each row carries its own verified date.</span>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);padding:12px 18px;background:#1D2128;border:1px solid rgba(169,140,232,.4);z-index:80;font:500 12px/1 Archivo,sans-serif;color:#F2F4F6">{{ toast }}</div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:900},&quot;sortBy&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rake&quot;,&quot;parking&quot;,&quot;food&quot;,&quot;tables&quot;,&quot;verified&quot;],&quot;default&quot;:&quot;rake&quot;,&quot;tsType&quot;:&quot;'rake' | 'parking' | 'food' | 'tables' | 'verified'&quot;,&quot;section&quot;:&quot;Table&quot;},&quot;demoCompareSet&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Compare&quot;}}">
+const verLabel = d => d === null ? 'UNVERIFIED' : d === 0 ? 'TODAY' : d === 1 ? 'YESTERDAY' : d + ' DAYS AGO';
+const ROOMS = [
+  { n:'Orleans', slug:'orleans', area:'OFF-STRIP', rake:'10% to $3', cost:9.3, drop:'$1', park:'Free self + valet', parkScore:5, food:'Full menu, tableside', foodScore:4, tables:35, verDays:2 },
+  { n:'South Point', slug:'south-point', area:'LOCALS', rake:'10% to $4', cost:11.1, drop:'$1', park:'Free self + valet', parkScore:5, food:'Tableside, 3 outlets', foodScore:3, tables:8, verDays:3 },
+  { n:'Green Valley Ranch', slug:'green-valley-ranch', area:'LOCALS', rake:'10% to $4', cost:11.5, drop:'$1', park:'Free self', parkScore:4, food:'Tableside', foodScore:2, tables:9, verDays:4 },
+  { n:'Red Rock', slug:'red-rock', area:'LOCALS', rake:'10% to $4', cost:11.7, drop:'$1', park:'Free self + valet', parkScore:5, food:'Tableside', foodScore:2, tables:12, verDays:3 },
+  { n:'Boulder Station', slug:'boulder-station', area:'LOCALS', rake:'10% to $4', cost:11.9, drop:'$1', park:'Free self + valet', parkScore:5, food:'Tableside', foodScore:2, tables:9, verDays:5 },
+  { n:'Santa Fe Station', slug:'santa-fe-station', area:'LOCALS', rake:'10% to $4', cost:12.1, drop:'$1', park:'Free self + valet', parkScore:5, food:'Tableside', foodScore:2, tables:8, verDays:5 },
+  { n:'Golden Nugget', slug:'golden-nugget', area:'DOWNTOWN', rake:'10% to $4', cost:12.3, drop:'$1', park:'Free self', parkScore:4, food:'Tableside', foodScore:2, tables:13, verDays:3 },
+  { n:'Westgate', slug:'westgate', area:'OFF-STRIP', rake:'10% to $4', cost:12.6, drop:'$1', park:'Free self', parkScore:4, food:'Tableside', foodScore:2, tables:9, verDays:3 },
+  { n:'Skyline', slug:'skyline', area:'LOCALS', rake:'10% to $4', cost:12.8, drop:'\u2014', park:'Free self', parkScore:4, food:'Bar menu', foodScore:1, tables:4, verDays:6 },
+  { n:'Horseshoe', slug:'horseshoe', area:'STRIP', rake:'10% to $4', cost:13.0, drop:'$1', park:'Validated self', parkScore:2, food:'Tableside', foodScore:2, tables:8, verDays:3 },
+  { n:'Venetian', slug:'venetian', area:'STRIP', rake:'10% to $5', cost:13.7, drop:'$1', park:'Validated self', parkScore:2, food:'3 menus, seat delivery', foodScore:5, tables:59, verDays:1 },
+  { n:'ARIA', slug:'aria', area:'STRIP', rake:'10% to $5', cost:13.8, drop:'$1', park:'Valet with play', parkScore:3, food:'24h tableside', foodScore:4, tables:24, verDays:1 },
+  { n:'Caesars Palace', slug:'caesars-palace', area:'STRIP', rake:'10% to $5', cost:14.1, drop:'$1', park:'Validated self', parkScore:2, food:'Tableside', foodScore:2, tables:12, verDays:2 },
+  { n:'MGM Grand', slug:'mgm-grand', area:'STRIP', rake:'10% to $5', cost:14.4, drop:'$1', park:'Valet with play', parkScore:3, food:'Tableside', foodScore:2, tables:13, verDays:3 },
+  { n:'Mandalay Bay', slug:'mandalay-bay', area:'STRIP', rake:'10% to $5', cost:14.6, drop:'$1', park:'Valet with play', parkScore:3, food:'Tableside', foodScore:2, tables:11, verDays:4 },
+  { n:'Bellagio', slug:'bellagio', area:'STRIP', rake:'10% to $5', cost:15.6, drop:'$2', park:'Valet with play', parkScore:3, food:'Tableside', foodScore:3, tables:37, verDays:2 },
+  { n:'Wynn/Encore', slug:'wynn-encore', area:'STRIP', rake:'~$12 / half hr', cost:null, est:true, drop:'\u2014', park:'Valet with play', parkScore:3, food:'Wazuzu, Jardin', foodScore:4, tables:28, verDays:null, verEst:true }
+];
+
+const COLS = [
+  { key:'rake', label:'RAKE', qual:'RAKE' },
+  { key:'drop', label:'DROP', qual:'DROP', nosort:true },
+  { key:'parking', label:'PARKING', qual:'PARKING' },
+  { key:'food', label:'FOOD', qual:'FOOD' },
+  { key:'tables', label:'TABLES', qual:'TABLES' },
+  { key:'verified', label:'VERIFIED', qual:'FRESHNESS' }
+];
+
+class Component extends DCLogic {
+  state = { sort: 'rake', compare: [], only: false, toast: '' };
+
+  componentDidMount() {
+    const q = this.q();
+    const anchor = (location.hash || '').replace('#', '');
+    const byHash = { 'lowest-rake':'rake', 'best-parking':'parking', 'best-food':'food', 'most-tables':'tables' }[anchor];
+    let init = [];
+    const fromUrl = (q.get('compare') || '').split(',').filter(Boolean);
+    if (fromUrl.length) init = fromUrl;
+    else { try { init = JSON.parse(localStorage.getItem('cid_compare') || '[]'); } catch (e) { init = []; } }
+    init = init.filter(s => ROOMS.some(r => r.slug === s));
+    this.setState({ compare: init, sort: byHash || q.get('sort') || 'rake' });
+    this.robots(init);
+    setTimeout(() => this.knock(), 220);
+  }
+  q() { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(''); } }
+  robots(list) {
+    let t = document.querySelector('meta[name="robots"]');
+    if (!t) { t = document.createElement('meta'); t.setAttribute('name', 'robots'); document.head.appendChild(t); }
+    t.setAttribute('content', list && list.length ? 'noindex,follow' : 'index,follow');
+    let c = document.querySelector('link[rel="canonical"]');
+    if (!c) { c = document.createElement('link'); c.setAttribute('rel', 'canonical'); document.head.appendChild(c); }
+    c.setAttribute('href', location.origin + location.pathname);
+  }
+  knock() {
+    const el = this.knockRef && this.knockRef.current; if (!el) return;
+    el.classList.remove('knocking'); void el.offsetWidth; el.classList.add('knocking');
+  }
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2400); }
+  setSort(k) {
+    this.setState({ sort: k });
+    try { const q = this.q(); q.set('sort', k); history.replaceState({}, '', location.pathname + '?' + q.toString()); } catch (e) {}
+  }
+
+  ranked(sort) {
+    /* Unverified figures are shown in place but never allowed to win a column. */
+    const val = { rake: r => r.cost, parking: r => -r.parkScore, food: r => -r.foodScore,
+      tables: r => -r.tables, verified: r => r.verDays === null ? Infinity : r.verDays,
+      drop: r => ROOMS.indexOf(r) };
+    const f = val[sort] || val.rake;
+    const out = r => (sort === 'rake' && r.est) || (sort === 'verified' && r.verDays === null);
+    const rankable = ROOMS.filter(r => !out(r));
+    const rest = ROOMS.filter(out);
+    const sorted = rankable.slice().sort((a, b) => f(a) - f(b)).concat(rest);
+    return sorted.map((r, i) => ({ room: r, rank: out(r) ? null : i + 1 }));
+  }
+
+  renderVals() {
+    const sort = this.props.sortBy && this.props.sortBy !== 'rake' && this.state.sort === 'rake' ? this.props.sortBy : this.state.sort;
+    const demo = this.props.demoCompareSet ? ['orleans', 'venetian', 'red-rock'] : [];
+    const set = this.state.compare.length ? this.state.compare : demo;
+    const only = this.state.only && set.length > 0;
+    const ranked = this.ranked(sort);
+    const dimmed = set.length > 0;
+
+    const rows = ranked
+      .filter(e => !only || set.indexOf(e.room.slug) !== -1)
+      .map(e => {
+        const r = e.room;
+        const picked = set.indexOf(r.slug) !== -1;
+        const dim = dimmed && !picked && !only;
+        const a = dim ? 0.42 : 1;
+        const ink = (o) => 'rgba(242,244,246,' + (dim ? Math.min(o, 0.5) : o) + ')';
+        const lead = e.rank === 1;
+        return {
+          rank: e.rank === null ? '\u2014' : '#' + e.rank,
+          /* teal stays on the true leader even when it is dimmed by the compare filter */
+          rankInk: lead ? '#4FBFAE' : ink(0.6),
+          room: r.n, area: r.area,
+          rake: r.rake, rakeInk: r.est ? ink(0.62) : (sort === 'rake' && lead ? '#4FBFAE' : ink(0.92)),
+          rakeRule: r.est ? '1px dotted rgba(242,244,246,.45)' : 'none',
+          drop: r.drop,
+          parking: r.park, parkInk: sort === 'parking' && lead ? '#4FBFAE' : ink(0.84),
+          food: r.food, foodInk: sort === 'food' && lead ? '#4FBFAE' : ink(0.84),
+          tables: String(r.tables), tablesInk: sort === 'tables' && lead ? '#4FBFAE' : ink(0.84),
+          ver: verLabel(r.verDays),
+          verInk: sort === 'verified' && lead ? '#4FBFAE' : ink(r.verDays === null ? 0.58 : 0.62),
+          rowStyle: 'display:grid;grid-template-columns:112px minmax(0,1.55fr) minmax(0,1.2fr) minmax(0,.62fr) minmax(0,1.25fr) minmax(0,1.55fr) minmax(0,.78fr) minmax(0,1fr);gap:12px;padding:14px 16px;align-items:center;border-bottom:1px solid rgba(242,244,246,.07);opacity:' + a
+        };
+      });
+
+    const cols = COLS.map(c => ({
+      label: c.nosort ? c.label : (sort === c.key ? c.label + ' \u2193' : c.label),
+      sort: c.nosort ? (() => this.flash('Drop is a single figure — nothing to rank it against.')) : (() => this.setSort(c.key)),
+      style: "font:600 9.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;white-space:nowrap;cursor:" +
+        (c.nosort ? 'default' : 'pointer') + ';color:' + (sort === c.key ? '#F2F4F6' : 'rgba(242,244,246,.58)')
+    }));
+
+    const best = k => this.ranked(k)[0].room;
+    const supers = [
+      { id:'lowest-rake', href:'#lowest-rake', key:'rake', title:'LOWEST RAKE', room:best('rake').n, figure:best('rake').rake },
+      { id:'best-parking', href:'#best-parking', key:'parking', title:'BEST PARKING', room:best('parking').n, figure:best('parking').park },
+      { id:'best-food', href:'#best-food', key:'food', title:'BEST FOOD', room:best('food').n, figure:best('food').food },
+      { id:'most-tables', href:'#most-tables', key:'tables', title:'MOST TABLES', room:best('tables').n, figure:best('tables').tables + ' tables' }
+    ].map(s => Object.assign(s, {
+      card: 'display:flex;flex-direction:column;gap:7px;padding:14px 15px;background:#14171B;border:1px solid rgba(242,244,246,.12);border-top:2px solid ' +
+        (sort === s.key ? '#A98CE8' : 'rgba(169,140,232,.35)') + ';text-decoration:none;cursor:pointer',
+      labelInk: sort === s.key ? '#A98CE8' : 'rgba(242,244,246,.58)',
+      pick: () => this.setSort(s.key)
+    }));
+
+    const notes = {
+      rake: 'Ranked by rake: cap first, then jackpot drop.',
+      parking: 'Ranked by what parking actually costs a player.',
+      food: 'Ranked by depth of food service.',
+      tables: 'Ranked by table count.',
+      verified: 'Ordered by how recently we last checked each room.',
+      drop: 'Ranked by rake: cap first, then jackpot drop.'
+    };
+    const qual = (COLS.find(c => c.key === sort) || COLS[0]).qual;
+
+    return {
+      knockRef: (this.knockRef = this.knockRef || React.createRef()),
+      replayKnock: () => this.knock(),
+      statusLine: set.length ? 'VERIFIED DAILY' : '17 ROOMS \u00b7 VERIFIED DAILY',
+      headerChip: 'COMPARE ' + set.length,
+      hasCompare: set.length > 0,
+      compareHeading: only ? 'YOUR SHORTLIST' : 'YOUR COMPARISON',
+      compareBlurb: only
+        ? 'Showing only your rooms, at their true citywide rank \u2014 not renumbered.'
+        : 'Your rooms stay lit and keep their real position; everything else is dimmed, not removed.',
+      onlyBtnLabel: only ? 'SHOW ALL 17' : 'ONLY MY ROOMS',
+      onlyBtnStyle: "padding:12px 16px;background:#5E3A93;border-top:1px solid #A98CE8;font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F7F4FF;cursor:pointer;white-space:nowrap",
+      toggleOnly: () => this.setState({ only: !this.state.only }),
+      clearCompare: () => {
+        this.setState({ compare: [], only: false });
+        try { localStorage.setItem('cid_compare', '[]'); } catch (e) {}
+        try { const q = this.q(); q.delete('compare'); const qs = q.toString(); history.replaceState({}, '', location.pathname + (qs ? '?' + qs : '')); } catch (e) {}
+        this.robots([]);
+        this.flash('Comparison cleared.');
+      },
+      rankHeader: '# BY ' + qual,
+      cols, rows, supers,
+      sortNote: notes[sort],
+      freshLine: 'CASH SPECS WEEKLY \u00b7 PROMOS DAILY\nLAST FULL SWEEP YESTERDAY',
+      excludedLine: sort === 'rake'
+        ? "Wynn/Encore's rake is unverified \u2014 it collects by time, and we have not confirmed the figure with the room, so it cannot be ranked."
+        : sort === 'verified'
+          ? "Wynn/Encore has no confirmed check date \u2014 we have never verified it with the room, so it cannot be ranked by freshness."
+          : '',
+      countLine: only ? set.length + ' OF 17 ROOMS \u00b7 YOUR SHORTLIST' : '17 PERMANENT ROOMS \u00b7 WSOP\u00b7PARIS EXCLUDED (SEASONAL)',
+      toast: this.state.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+/* CHECK IT DOWN — colour system.
+   Dark is the primary mode; [data-cid-theme="light"] is the secondary mode.
+   HARD RULE: no gold, no bronze, anywhere. Gold is what makes a brand read as
+   a casino, and we are the independent tool that audits them.
+   Value is TEAL, not green — deutan/protan vision pulls purple toward blue and
+   would collapse a blue "good" marker against the aubergine accent. */
+:root {
+  /* base — ink */
+  --cid-ink-900: #08090B;
+  --cid-ink-800: #0C0E11;   /* page */
+  --cid-ink-700: #14171B;   /* raised surface, header, table head */
+  --cid-ink-600: #1B1F26;   /* toast, popup */
+  --cid-ink-500: #232830;
+
+  /* accent — aubergine */
+  --cid-accent-900: #3C2560;
+  --cid-accent-700: #5E3A93;  /* the one filled action per screen */
+  --cid-accent-600: #6D45A8;  /* hover */
+  --cid-accent-500: #8A66C9;  /* logo mark */
+  --cid-accent-300: #A98CE8;  /* accent TYPE + the 1px lit top edge */
+  --cid-accent-200: #C4AEF5;  /* link hover */
+  --cid-accent-wash: rgba(94, 58, 147, 0.24);
+  --cid-accent-line: rgba(169, 140, 232, 0.35);
+
+  /* paper */
+  --cid-paper: #F2F4F6;
+
+  /* text — one dim token, do not invent more */
+  --cid-text: var(--cid-paper);
+  --cid-text-2: rgba(242, 244, 246, 0.82);
+  --cid-text-3: rgba(242, 244, 246, 0.72);
+  --cid-dim: rgba(242, 244, 246, 0.58);      /* ~5.3:1 on ink-700 — the floor */
+  --cid-disabled: rgba(242, 244, 246, 0.38); /* non-text markers ONLY */
+
+  /* lines + fills */
+  --cid-line-1: rgba(242, 244, 246, 0.09);
+  --cid-line-2: rgba(242, 244, 246, 0.14);
+  --cid-line-3: rgba(242, 244, 246, 0.28);
+  --cid-fill-1: rgba(242, 244, 246, 0.04);
+  --cid-fill-2: rgba(242, 244, 246, 0.08);
+
+  /* semantic */
+  --cid-value: #4FBFAE;                       /* best-in-city, the true #1 */
+  --cid-value-wash: rgba(79, 191, 174, 0.12);
+  --cid-unverified: rgba(242, 244, 246, 0.58);      /* NEUTRAL GREY, never ochre */
+  --cid-unverified-rule: rgba(242, 244, 246, 0.34); /* dotted underline */
+  --cid-dim-row: 0.42;                        /* opacity for de-emphasised rows */
+
+  /* map */
+  --cid-pin: var(--cid-accent-500);
+  --cid-pin-dim: rgba(242, 244, 246, 0.26);
+  --cid-cluster-partial: var(--cid-accent-300);
+  --cid-scrim: rgba(6, 8, 11, 0.68);
+
+  /* elevation */
+  --cid-shadow-pop: 0 18px 40px -16px rgba(0, 0, 0, 0.9);
+  --cid-shadow-toast: 0 14px 34px -14px rgba(0, 0, 0, 0.85);
+}
+
+[data-cid-theme="light"] {
+  --cid-ink-800: #F2F4F6;
+  --cid-ink-700: #FFFFFF;
+  --cid-ink-600: #FFFFFF;
+  --cid-ink-500: #E7E9ED;
+
+  --cid-text: #10131A;
+  --cid-text-2: rgba(16, 19, 26, 0.84);
+  --cid-text-3: rgba(16, 19, 26, 0.74);
+  --cid-dim: rgba(16, 19, 26, 0.62);
+  --cid-disabled: rgba(16, 19, 26, 0.4);
+
+  --cid-line-1: rgba(16, 19, 26, 0.1);
+  --cid-line-2: rgba(16, 19, 26, 0.16);
+  --cid-line-3: rgba(16, 19, 26, 0.3);
+  --cid-fill-1: rgba(16, 19, 26, 0.04);
+  --cid-fill-2: rgba(16, 19, 26, 0.07);
+
+  --cid-accent-300: #5E3A93;   /* accent type darkens on paper */
+  --cid-accent-wash: rgba(94, 58, 147, 0.1);
+  --cid-value: #0F7A6C;
+  --cid-unverified: rgba(16, 19, 26, 0.62);
+  --cid-unverified-rule: rgba(16, 19, 26, 0.38);
+  --cid-pin-dim: rgba(16, 19, 26, 0.24);
+  --cid-scrim: rgba(16, 19, 26, 0.4);
+}

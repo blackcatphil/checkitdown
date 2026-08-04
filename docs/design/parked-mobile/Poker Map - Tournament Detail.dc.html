@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-scrim:rgba(4,6,5,0.66);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93; --pm-value:#4ECB93; --pm-caution:#D9A23F; --pm-alert:#D9603F;
+      --pm-promo-1:rgba(20,54,40,0.9); --pm-promo-2:rgba(17,32,26,0.45); --pm-promo-line:rgba(78,203,147,0.13);
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#EFECE3; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(239,236,227,0.94); --pm-scrim:rgba(24,28,20,0.42);
+      --pm-ink:#171C13; --pm-ink-2:#232A1D; --pm-ink-3:rgba(23,28,19,0.86);
+      --pm-dim-1:rgba(23,28,19,0.72); --pm-dim-2:rgba(23,28,19,0.66); --pm-dim-3:rgba(23,28,19,0.5); --pm-dim-4:rgba(23,28,19,0.42);
+      --pm-line-1:rgba(23,28,19,0.1); --pm-line-2:rgba(23,28,19,0.16); --pm-line-3:rgba(23,28,19,0.28); --pm-fill-1:rgba(23,28,19,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52; --pm-value:#0F7B52; --pm-caution:#8A5B0F; --pm-alert:#9E3B1E;
+      --pm-promo-1:rgba(214,231,220,0.9); --pm-promo-2:rgba(232,238,231,0.6); --pm-promo-line:rgba(15,123,82,0.22);
+      --pm-src-empty-line:rgba(23,28,19,0.18);
+    }
+  </style>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<div data-tdetail-root="1" data-screen-label="Tournament detail" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div data-tdetail-header="1" style="position:sticky;top:0;z-index:30;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="padding:58px 14px 10px;display:flex;align-items:center;gap:10px">
+      <div onClick="{{ onBack }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 17px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-1)" style-hover="border-color:var(--pm-line-3);color:var(--pm-ink)">&#8249;</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <span style="font:600 13px/1.2 Archivo,sans-serif;color:var(--pm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ev.name }}</span>
+        <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ ev.headerMeta }}</span>
+      </div>
+      <div onClick="{{ onSwitch }}" style="flex:none;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;cursor:pointer;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)" style-hover="border-color:rgba(201,162,74,0.5);color:var(--pm-brass)">NEXT EVENT</div>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:0 14px 11px;scrollbar-width:none">
+      <sc-for list="{{ jumps }}" as="j" hint-placeholder-count="6">
+        <div onClick="{{ j.onClick }}" style="flex:none;height:34px;padding:0 12px;border-radius:10px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);display:flex;align-items:center;cursor:pointer;font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1);white-space:nowrap" style-hover="border-color:rgba(201,162,74,0.45);color:var(--pm-brass)">{{ j.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:13px">
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+      <sc-if value="{{ ev.isSeries }}">
+        <span style="flex:none;padding:5px 8px;border-radius:5px;background:rgba(201,162,74,0.12);border:1px solid rgba(201,162,74,0.34);font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-brass-2)">{{ ev.seriesTag }}</span>
+      </sc-if>
+      <sc-if value="{{ ev.reliable }}"><span style="flex:none;padding:5px 8px;border-radius:5px;background:rgba(78,203,147,0.08);border:1px solid rgba(78,203,147,0.28);font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.11em;color:var(--pm-live)">{{ ev.flag }}</span></sc-if>
+      <sc-if value="{{ ev.unreliable }}"><span style="flex:none;padding:5px 8px;border-radius:5px;background:rgba(217,162,63,0.1);border:1px solid rgba(217,162,63,0.32);font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.11em;color:var(--pm-caution)">{{ ev.flag }}</span></sc-if>
+      <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:var(--pm-dim-2)">{{ ev.reliabilityNote }}</span>
+    </div>
+    <h1 style="margin:0;font:400 33px/1.02 'Instrument Serif',Georgia,serif;letter-spacing:-0.015em;color:var(--pm-ink);text-wrap:pretty">{{ ev.name }}</h1>
+    <div onClick="{{ onRoom }}" style="display:flex;align-items:center;gap:9px;min-height:44px;cursor:pointer">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+        <span style="font:500 13px/1.2 Archivo,sans-serif;color:var(--pm-ink-2)">{{ ev.room }}</span>
+        <span style="font:400 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ ev.roomMeta }}</span>
+      </div>
+      <span style="flex:none;font:400 15px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">&#8250;</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:2px;border-top:1px solid var(--pm-line-1)">
+      <span style="font:500 12px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3);margin-top:11px">{{ ev.whenLine }}</span>
+      <span style="font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);margin-top:11px;white-space:nowrap">{{ ev.verified }}</span>
+    </div>
+  </div>
+
+  <div data-sec="live" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-dim-1)">LIVE NOW</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ ev.liveNote }}</span>
+    </div>
+    <sc-if value="{{ ev.hasVendor }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ ev.vendorRows }}" as="v" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:9px;padding:12px;border-radius:12px;background:rgba(201,162,74,0.07);border:1px solid rgba(201,162,74,0.32)">
+            <span style="flex:none;padding:4px 6px;border-radius:5px;background:rgba(201,162,74,0.2);font:700 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-brass-2)">OFFICIAL</span>
+            <span style="flex:1;min-width:0;font:500 12px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ v.text }}</span>
+            <span style="position:relative;width:5px;height:5px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass-2)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass-2);animation:pmPing 2.4s ease-out infinite"></span></span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ ev.hasCrowd }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ ev.crowdRows }}" as="c" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;gap:9px;padding:12px;border-radius:12px;background:rgba(78,203,147,0.05);border:1px dashed rgba(78,203,147,0.36)">
+            <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:var(--pm-live);white-space:nowrap">PLAYER-REPORTED</span>
+            <span style="flex:1;min-width:0;font:500 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.text }}</span>
+            <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ c.age }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ ev.cancelPending }}">
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px 13px;border-radius:12px;background:rgba(217,96,63,0.06);border:1px dashed rgba(217,96,63,0.28)">
+        <span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-alert)">{{ ev.cancelPendingLine }}</span>
+        <span style="font:400 11px/1.45 Archivo,sans-serif;color:var(--pm-dim-1)">{{ ev.cancelPendingSub }}</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ ev.cancelConfirmed }}">
+      <div style="display:flex;flex-direction:column;gap:6px;padding:13px;border-radius:12px;background:rgba(217,96,63,0.11);border:1px solid rgba(217,96,63,0.4)">
+        <span style="font:700 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-alert)">{{ ev.cancelConfirmedLine }}</span>
+        <span style="font:400 11px/1.45 Archivo,sans-serif;color:var(--pm-ink-3)">{{ ev.cancelConfirmedSub }}</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ ev.liveEmpty }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:11px;padding:8px 8px 8px 13px;border-radius:12px;border:1px dashed var(--pm-src-empty-line)">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <span style="font:500 12px/1.3 Archivo,sans-serif;color:var(--pm-dim-1)">{{ ev.emptyLine }}</span>
+          <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-2)">NO CLOCK WITHOUT A FEED · 3 SECONDS</span>
+        </div>
+        <div onClick="{{ onReport }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 14px;border-radius:11px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">REPORT</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-sec="money" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">The money</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ ev.moneyFresh }}</span>
+    </div>
+    <div style="border-radius:15px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font:500 30px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;color:var(--pm-ink)">{{ ev.total }}</span>
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1)">{{ ev.totalNote }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+          <span style="font:500 19px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ ev.feeInk }}">{{ ev.feePct }}</span>
+          <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">HOUSE KEEPS</span>
+        </div>
+      </div>
+      <sc-for list="{{ ev.moneyRows }}" as="m" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--pm-fill-1)">
+          <span style="flex:1;min-width:0;font:400 11.5px/1.3 Archivo,sans-serif;color:var(--pm-dim-1)">{{ m.k }}</span>
+          <span style="flex:none;font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ m.ink }}">{{ m.v }}</span>
+        </div>
+      </sc-for>
+      <span style="font:400 10.5px/1.5 'IBM Plex Mono',monospace;color:var(--pm-dim-1);padding:9px 10px;border-radius:9px;background:var(--pm-fill-1);text-wrap:pretty">{{ ev.feeConvention }}</span>
+    </div>
+  </div>
+
+  <div data-sec="structure" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Structure</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ ev.structFresh }}</span>
+    </div>
+
+    <div style="border-radius:15px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid var(--pm-line-1);padding:14px 15px;display:flex;flex-direction:column;gap:13px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+          <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">PACE · DERIVED</span>
+          <span style="font:500 20px/1 'IBM Plex Mono',monospace;letter-spacing:0.02em;color:{{ ev.paceInk }}">{{ ev.pace }}</span>
+        </div>
+        <span style="flex:1;min-width:0;font:400 10.5px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ ev.paceWorking }}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;padding-top:2px;border-top:1px solid var(--pm-fill-1)">
+        <sc-for list="{{ ev.structRows }}" as="s" hint-placeholder-count="6">
+          <div style="display:flex;flex-direction:column;gap:4px;padding-top:9px">
+            <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">{{ s.k }}</span>
+            <span style="font:500 12.5px/1.25 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ s.ink }}">{{ s.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <sc-if value="{{ ev.linkedStructure }}" hint-placeholder-val="{{ true }}">
+      <div style="border-radius:15px;border:1px solid var(--pm-line-1);background:var(--pm-fill-1);padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-brass-3)">FULL BLIND SCHEDULE</span>
+          <span style="font:400 11.5px/1.5 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">{{ ev.linkBlurb }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <a href="{{ ev.pdfHref }}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;padding:0 14px;border-radius:11px;border:1px solid rgba(201,162,74,0.4);background:rgba(201,162,74,0.06);font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass)" style-hover="border-color:var(--pm-brass);background:rgba(201,162,74,0.13)">{{ ev.pdfLabel }}<span style="font:400 10px/1 'IBM Plex Mono',monospace;opacity:.85">&#8599;</span></a>
+          <span style="font:400 10px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ ev.pdfFetched }}</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ ev.transcribed }}">
+      <div style="border-radius:15px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid rgba(201,162,74,0.24);padding:14px 15px 12px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-brass-3)">FULL BLIND SCHEDULE · TRANSCRIBED</span>
+          <span style="font:400 9.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ ev.levelsFresh }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:34px 1fr 58px 46px;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--pm-line-1)">
+          <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1)">LVL</span>
+          <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1)">BLINDS</span>
+          <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1);text-align:right">ANTE</span>
+          <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-1);text-align:right">MIN</span>
+        </div>
+        <sc-for list="{{ ev.levels }}" as="l" hint-placeholder-count="8">
+          <div style="display:grid;grid-template-columns:34px 1fr 58px 46px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--pm-fill-1);background:{{ l.bg }}">
+            <span style="font:500 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ l.ink }}">{{ l.n }}</span>
+            <span style="font:500 12px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ l.ink }}">{{ l.blinds }}</span>
+            <span style="font:400 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);text-align:right">{{ l.ante }}</span>
+            <span style="font:400 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);text-align:right">{{ l.mins }}</span>
+          </div>
+        </sc-for>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px">
+          <span style="flex:1;min-width:0;font:400 10.5px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ ev.levelsNote }}</span>
+          <a href="{{ ev.pdfHref }}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;height:44px;box-sizing:border-box;padding:0 13px;border-radius:11px;border:1px solid var(--pm-line-2);font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-1)" style-hover="border-color:var(--pm-line-3);color:var(--pm-ink-2)">ROOM'S PDF<span style="font:400 9px/1 'IBM Plex Mono',monospace">&#8599;</span></a>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-sec="payouts" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">Payouts</span>
+      <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-2)">{{ ev.payoutFresh }}</span>
+    </div>
+    <sc-if value="{{ ev.hasPayouts }}" hint-placeholder-val="{{ true }}">
+      <div style="border-radius:15px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);padding:13px 15px;display:flex;flex-direction:column">
+        <sc-for list="{{ ev.payouts }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--pm-fill-1)">
+            <span style="flex:none;width:56px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.06em;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ p.place }}</span>
+            <span style="flex:1;min-width:0;font:400 11.5px/1.3 Archivo,sans-serif;color:var(--pm-dim-1)">{{ p.share }}</span>
+            <span style="flex:none;font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ p.ink }}">{{ p.amount }}</span>
+          </div>
+        </sc-for>
+        <span style="font:400 10.5px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);padding-top:10px;text-wrap:pretty">{{ ev.payoutNote }}</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ ev.noPayouts }}">
+      <div style="padding:16px;border-radius:15px;border:1px dashed var(--pm-src-empty-line);display:flex;flex-direction:column;gap:7px">
+        <span style="font:500 12px/1.3 Archivo,sans-serif;color:var(--pm-dim-1)">This room doesn't publish a payout structure</span>
+        <span style="font:400 11px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">Dailies here pay roughly the top 10–12% of the field. We'd rather say that than invent a table.</span>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-sec="room" style="padding:24px 18px 0;display:flex;flex-direction:column;gap:12px">
+    <span style="font:400 24px/1.05 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">If you're sitting six hours</span>
+    <div style="border-radius:15px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);padding:13px 15px;display:flex;flex-direction:column">
+      <sc-for list="{{ ev.roomRows }}" as="r" hint-placeholder-count="5">
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--pm-fill-1)">
+          <span style="flex:none;width:104px;font:400 10.5px/1.35 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--pm-dim-2)">{{ r.k }}</span>
+          <span style="flex:1;min-width:0;font:400 11.5px/1.45 Archivo,sans-serif;font-variant-numeric:tabular-nums;color:var(--pm-ink-3);text-wrap:pretty">{{ r.v }}</span>
+        </div>
+      </sc-for>
+      <div onClick="{{ onRoom }}" style="height:44px;margin-top:10px;align-self:flex-start;padding:0 13px;border-radius:11px;border:1px solid var(--pm-line-2);display:flex;align-items:center;gap:8px;cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+        <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-ink-2)">FULL ROOM DETAIL</span>
+        <span style="font:400 13px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&#8250;</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:20px 18px 0;display:flex;flex-direction:column;align-items:center;gap:8px">
+    <div onClick="{{ onCorrection }}" style="height:36px;display:flex;align-items:center;cursor:pointer">
+      <span style="font:400 10.5px/1 Archivo,sans-serif;color:var(--pm-dim-2);text-decoration:underline;text-decoration-color:var(--pm-line-3);text-underline-offset:3px">Report a correction</span>
+    </div>
+    <span style="font:500 9.5px/1.4 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:0.06em;color:var(--pm-dim-2);text-align:center;text-wrap:pretty">{{ ev.footer }}</span>
+  </div>
+
+  <div style="height:160px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ sheetOpen }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;height:{{ frameH }}px;z-index:60;display:flex;flex-direction:column;justify-content:flex-end;background:var(--pm-scrim);animation:pmFade .18s ease both">
+        <div onClick="{{ closeSheet }}" style="flex:1"></div>
+        <div style="border-radius:22px 22px 0 0;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border-top:1px solid rgba(201,162,74,0.28);box-shadow:0 -20px 44px -14px rgba(0,0,0,0.95);padding:16px 16px 30px;display:flex;flex-direction:column;gap:15px">
+          <sc-if value="{{ sheetAsk }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass)">REPORT EVENT · ANONYMOUS</span>
+                <span style="font:400 24px/1.12 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ ev.name }}</span>
+                <span style="font:400 11px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ ev.sheetSub }}</span>
+              </div>
+              <div onClick="{{ closeSheet }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 16px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&times;</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+              <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="6">
+                <div onClick="{{ b.onClick }}" style="height:56px;border-radius:13px;border:1px solid {{ b.line }};background:{{ b.bg }};display:flex;align-items:center;justify-content:center;text-align:center;padding:0 8px;cursor:pointer;font:600 10.5px/1.25 'IBM Plex Mono',monospace;letter-spacing:0.09em;color:{{ b.ink }}" style-hover="border-color:rgba(201,162,74,0.6);background:rgba(201,162,74,0.1);color:var(--pm-brass-2)" style-active="transform:translateY(1px)">{{ b.label }}</div>
+              </sc-for>
+            </div>
+            <span style="font:400 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:0.06em;color:var(--pm-dim-2);text-wrap:pretty">One tap · no account. Field reports expire in 45 minutes; a cancellation needs a second player and then stands for the night.</span>
+          </sc-if>
+          <sc-if value="{{ sheetThanks }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:13px;padding:14px 0 6px;animation:pmFade .22s ease both">
+              <span style="width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#E2BE6C,#C89B3D);display:flex;align-items:center;justify-content:center;font:600 22px/1 'IBM Plex Mono',monospace;color:#17130A;box-shadow:0 0 0 6px rgba(201,162,74,0.14),0 12px 26px -10px rgba(201,162,74,0.75)">&#10003;</span>
+              <span style="font:400 24px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">{{ thanksLine }}</span>
+              <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:260px">{{ thanksSub }}</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:104px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+    <div style="padding:11px 14px 9px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--pm-line-1)">
+      <sc-if value="{{ calShow }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ onCalendar }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">{{ calCta }}</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ calSub }}</span>
+          </div>
+          <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ calledOff }}">
+        <div onClick="{{ onReport }}" style="height:58px;box-sizing:border-box;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:rgba(217,96,63,0.09);border:1px solid rgba(217,96,63,0.4);cursor:pointer" style-hover="background:rgba(217,96,63,0.14)">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:var(--pm-alert)">{{ calledOffCta }}</span>
+            <span style="font:500 10px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ calledOffSub }}</span>
+          </div>
+        </div>
+      </sc-if>
+      <div style="display:flex;gap:9px">
+        <div onClick="{{ onDirections }}" style="flex:1;height:46px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+          <span style="font:600 11px/1 Archivo,sans-serif;letter-spacing:0.09em;color:var(--pm-ink-2)">DIRECTIONS</span>
+        </div>
+        <div onClick="{{ onReport }}" style="flex:1;height:46px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="border-color:var(--pm-line-3);background:var(--pm-fill-1)">
+          <span style="font:600 11px/1 Archivo,sans-serif;letter-spacing:0.09em;color:var(--pm-ink-2)">REPORT STATUS</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:9px 6px 30px;display:flex">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.onClick }}" style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer">
+          <sc-if value="{{ n.active }}" hint-placeholder-val="{{ true }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:var(--pm-brass)"></span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-ink)">{{ n.label }}</span>
+          </sc-if>
+          <sc-if value="{{ n.inactive }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:transparent"></span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ n.label }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;event&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;daily&quot;,&quot;series&quot;],&quot;default&quot;:&quot;daily&quot;,&quot;tsType&quot;:&quot;'daily' | 'series'&quot;,&quot;section&quot;:&quot;Event&quot;},&quot;access&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;off&quot;,&quot;on&quot;],&quot;default&quot;:&quot;off&quot;,&quot;tsType&quot;:&quot;'off' | 'on'&quot;,&quot;section&quot;:&quot;Live data&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { idx: 0, added: {}, sheet: false, sheetDone: false, outcome: null, tick: 0, toast: null,
+    reports: {}, claims: {} };
+
+  JUMPS = [
+    { key: 'live', label: 'LIVE' }, { key: 'money', label: 'THE MONEY' }, { key: 'structure', label: 'STRUCTURE' },
+    { key: 'payouts', label: 'PAYOUTS' }, { key: 'room', label: 'THE ROOM' },
+  ];
+  BUCKETS = [
+    { id: 'level', label: 'CURRENT LEVEL' }, { id: 'left', label: 'PLAYERS LEFT' },
+    { id: 'pool', label: 'PRIZE POOL' }, { id: 'regopen', label: 'LATE REG OPEN' },
+    { id: 'regclosed', label: 'LATE REG CLOSED' }, { id: 'cancel', label: 'CANCELLED TONIGHT', hot: true },
+  ];
+
+  /* PLACEHOLDER events. One daily (linked PDF) and one series event (transcribed levels). */
+  EVENTS = [
+    {
+      id: 1, name: 'Daily Deep Stack', room: 'Venetian', dist: 1.3, drive: 7, when: 'Today · 11:00a',
+      day: 'DAILY', entry: 360, fee: 40, stack: 25000, level: 40, regLevel: 9, regTime: '3:00p',
+      gtd: 40000, reentry: 'One re-entry through level 9', breaks: '10 min every 4 levels', places: null,
+      flag: 'TYPICALLY RUNS', kind: 'reliable', verifiedH: 3, moneyD: 2, structD: 2, pdfD: 2,
+      pdf: 'https://www.venetianlasvegas.com/casino/poker/tournaments.html',
+      crowd: { text: 'Level 4 · 86 left · reg open', mins: 8 },
+      live: ['Level 4 · blinds 300/600 · 86 of 112 left', 'Prize pool $34,400 · reg closes 3:00p', 'Average stack 32,500'],
+      room_info: {
+        status: 'Open 24h · 50 tables',
+        food: 'Tableside service all day · Grand Lux, Black Tap, Miznon deliver to the seat',
+        parking: 'Self-park free, validated at the poker desk',
+        comps: '$2/hr in comps while you play',
+        walk: '26 min walk from the Cosmopolitan, 7 by car',
+      },
+    },
+    {
+      id: 2, name: 'Wynn Classic · Day 1B', room: 'Wynn/Encore', dist: 1.7, drive: 8, when: 'Today · 12:00p',
+      day: 'SERIES', entry: 1500, fee: 100, stack: 50000, level: 40, regLevel: 12, regTime: '6:40p',
+      gtd: 150000, reentry: 'Unlimited re-entry through level 12', breaks: '15 min every 4 levels', places: 108,
+      flag: 'SERIES ONLY', kind: 'series', series: 'WYNN CLASSIC', verifiedH: 1, moneyD: 1, structD: 1, pdfD: 1,
+      pdf: 'https://www.wynnlasvegas.com/casino/poker',
+      series_levels: true,
+      levels: [
+        { n: 1, sb: 100, bb: 200, ante: 200, mins: 40 },
+        { n: 2, sb: 200, bb: 300, ante: 300, mins: 40 },
+        { n: 3, sb: 200, bb: 400, ante: 400, mins: 40 },
+        { n: 4, sb: 300, bb: 600, ante: 600, mins: 40 },
+        { n: 5, sb: 400, bb: 800, ante: 800, mins: 40 },
+        { n: 6, sb: 500, bb: 1000, ante: 1000, mins: 40 },
+        { n: 7, sb: 600, bb: 1200, ante: 1200, mins: 40 },
+        { n: 8, sb: 800, bb: 1600, ante: 1600, mins: 40 },
+        { n: 9, sb: 1000, bb: 2000, ante: 2000, mins: 40 },
+        { n: 10, sb: 1200, bb: 2500, ante: 2500, mins: 40 },
+        { n: 11, sb: 1500, bb: 3000, ante: 3000, mins: 40 },
+        { n: 12, sb: 2000, bb: 4000, ante: 4000, mins: 40 },
+      ],
+      payouts: [
+        { place: '1st', share: '16% of the pool', amount: 42000 },
+        { place: '2nd', share: '10%', amount: 26000 },
+        { place: '3rd', share: '7%', amount: 18200 },
+        { place: '4th–9th', share: '3–5% each', amount: 7800 },
+        { place: '10th–108th', share: 'min-cash', amount: 2400 },
+      ],
+      room_info: {
+        status: 'Open 24h · 52 tables',
+        food: 'Tableside 10a–2a · Wazuzu and Jardin deliver to the table',
+        parking: 'Self-park free for Nevada IDs, valet free with Red Card play',
+        comps: '$2/hr, $3/hr at $5/10 and above',
+        walk: '34 min walk, 8 by car',
+      },
+    },
+  ];
+
+  NAV = [{ id: 'rooms', label: 'ROOMS' }, { id: 'tourneys', label: 'TOURNEYS' }, { id: 'cash', label: 'CASH' }, { id: 'promos', label: 'PROMOS' }, { id: 'me', label: 'ME' }];
+
+  componentDidMount() { this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 1000); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.toastTimer); clearTimeout(this.sheetTimer); }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2800);
+  }
+
+  money(n) { return '$' + n.toLocaleString('en-US'); }
+  ageTxt(h) { return h < 1 ? 'just now' : h < 12 ? h + 'h ago' : h < 24 ? 'today' : h < 36 ? 'yesterday' : Math.floor(h / 24) + 'd ago'; }
+  dayTxt(d) { return d === 1 ? '1 day ago' : d + ' days ago'; }
+
+  event() {
+    if (this.props.event !== this._lastProp) {
+      this._lastProp = this.props.event;
+      const i = this.props.event === 'series' ? 1 : this.props.event === 'daily' ? 0 : -1;
+      if (i >= 0 && i !== this.state.idx) setTimeout(() => this.setState({ idx: i }), 0);
+      if (i >= 0) return this.EVENTS[i];
+    }
+    return this.EVENTS[this.state.idx % this.EVENTS.length];
+  }
+
+  jump(key) {
+    const root = document.querySelector('[data-tdetail-root]');
+    if (!root) return;
+    const el = root.querySelector('[data-sec="' + key + '"]');
+    const scroller = root.parentElement;
+    const header = root.querySelector('[data-tdetail-header]');
+    if (!el || !scroller) return;
+    const chrome = header ? header.getBoundingClientRect().height : 162;
+    const delta = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - (chrome + 12);
+    scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+  }
+
+  submit(id) {
+    const e = this.EVENTS[this.state.idx];
+    const b = this.BUCKETS.filter(x => x.id === id)[0] || { label: 'IT IS RUNNING' };
+    if (id === 'running') {
+      this.setState(s => {
+        const c = Object.assign({}, s.claims); delete c[e.id];
+        return { claims: c, reports: Object.assign({}, s.reports, { [e.id]: { text: b.label, at: s.tick } }),
+          sheetDone: true, outcome: 'cleared' };
+      });
+    } else if (id === 'cancel') {
+      this.setState(s => {
+        const n = ((s.claims[e.id] || {}).n || 0) + 1;
+        return { claims: Object.assign({}, s.claims, { [e.id]: { n: n, at: s.tick } }),
+          sheetDone: true, outcome: n >= 2 ? 'confirmed' : 'pending' };
+      });
+    } else {
+      this.setState(s => ({
+        reports: Object.assign({}, s.reports, { [e.id]: { text: b.label, at: s.tick } }),
+        sheetDone: true, outcome: 'ok' }));
+    }
+    clearTimeout(this.sheetTimer);
+    this.sheetTimer = setTimeout(() => this.setState({ sheet: false, sheetDone: false }), 2700);
+  }
+
+  renderVals() {
+    const e = this.event(), st = this.state;
+    const accessOn = this.props.access === 'on';
+    const total = e.entry + e.fee;
+    const feePct = Math.round((e.fee / total) * 100);
+    const ratio = e.stack / e.level;
+    const pace = ratio >= 800 ? 'DEEP' : ratio >= 500 ? 'STANDARD' : 'TURBO';
+    const vendorOn = accessOn;
+    const crowdMins = e.crowd ? e.crowd.mins + Math.floor(st.tick / 60) : null;
+    const crowdFresh = e.crowd && crowdMins <= 45;
+    const mine = st.reports[e.id];
+    const mineMins = mine ? Math.floor((st.tick - mine.at) / 60) : null;
+    const mineFresh = mine && mineMins <= 45;
+    const claim = st.claims[e.id];
+    const claimMins = claim ? Math.floor((st.tick - claim.at) / 60) : null;
+    /* a confirmed cancellation stands for the night; a lone claim expires with the 45-minute window */
+    const cancelConfirmed = !!claim && claim.n >= 2;
+    const cancelPending = !!claim && claim.n === 1 && claimMins <= 45;
+    const added = !!st.added[e.id] && !cancelConfirmed;
+    const anyCrowd = mineFresh || crowdFresh;
+    const crowdRows = [];
+    if (mineFresh) crowdRows.push({ text: mine.text, age: mineMins < 1 ? 'you · just now' : 'you · ' + mineMins + 'm ago' });
+    if (crowdFresh) crowdRows.push({ text: e.crowd.text, age: crowdMins + 'm ago' });
+
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: this.props.theme === 'light' ? 'light' : 'dark',
+      ev: {
+        name: e.name,
+        room: e.room,
+        headerMeta: e.day + ' · ' + this.money(total) + ' · ' + e.when.toUpperCase(),
+        roomMeta: e.dist.toFixed(1) + ' mi · ' + e.drive + ' min drive · full room detail',
+        whenLine: e.when + ' · late reg to level ' + e.regLevel + ' (' + e.regTime + ')',
+        verified: 'verified ' + this.ageTxt(e.verifiedH + Math.floor(st.tick / 3600)),
+        isSeries: e.kind === 'series',
+        seriesTag: e.series || 'SERIES',
+        reliable: e.kind === 'reliable',
+        unreliable: e.kind === 'unreliable',
+        flag: e.flag,
+        reliabilityNote: e.kind === 'series' ? 'SCHEDULED SERIES EVENT' : 'OUR CALL, NOT A FEED',
+
+        liveNote: vendorOn ? 'OFFICIAL FEED' : 'PLAYER REPORTS · NO CLOCK WITHOUT A FEED',
+        hasVendor: vendorOn,
+        vendorRows: vendorOn ? (e.live || []).map(t => ({ text: t })) : [],
+        hasCrowd: !vendorOn && !!anyCrowd,
+        crowdRows: vendorOn ? [] : crowdRows,
+        liveEmpty: !vendorOn && !anyCrowd && !cancelPending && !cancelConfirmed,
+        cancelPending: cancelPending,
+        cancelConfirmed: cancelConfirmed,
+        cancelPendingLine: '1 report · cancelled tonight · unconfirmed',
+        cancelPendingSub: 'Still listed until a second player agrees — a wrong cancellation stops people leaving the house.',
+        cancelConfirmedLine: 'CANCELLED TONIGHT',
+        cancelConfirmedSub: 'Confirmed by 2 players · stands for tonight until the room updates its schedule.',
+        emptyLine: 'No field report on this event yet',
+
+        moneyFresh: 'BUY-IN · ' + this.dayTxt(e.moneyD).toUpperCase(),
+        total: this.money(total),
+        totalNote: 'TOTAL BUY-IN',
+        feePct: feePct + '%',
+        feeInk: feePct <= 8 ? 'var(--pm-value)' : feePct >= 12 ? 'var(--pm-caution)' : 'var(--pm-ink)',
+        moneyRows: [
+          { k: 'To the prize pool', v: this.money(e.entry), ink: 'var(--pm-ink-3)' },
+          { k: 'House fee', v: this.money(e.fee), ink: 'var(--pm-ink-3)' },
+          { k: 'Guarantee', v: e.gtd ? this.money(e.gtd) + ' GTD' : 'None advertised', ink: e.gtd ? 'var(--pm-ink-3)' : 'var(--pm-dim-1)' },
+          { k: 'Field needed to beat it', v: e.gtd ? Math.ceil(e.gtd / e.entry) + ' entries' : 'No guarantee to beat', ink: 'var(--pm-ink-3)' },
+        ],
+        feeConvention: 'We state the fee as a share of the TOTAL buy-in: ' + this.money(e.fee) + ' of ' + this.money(total) + ' is ' + feePct + '%. Quoted against the prize pool instead it is ' + Math.round((e.fee / e.entry) * 1000) / 10 + '% — same event, different convention.',
+
+        structFresh: 'STRUCTURE · ' + this.dayTxt(e.structD).toUpperCase(),
+        pace: pace,
+        paceInk: pace === 'DEEP' ? 'var(--pm-value)' : pace === 'TURBO' ? 'var(--pm-caution)' : 'var(--pm-ink)',
+        paceWorking: (e.stack / 1000) + 'K starting stack over ' + e.level + '-minute levels — ' + Math.round(ratio) + ' chips per minute of level. Derived, not the room\u2019s label.',
+        structRows: [
+          { k: 'STARTING STACK', v: e.stack.toLocaleString('en-US'), ink: 'var(--pm-ink)' },
+          { k: 'LEVEL LENGTH', v: e.level + ' min', ink: 'var(--pm-ink)' },
+          { k: 'LATE REG', v: 'Level ' + e.regLevel + ' · ' + e.regTime, ink: 'var(--pm-ink-3)' },
+          { k: 'RE-ENTRY', v: e.reentry, ink: 'var(--pm-ink-3)' },
+          { k: 'BREAKS', v: e.breaks, ink: 'var(--pm-ink-3)' },
+          { k: 'BIG BLINDS AT START', v: Math.round(e.stack / (e.levels ? e.levels[0].bb : 200)) + ' BB', ink: 'var(--pm-ink-3)' },
+        ],
+        linkedStructure: !e.series_levels,
+        linkBlurb: 'The pace figures above are what decides whether this suits you — how deep you start and how fast it moves. The room publishes the full level-by-level ladder; we link it rather than retype a daily that changes without notice.',
+        pdfHref: e.pdf,
+        pdfLabel: 'ROOM\u2019S PUBLISHED STRUCTURE',
+        pdfFetched: 'fetched ' + this.dayTxt(e.pdfD),
+        transcribed: !!e.series_levels,
+        levelsFresh: 'FETCHED ' + this.dayTxt(e.pdfD).toUpperCase(),
+        levels: (e.levels || []).map(l => ({
+          n: l.n,
+          blinds: l.sb.toLocaleString('en-US') + ' / ' + l.bb.toLocaleString('en-US'),
+          ante: l.ante.toLocaleString('en-US'),
+          mins: l.mins,
+          bg: l.n === e.regLevel ? 'rgba(201,162,74,0.07)' : 'transparent',
+          ink: l.n === e.regLevel ? 'var(--pm-brass-2)' : 'var(--pm-ink-2)',
+        })),
+        levelsNote: 'Levels 1–' + e.regLevel + ' shown; late reg closes at the end of level ' + e.regLevel + ' (highlighted). Transcribed from the room\u2019s published structure — corrections welcome.',
+
+        payoutFresh: e.places ? 'PUBLISHED · ' + this.dayTxt(e.structD).toUpperCase() : 'NOT PUBLISHED',
+        hasPayouts: !!e.places,
+        noPayouts: !e.places,
+        payouts: (e.payouts || []).map(p => ({ place: p.place, share: p.share, amount: '~' + this.money(p.amount), ink: 'var(--pm-ink-3)' })),
+        payoutNote: e.places ? e.places + ' places paid on the advertised ' + this.money(e.gtd) + ' guarantee. Amounts are modelled from the published percentages and will move with the real field, so they carry a tilde.' : '',
+
+        roomRows: e.room_info ? [
+          { k: 'Room', v: e.room_info.status },
+          { k: 'Food at seat', v: e.room_info.food },
+          { k: 'Parking', v: e.room_info.parking },
+          { k: 'Comps', v: e.room_info.comps },
+          { k: 'Getting there', v: e.room_info.walk },
+        ] : [],
+
+        footer: 'SCHEDULE AND BUY-IN VERIFIED ' + this.ageTxt(e.verifiedH).toUpperCase() + ' · STRUCTURE ' + this.dayTxt(e.structD).toUpperCase() + ' · LIVE STATE IS PLAYER-REPORTED',
+        sheetSub: e.when + ' · ' + this.money(total) + ' · late reg ' + e.regTime,
+      },
+      jumps: this.JUMPS.map(j => ({ label: j.label, onClick: () => this.jump(j.key) })),
+      calShow: !cancelConfirmed,
+      calCta: added ? 'IN YOUR CALENDAR' : 'ADD TO CALENDAR',
+      calSub: added ? e.when + ' · remove by tapping again' : 'No permission needed · ' + e.when,
+      onCalendar: () => this.setState(s => ({ added: Object.assign({}, s.added, { [e.id]: !s.added[e.id] }),
+        toast: s.added[e.id] ? 'Removed from your calendar.' : e.name + ' added to your calendar.' })),
+      calledOff: cancelConfirmed,
+      calledOffCta: 'REPORT IT BACK ON',
+      calledOffSub: 'Cancelled by player report · tap if it is actually running',
+      onDirections: () => this.flash('Route to ' + e.room + ' · ' + e.dist.toFixed(1) + ' mi.'),
+      onReport: () => this.setState({ sheet: true, sheetDone: false }),
+      onRoom: () => this.flash(e.room + ' · opening room detail.'),
+      onBack: () => this.flash('Back to Tourneys.'),
+      onSwitch: () => this.setState(s => ({ idx: (s.idx + 1) % this.EVENTS.length })),
+      onCorrection: () => this.flash('Correction sent to our review queue — thank you.'),
+      sheetOpen: st.sheet,
+      sheetAsk: st.sheet && !st.sheetDone,
+      sheetThanks: st.sheet && st.sheetDone,
+      buckets: (cancelPending || cancelConfirmed
+        ? [{ id: 'running', label: 'IT IS RUNNING', live: true }].concat(this.BUCKETS)
+        : this.BUCKETS).map(b => ({
+        label: b.label,
+        bg: b.hot ? 'rgba(217,96,63,0.07)' : b.live ? 'rgba(78,203,147,0.07)' : 'var(--pm-fill-1)',
+        line: b.hot ? 'rgba(217,96,63,0.36)' : b.live ? 'rgba(78,203,147,0.32)' : 'var(--pm-line-2)',
+        ink: b.hot ? 'var(--pm-alert)' : b.live ? 'var(--pm-live)' : 'var(--pm-ink-2)',
+        onClick: () => this.submit(b.id),
+      })),
+      thanksLine: st.outcome === 'pending' ? 'Logged — one more confirms it'
+        : st.outcome === 'confirmed' ? 'Cancellation confirmed'
+        : st.outcome === 'cleared' ? 'Back on the schedule'
+        : 'Thanks — this event is fresh again',
+      thanksSub: st.outcome === 'pending'
+        ? 'A wrong cancellation stops people leaving the house, so it shows as unconfirmed until a second player agrees.'
+        : st.outcome === 'confirmed'
+        ? 'Two players agree, so it now reads cancelled for tonight — nobody else drives over for it.'
+        : st.outcome === 'cleared'
+        ? 'The cancellation claim is cleared and the event is listed again.'
+        : 'Everyone deciding what to play next just got your update.',
+      closeSheet: () => { clearTimeout(this.sheetTimer); this.setState({ sheet: false, sheetDone: false }); },
+      navItems: this.NAV.map(n => ({
+        label: n.label, active: n.id === 'tourneys', inactive: n.id !== 'tourneys',
+        onClick: () => { if (n.id !== 'tourneys') this.flash(n.label.charAt(0) + n.label.slice(1).toLowerCase() + ' is next up in the build.'); },
+      })),
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

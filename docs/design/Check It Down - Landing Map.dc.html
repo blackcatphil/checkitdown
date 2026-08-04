@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; height:100%; background:#0C0E11; font-family:Archivo,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#A98CE8; text-decoration:none; border-bottom:1px solid rgba(169,140,232,.4); }
+  a:hover { color:#C4AEF5; }
+  ::-webkit-scrollbar { width:10px; height:10px }
+  ::-webkit-scrollbar-thumb { background:rgba(242,244,246,.14); border-radius:6px }
+  ::-webkit-scrollbar-track { background:transparent }
+  @keyframes knockR1 { 0% { transform:scale(.3); opacity:0 } 5% { opacity:.9 } 28% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockR2 { 0%, 17% { transform:scale(.3); opacity:0 } 22% { opacity:.9 } 46% { transform:scale(1.95); opacity:0 } 100% { transform:scale(1.95); opacity:0 } }
+  @keyframes knockTap { 0%, 100% { transform:translateY(0) } 4% { transform:translateY(2px) } 10% { transform:translateY(0) } 21% { transform:translateY(2px) } 27% { transform:translateY(0) } }
+  @keyframes livePing { 0% { transform:scale(.6); opacity:.8 } 70% { transform:scale(1.7); opacity:0 } 100% { opacity:0 } }
+  .knock .kr { opacity:0 }
+  .knock.knocking .kr1 { animation:knockR1 3.4s cubic-bezier(.2,.7,.3,1) 1 both }
+  .knock.knocking .kr2 { animation:knockR2 3.4s cubic-bezier(.2,.7,.3,1) 1 both }
+  .knock.knocking .kt { animation:knockTap 3.4s ease-in-out 1 both }
+  @media (prefers-reduced-motion: reduce) {
+    .kr, .kt, .lp { animation:none !important }
+    .kr2 { opacity:0 !important } .kr1 { opacity:.62 !important }
+  }
+</style>
+</helmet>
+
+<div style="height:100vh;display:flex;flex-direction:column;background:#0C0E11;overflow:hidden">
+
+  <div style="height:64px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#14171B;border-bottom:1px solid rgba(242,244,246,.12);z-index:40">
+    <div style="display:flex;align-items:center;gap:26px;min-width:0;flex:0 1 auto">
+      <div class="knock" ref="{{ knockRef }}" onMouseEnter="{{ replayKnock }}" style="display:flex;align-items:center;gap:11px;min-height:44px;cursor:pointer">
+        <svg viewBox="0 0 120 120" width="30" height="30" aria-label="Check It Down"><ellipse cx="44" cy="54" rx="22" ry="18.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-opacity=".5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="96 26"></ellipse><ellipse class="kr kr1" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><ellipse class="kr kr2" cx="44" cy="54" rx="23" ry="19.5" transform="rotate(-6 44 54)" fill="none" stroke="#A98CE8" stroke-width="7" stroke-linecap="round" stroke-dasharray="97 25" style="transform-box:fill-box;transform-origin:center"></ellipse><g class="kt" style="transform-box:fill-box;transform-origin:center"><circle cx="44" cy="53" r="14.5" fill="#8A66C9"></circle><circle cx="84" cy="60" r="11.5" fill="#8A66C9" fill-opacity=".55"></circle></g></svg>
+        <span style="font:400 21px/1 'Instrument Serif',serif;color:#F2F4F6;white-space:nowrap">Check It Down</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:2px">
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;border-radius:4px;background:rgba(94,58,147,.24);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8;cursor:pointer;white-space:nowrap">MAP</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">JUST THE FACTS</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">TOURNAMENTS</span>
+        <span style="min-height:44px;display:inline-flex;align-items:center;padding:9px 13px;font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.6);cursor:pointer;white-space:nowrap" style-hover="color:#F2F4F6">PROMOS</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;min-width:0;flex:0 1 auto">
+      <sc-if value="{{ hasCompare }}">
+        <div onClick="{{ openCompare }}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid #A98CE8;background:rgba(94,58,147,.22);cursor:pointer;white-space:nowrap" style-hover="background:rgba(94,58,147,.36)">
+          <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8;white-space:nowrap">{{ headerChip }}</span>
+          <span style="font:600 12px/1 Archivo,sans-serif;color:#A98CE8">&rarr;</span>
+        </div>
+      </sc-if>
+      <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6);font-variant-numeric:tabular-nums;white-space:nowrap">{{ statusLine }}</span>
+    </div>
+  </div>
+
+  <sc-if value="{{ isMapView }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;min-height:0;display:flex">
+
+    <div style="width:302px;flex:none;background:#14171B;border-right:1px solid rgba(242,244,246,.12);display:flex;flex-direction:column;z-index:30">
+      <div style="padding:16px 18px 13px;display:flex;flex-direction:column;gap:11px;border-bottom:1px solid rgba(242,244,246,.1)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.6)">FILTER ROOMS</span>
+          <span onClick="{{ clearAll }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#A98CE8;border-bottom:1px solid rgba(169,140,232,.45);cursor:pointer;padding:4px 0">CLEAR</span>
+        </div>
+        <div style="padding:11px 13px;background:rgba(94,58,147,.18);border-left:2px solid #5E3A93;display:flex;flex-direction:column;gap:3px">
+          <span style="font:600 15px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ matchLine }}</span>
+          <span style="font:400 11.5px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.62)">{{ matchNote }}</span>
+        </div>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow-y:auto;padding:6px 18px 20px;display:flex;flex-direction:column;gap:4px">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="5">
+          <div style="display:flex;flex-direction:column;gap:2px;padding:11px 0 5px">
+            <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.58);padding-bottom:6px">{{ g.title }}</span>
+            <sc-for list="{{ g.items }}" as="o" hint-placeholder-count="3">
+              <div onClick="{{ o.toggle }}" style="display:flex;align-items:center;gap:10px;min-height:36px;cursor:pointer;border-radius:4px;padding:0 6px;margin:0 -6px" style-hover="background:rgba(242,244,246,.05)">
+                <span style="width:16px;height:16px;flex:none;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ o.box }};border:1px solid {{ o.line }};color:#F7F4FF">{{ o.tick }}</span>
+                <span style="font:{{ o.weight }} 13.5px/1.25 Archivo,sans-serif;color:{{ o.ink }}">{{ o.label }}</span>
+                <span style="margin-left:auto;font:500 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ o.countInk }}">{{ o.count }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+        <div style="margin-top:8px;padding:11px 12px;background:rgba(94,58,147,.1);border:1px solid rgba(169,140,232,.28);display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8">{{ compareHeading }}</span>
+          <span style="font:400 12px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.72)">{{ compareBlurb }}</span>
+        </div>
+        <div style="margin-top:8px;padding:11px 12px;background:rgba(242,244,246,.04);border:1px solid rgba(242,244,246,.09);display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.58)">SEASONAL VENUE</span>
+          <span style="font:400 12px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.7)">WSOP at Paris runs late May to mid July. Off the roster the rest of the year, on the map when it opens.</span>
+          <div onClick="{{ toggleSeason }}" style="display:flex;align-items:center;gap:9px;min-height:32px;cursor:pointer">
+            <span style="width:16px;height:16px;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 10px/1 Archivo,sans-serif;background:{{ seasonBox }};border:1px solid {{ seasonLine }};color:#F7F4FF">{{ seasonTick }}</span>
+            <span style="font:500 12.5px/1.2 Archivo,sans-serif;color:rgba(242,244,246,.82)">Show series venue</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;position:relative;background:#0C0E11">
+      <iframe ref="{{ mapRef }}" src="./checkitdown-map-3d.html?v=14" title="Las Vegas poker rooms, 3D map" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>
+
+      <div style="position:absolute;left:18px;bottom:18px;display:flex;align-items:center;gap:10px;padding:9px 13px;background:rgba(12,14,17,.86);border:1px solid rgba(242,244,246,.12);backdrop-filter:blur(6px)">
+        <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE"></span><span class="lp" style="position:absolute;inset:0;border-radius:50%;background:#4FBFAE;animation:livePing 2.6s ease-out infinite"></span></span>
+        <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.72)">{{ mapHint }}</span>
+      </div>
+
+      <sc-if value="{{ trayOpen }}">
+        <div data-tray="1" style="position:absolute;left:18px;bottom:60px;width:236px;max-height:190px;display:flex;flex-direction:column;background:#14171B;border:1px solid rgba(169,140,232,.45);box-shadow:0 24px 48px -24px rgba(0,0,0,.9);z-index:22">
+          <div data-tray-head="1" onClick="{{ toggleTray }}" style="padding:11px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:{{ trayRule }}">
+            <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#A98CE8">{{ compareChip }}</span>
+            <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.6)">{{ trayToggleLabel }}</span>
+          </div>
+          <sc-if value="{{ trayExpanded }}">
+            <div style="padding:11px 13px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;min-height:0">
+              <sc-for list="{{ trayRooms }}" as="t" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px">
+                  <span style="font:400 14px/1.15 'Instrument Serif',serif;color:#F2F4F6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.name }}</span>
+                  <span onClick="{{ t.remove }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58);cursor:pointer;padding:8px 0 8px 10px" style-hover="color:#F2F4F6">REMOVE</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ trayMore }}">
+                <span style="font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58)">{{ trayMore }}</span>
+              </sc-if>
+              <div onClick="{{ openCompare }}" style="margin-top:3px;padding:11px 13px;background:#5E3A93;border-top:1px solid #A98CE8;display:flex;align-items:center;justify-content:space-between;cursor:pointer" style-hover="background:#6E45AC">
+                <span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F7F4FF">COMPARE IN JUST THE FACTS</span>
+                <span style="font:600 12px/1 Archivo,sans-serif;color:#F7F4FF">&rarr;</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ popupOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;right:18px;top:18px;width:326px;background:#14171B;border:1px solid rgba(242,244,246,.14);box-shadow:0 30px 60px -26px rgba(0,0,0,.95);z-index:20">
+          <div style="padding:15px 16px 13px;display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:{{ sel.dot }}"></span></span>
+                <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ sel.statusInk }}">{{ sel.status }}</span>
+                <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">{{ sel.areaLine }}</span>
+              </div>
+              <span onClick="{{ closePopup }}" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;font:400 16px/1 Archivo,sans-serif;color:rgba(242,244,246,.6);cursor:pointer;margin:-6px -6px -6px 0" style-hover="color:#F2F4F6">&times;</span>
+            </div>
+            <span style="font:400 28px/1.05 'Instrument Serif',serif;color:#F2F4F6">{{ sel.name }}</span>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font:500 12.5px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.84)">{{ sel.tablesLine }}</span>
+              <span style="font:500 12.5px/1.35 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.84)">{{ sel.rakeLine }}</span>
+              <span style="font:400 12.5px/1.35 Archivo,sans-serif;color:rgba(242,244,246,.7)">{{ sel.hook }}</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-top:2px">
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ sel.verInk }}">{{ sel.verified }}</span>
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.04em;color:rgba(242,244,246,.58)">{{ sel.path }}</span>
+            </div>
+          </div>
+          <div onClick="{{ openDetail }}" style="padding:13px 16px;background:#5E3A93;border-top:1px solid #A98CE8;display:flex;align-items:center;justify-content:space-between;cursor:pointer" style-hover="background:#6E45AC">
+            <span style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#F7F4FF">OPEN FULL DETAILS</span>
+            <span style="font:600 13px/1 Archivo,sans-serif;color:#F7F4FF">&rarr;</span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+</div>
+
+<sc-if value="{{ detailOpen }}">
+  <div style="{{ shellStyle }}">
+    <div onClick="{{ closeDetail }}" style="{{ scrimStyle }}"></div>
+    <div style="{{ cardStyle }}">
+
+      <div style="padding:20px 26px 16px;border-bottom:1px solid rgba(242,244,246,.12);display:flex;flex-direction:column;gap:12px;background:#14171B;position:sticky;top:0;z-index:5">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(242,244,246,.58)">{{ det.crumb }}</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.04em;color:#A98CE8">{{ det.path }}</span>
+            <span onClick="{{ copyLink }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58);border-bottom:1px solid rgba(242,244,246,.25);cursor:pointer">{{ copyLabel }}</span>
+          </div>
+          <span onClick="{{ closeDetail }}" style="{{ closeStyle }}">&times;</span>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="position:relative;width:7px;height:7px"><span style="position:absolute;inset:0;border-radius:50%;background:{{ det.dot }}"></span></span>
+              <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ det.statusInk }}">{{ det.status }}</span>
+              <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">{{ det.areaLine }}</span>
+            </div>
+            <span style="font:400 42px/1 'Instrument Serif',serif;color:#F2F4F6">{{ det.name }}</span>
+            <span style="font:500 13px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.78)">{{ det.tablesLine }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="padding:12px 16px;border:1px solid rgba(242,244,246,.22);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.82);cursor:pointer" style-hover="border-color:rgba(242,244,246,.58);color:#F2F4F6">DIRECTIONS</span>
+            <span style="padding:12px 16px;border:1px solid rgba(242,244,246,.22);font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.82);cursor:pointer" style-hover="border-color:rgba(242,244,246,.58);color:#F2F4F6">CALL</span>
+            <span onClick="{{ toggleCompare }}" style="{{ compareBtnStyle }}" style-hover="filter:brightness(1.12)">{{ compareBtnLabel }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:22px 26px 30px;display:flex;flex-direction:column;gap:26px">
+
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.58)">THE FACTS</span>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(242,244,246,.1);border:1px solid rgba(242,244,246,.1)">
+            <sc-for list="{{ det.facts }}" as="f" hint-placeholder-count="8">
+              <div style="background:#14171B;padding:13px 14px;display:flex;flex-direction:column;gap:6px">
+                <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(242,244,246,.58)">{{ f.label }}</span>
+                <span style="font:600 15px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ f.ink }};border-bottom:{{ f.rule }};align-self:flex-start">{{ f.value }}</span>
+                <span style="font:400 11px/1.3 Archivo,sans-serif;color:rgba(242,244,246,.6)">{{ f.note }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.58)">CASH GAMES</span>
+            <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58)">{{ det.cashVerified }}</span>
+          </div>
+          <div style="border:1px solid rgba(242,244,246,.1)">
+            <div style="display:grid;grid-template-columns:1.5fr .9fr .9fr 1.3fr .8fr;gap:12px;padding:10px 14px;background:rgba(242,244,246,.035);border-bottom:1px solid rgba(242,244,246,.1)">
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6)">GAME</span>
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6)">MIN BUY-IN</span>
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6)">MAX BUY-IN</span>
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6)">RAKE</span>
+              <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.6)">TABLES</span>
+            </div>
+            <sc-for list="{{ det.cash }}" as="c" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:1.5fr .9fr .9fr 1.3fr .8fr;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(242,244,246,.07);align-items:center" style-hover="background:rgba(94,58,147,.1)">
+                <span style="font:500 14px/1.2 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ c.game }}</span>
+                <span style="font:500 13.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.84)">{{ c.min }}</span>
+                <span style="font:500 13.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.84)">{{ c.max }}</span>
+                <span style="font:500 13.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ c.rakeInk }}">{{ c.rake }}</span>
+                <span style="font:500 13.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(242,244,246,.84)">{{ c.tables }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:11px">
+            <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.58)">AMENITIES</span>
+            <div style="display:flex;flex-direction:column;gap:1px;background:rgba(242,244,246,.1);border:1px solid rgba(242,244,246,.1)">
+              <sc-for list="{{ det.amenities }}" as="a" hint-placeholder-count="4">
+                <div style="background:#14171B;padding:12px 14px;display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:baseline">
+                  <span style="font:600 9px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">{{ a.label }}</span>
+                  <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.86)">{{ a.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:11px">
+            <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.58)">HOUSE RULES</span>
+            <div style="display:flex;flex-direction:column;gap:1px;background:rgba(242,244,246,.1);border:1px solid rgba(242,244,246,.1)">
+              <sc-for list="{{ det.rules }}" as="r" hint-placeholder-count="4">
+                <div style="background:#14171B;padding:12px 14px;display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:baseline">
+                  <span style="font:600 9px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(242,244,246,.58)">{{ r.label }}</span>
+                  <span style="font:400 13px/1.45 Archivo,sans-serif;color:rgba(242,244,246,.86)">{{ r.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(242,244,246,.58)">PROMOTIONS</span>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <sc-for list="{{ det.promos }}" as="p" hint-placeholder-count="2">
+              <div style="background:#14171B;border:1px solid rgba(242,244,246,.1);border-left:2px solid #5E3A93;padding:14px 15px;display:flex;flex-direction:column;gap:7px">
+                <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#A98CE8">{{ p.kind }}</span>
+                <span style="font:600 20px/1.1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#F2F4F6">{{ p.money }}</span>
+                <span style="font:400 12.5px/1.4 Archivo,sans-serif;color:rgba(242,244,246,.72)">{{ p.detail }}</span>
+                <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(242,244,246,.58)">{{ p.when }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:4px;border-top:1px solid rgba(242,244,246,.1);gap:16px;flex-wrap:wrap">
+          <span style="font:500 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;color:rgba(242,244,246,.58)">{{ det.footer }}</span>
+          <span style="font:500 11px/1 Archivo,sans-serif;color:rgba(242,244,246,.6);border-bottom:1px solid rgba(242,244,246,.28);cursor:pointer" style-hover="color:#F2F4F6">Report a correction</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}">
+  <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);padding:12px 18px;background:#1D2128;border:1px solid rgba(169,140,232,.4);z-index:80;font:500 12px/1 Archivo,sans-serif;color:#F2F4F6">{{ toast }}</div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;map&quot;,&quot;page&quot;],&quot;default&quot;:&quot;map&quot;,&quot;tsType&quot;:&quot;'map' | 'page'&quot;,&quot;section&quot;:&quot;Presentation&quot;},&quot;seasonalLive&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Roster&quot;}}">
+const ROOMS = [
+  { id:1, name:'ARIA', area:'Strip', dist:'0.2 mi', tables:24, open:'OPEN 24H', rake:'10% to $5', drop:'$1', comps:'$1.00/hr · MGM Rewards', park:'Valet comped with play', food:'24-hour tableside', hours:'24 hours', ver:'Yesterday',
+    a:['nlh','plo','tableside','cocktail','kitchen24','freevalet','nonsmoking','usb','massage','phonein'],
+    spread:'$1/3 – $5/10 NLH', hook:'High hand every hour, $500', slug:'aria' },
+  { id:2, name:'Bellagio', area:'Strip', dist:'0.4 mi', tables:37, open:'OPEN 24H', rake:'10% to $5', drop:'$2', comps:'$0.75/hr · MGM Rewards', park:'Valet comped with play', food:'Tableside menu', hours:'24 hours', ver:'2 days ago',
+    a:['nlh','plo','limit','mixed','tableside','cocktail','freevalet','nonsmoking','massage','checkcash','phonein'],
+    spread:'$2/5 – $100/200 mixed', hook:'The big game still runs in Bobby\u2019s Room', slug:'bellagio' },
+  { id:3, name:'Horseshoe', area:'Strip', dist:'0.6 mi', tables:8, open:'OPEN 24H', rake:'10% to $4', drop:'$1', comps:'$1.00/hr · Caesars Rewards', park:'Self-park validated', food:'Tableside', hours:'24 hours', ver:'3 days ago',
+    a:['nlh','tableside','cocktail','validated','usb','phonein'], spread:'$1/2 – $2/5 NLH', hook:'$1/2 runs around the clock', slug:'horseshoe' },
+  { id:4, name:'Caesars Palace', area:'Strip', dist:'0.8 mi', tables:12, open:'OPEN 24H', rake:'10% to $5', drop:'$1', comps:'$1.00/hr · Caesars Rewards', park:'Self-park validated', food:'Tableside', hours:'24 hours', ver:'2 days ago',
+    a:['nlh','plo','tableside','cocktail','validated','nonsmoking','massage','phonein'], spread:'$1/3 – $5/10 NLH', hook:'Daily $150 at noon', slug:'caesars-palace' },
+  { id:5, name:'MGM Grand', area:'Strip', dist:'1.1 mi', tables:13, open:'OPEN 24H', rake:'10% to $5', drop:'$1', comps:'$1.00/hr · MGM Rewards', park:'Valet comped with play', food:'Tableside', hours:'24 hours', ver:'3 days ago',
+    a:['nlh','tableside','cocktail','freevalet','usb','massage'], spread:'$1/2 – $2/5 NLH', hook:'High hand hourly, 10a–10p', slug:'mgm-grand' },
+  { id:6, name:'Venetian', area:'Strip', dist:'1.3 mi', tables:59, open:'OPEN 24H', rake:'10% to $5', drop:'$1', comps:'$1.00/hr · Venetian Rewards', park:'Self-park validated', food:'Three menus, seat delivery', hours:'24 hours', ver:'Yesterday',
+    a:['nlh','plo','limit','mixed','tableside','cocktail','kitchen24','validated','nonsmoking','usb','tvs','massage','checkcash','phonein'],
+    spread:'$1/2 – $10/20 NLH', hook:'Biggest room in the city, 59 tables', slug:'venetian' },
+  { id:7, name:'Wynn/Encore', area:'Strip', dist:'1.7 mi', tables:28, open:'OPEN 24H', rake:'~$12 / half hr', rakeEst:true, drop:'\u2014', comps:'$1.00/hr · Wynn Rewards', park:'Valet comped with play', food:'Wazuzu and Jardin', hours:'24 hours', ver:'Unverified', verEst:true,
+    a:['nlh','plo','mixed','tableside','cocktail','freevalet','nonsmoking','usb','massage','phonein'], spread:'$2/5 – $25/50 NLH', hook:'Time collection, not pot rake', slug:'wynn-encore' },
+  { id:8, name:'Mandalay Bay', area:'Strip', dist:'2.1 mi', tables:11, open:'OPEN 24H', rake:'10% to $5', drop:'$1', comps:'$1.00/hr · MGM Rewards', park:'Valet comped with play', food:'Tableside', hours:'24 hours', ver:'4 days ago',
+    a:['nlh','tableside','cocktail','freevalet','tvs'], spread:'$1/2 – $2/5 NLH', hook:'Quietest room on the south Strip', slug:'mandalay-bay' },
+  { id:9, name:'Westgate', area:'Off-Strip', dist:'2.4 mi', tables:9, open:'OPEN 10A\u201304A', rake:'10% to $4', drop:'$1', comps:'$1.50/hr · Westgate Rewards', park:'Free self-park', food:'Tableside', hours:'10am \u2013 4am', ver:'3 days ago',
+    a:['nlh','limit','tableside','cocktail','freeself','tvs','phonein'], spread:'$1/2 NLH, $4/8 limit', hook:'Free self-park, no validation needed', slug:'westgate' },
+  { id:10, name:'Orleans', area:'Off-Strip', dist:'2.7 mi', tables:35, open:'OPEN 24H', rake:'10% to $3', drop:'$1', comps:'$2.00/hr · B Connected', park:'Free self-park and valet', food:'Full menu, tableside', hours:'24 hours', ver:'2 days ago',
+    a:['nlh','plo','limit','mixed','tableside','cocktail','kitchen24','freeself','freevalet','nonsmoking','tvs','massage','checkcash','phonein'],
+    spread:'$1/2 – $5/10, mixed nightly', hook:'Lowest rake in the valley', slug:'orleans' },
+  { id:11, name:'Golden Nugget', area:'Downtown', dist:'4.4 mi', tables:13, open:'OPEN 24H', rake:'10% to $4', drop:'$1', comps:'$1.25/hr · 24K Select', park:'Free self-park', food:'Tableside', hours:'24 hours', ver:'3 days ago',
+    a:['nlh','limit','tableside','cocktail','freeself','tvs','phonein'], spread:'$1/2 – $2/5 NLH', hook:'Downtown\u2019s only round-the-clock room', slug:'golden-nugget' },
+  { id:12, name:'Boulder Station', area:'Locals', dist:'6.3 mi', tables:9, open:'OPEN 24H', rake:'10% to $4', drop:'$1', comps:'$1.50/hr · Boarding Pass', park:'Free self-park and valet', food:'Tableside', hours:'24 hours', ver:'5 days ago',
+    a:['nlh','limit','tableside','cocktail','freeself','freevalet','tvs'], spread:'$1/2 NLH, $2/4 limit', hook:'Locals rate all day', slug:'boulder-station' },
+  { id:13, name:'South Point', area:'Locals', dist:'7.6 mi', tables:8, open:'OPEN 24H', rake:'10% to $4', drop:'$1', comps:'$1.60/hr · Club South Point', park:'Free self-park and valet', food:'Tableside, three outlets', hours:'24 hours', ver:'3 days ago',
+    a:['nlh','plo','limit','tableside','cocktail','kitchen24','freeself','freevalet','nonsmoking','tvs','checkcash'], spread:'$1/2 – $2/5 NLH', hook:'Free valet, no play required', slug:'south-point' },
+  { id:14, name:'Skyline', area:'Locals', dist:'8.4 mi', tables:4, open:'OPEN 24H', rake:'10% to $4', drop:'\u2014', comps:'None', park:'Free self-park', food:'Bar menu', hours:'24 hours', ver:'6 days ago',
+    a:['nlh','freeself','tvs'], spread:'$1/2 NLH', hook:'Four tables, no drop over $4', slug:'skyline' },
+  { id:15, name:'Green Valley Ranch', area:'Locals', dist:'9.6 mi', tables:9, open:'OPEN 24H', rake:'10% to $4', drop:'$1', comps:'$1.50/hr · Boarding Pass', park:'Free self-park', food:'Tableside', hours:'24 hours', ver:'4 days ago',
+    a:['nlh','limit','tableside','cocktail','freeself','nonsmoking','tvs'], spread:'$1/2 – $2/5 NLH', hook:'Non-smoking room, patio adjacent', slug:'green-valley-ranch' },
+  { id:16, name:'Red Rock', area:'Locals', dist:'11.8 mi', tables:12, open:'OPEN 24H', rake:'10% to $4', drop:'$1', comps:'$1.40/hr · Boarding Pass', park:'Free self-park and valet', food:'Tableside', hours:'24 hours', ver:'3 days ago',
+    a:['nlh','plo','tableside','cocktail','freeself','freevalet','nonsmoking','usb','tvs','massage'], spread:'$1/2 – $2/5 NLH', hook:'Best room on the west side', slug:'red-rock' },
+  { id:17, name:'Santa Fe Station', area:'Locals', dist:'12.4 mi', tables:8, open:'OPEN 24H', rake:'10% to $4', drop:'$1', comps:'$1.50/hr · Boarding Pass', park:'Free self-park and valet', food:'Tableside', hours:'24 hours', ver:'5 days ago',
+    a:['nlh','limit','tableside','freeself','freevalet','tvs'], spread:'$1/2 NLH', hook:'Quiet locals room, north-west', slug:'santa-fe-station' },
+  { id:18, name:'WSOP \u00b7 Paris', seasonal:true, area:'Strip \u00b7 series', dist:'0.5 mi', tables:88, open:'SERIES ONLY', rake:'Series structure', drop:'\u2014', comps:'None', park:'Self-park validated', food:'Concessions and tableside', hours:'Late May \u2013 mid July', ver:'Seasonal', verEst:true,
+    a:['nlh','plo','mixed','tableside','cocktail','validated','nonsmoking'], spread:'Series events, $400 \u2013 $250k', hook:'Largest poker venue on earth while it runs', slug:'wsop-paris' }
+];
+
+const GROUPS = [
+  { title:'GAMES', items:[['nlh',"No-Limit Hold'em"],['plo','Pot-Limit Omaha'],['limit','Limit hold\u2019em'],['mixed','Mixed games']] },
+  { title:'FOOD & DRINK', items:[['tableside','Tableside food'],['cocktail','Cocktail service'],['kitchen24','24-hour kitchen']] },
+  { title:'PARKING', items:[['freeself','Free self-park'],['freevalet','Free valet'],['validated','Validated']] },
+  { title:'COMFORT', items:[['nonsmoking','Non-smoking room'],['usb','USB at seat'],['tvs','TVs at the table']] },
+  { title:'SERVICES', items:[['massage','Massage'],['checkcash','Check cashing'],['phonein','Phone-in list']] }
+];
+
+class Component extends DCLogic {
+  state = { checked: [], selected: 0, detail: false, season: false, toast: '', copied: false, compare: [] };
+
+  componentDidMount() {
+    this.onMsg = (e) => {
+      const d = e.data || {};
+      if (d.type === 'roomSelected') {
+        const r = ROOMS.find(x => x.id === d.id);
+        if (r) this.setState({ selected: r.id });
+      }
+      if (d.type === 'roomOpen') {
+        const r = ROOMS.find(x => x.name === d.name);
+        if (r) this.setState({ selected: r.id, detail: true });
+      }
+      if (d.type === 'mapReady') this.push();
+    };
+    window.addEventListener('message', this.onMsg);
+    this.onKey = (e) => { if (e.key === 'Escape') this.setState({ detail: false }); };
+    window.addEventListener('keydown', this.onKey);
+    if (this.props.view === 'page' || this.urlState().get('view') === 'page') this.setState({ detail: true });
+    setTimeout(() => this.knock(), 220);
+    /* Ordering matters: a shared shortlist link must never be overridden by a stale saved set. */
+    let init = [];
+    const fromUrl = (this.urlState().get('compare') || '').split(',').filter(Boolean);
+    if (fromUrl.length) init = fromUrl;
+    else { try { init = JSON.parse(localStorage.getItem('cid_compare') || '[]'); } catch (e) { init = []; } }
+    init = init.filter(sl => ROOMS.some(r => r.slug === sl));
+    if (init.length) this.setState({ compare: init });
+    this.syncRobots(init);
+    setTimeout(() => this.push(), 700);
+  }
+  componentWillUnmount() { window.removeEventListener('message', this.onMsg); window.removeEventListener('keydown', this.onKey); }
+
+  persist(list) {
+    try { localStorage.setItem('cid_compare', JSON.stringify(list)); } catch (e) {}
+    try {
+      const q = this.urlState();
+      if (list.length) q.set('compare', list.join(',')); else q.delete('compare');
+      const qs = q.toString();
+      history.replaceState({}, '', location.pathname + (qs ? '?' + qs : ''));
+    } catch (e) {}
+    this.syncRobots(list);
+  }
+  /* A crawlable ?compare= permutation would mint unbounded thin duplicates of one page. */
+  syncRobots(list) {
+    let tag = document.querySelector('meta[name="robots"]');
+    if (!tag) { tag = document.createElement('meta'); tag.setAttribute('name', 'robots'); document.head.appendChild(tag); }
+    tag.setAttribute('content', list && list.length ? 'noindex,follow' : 'index,follow');
+    let can = document.querySelector('link[rel="canonical"]');
+    if (!can) { can = document.createElement('link'); can.setAttribute('rel', 'canonical'); document.head.appendChild(can); }
+    can.setAttribute('href', location.origin + location.pathname);
+  }
+  knock() {
+    const el = this.knockRef && this.knockRef.current;
+    if (!el) return;
+    el.classList.remove('knocking');
+    void el.offsetWidth;
+    el.classList.add('knocking');
+  }
+  frame() { return this.mapRef && this.mapRef.current ? this.mapRef.current.contentWindow : null; }
+  push() {
+    const w = this.frame(); if (!w) return;
+    w.postMessage({ type: 'season', on: this.state.season }, '*');
+    w.postMessage({ type: 'dim', names: this.matches().map(r => r.name) }, '*');
+    w.postMessage({ type: 'sync', area: 'all', selected: this.state.selected }, '*');
+  }
+  roster() { return ROOMS.filter(r => !r.seasonal || this.state.season); }
+  matches() {
+    const c = this.state.checked;
+    return this.roster().filter(r => c.every(k => r.a.indexOf(k) !== -1));
+  }
+  toggle(k) {
+    const c = this.state.checked.slice();
+    const i = c.indexOf(k);
+    if (i === -1) c.push(k); else c.splice(i, 1);
+    this.setState({ checked: c }, () => this.push());
+  }
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2200); }
+
+  detailData(r) {
+    const est = 'rgba(242,244,246,.62)';
+    return {
+      name: r.name, crumb: 'ROOMS /', path: '/rooms/' + r.slug,
+      status: r.open, statusInk: r.seasonal ? '#A98CE8' : '#4FBFAE', dot: r.seasonal ? '#A98CE8' : '#4FBFAE',
+      areaLine: '\u00b7 ' + r.area + ' \u00b7 ' + r.dist,
+      tablesLine: r.tables + ' tables \u00b7 ' + r.spread,
+      facts: [
+        { label:'RAKE', value:r.rake, note:r.rakeEst ? 'Time collection, unconfirmed' : 'Pot rake, capped', ink:r.rakeEst ? est : '#4FBFAE', rule:r.rakeEst ? '1px dotted rgba(242,244,246,.58)' : 'none' },
+        { label:'JACKPOT DROP', value:r.drop, note:'Per raked pot', ink:'#F2F4F6', rule:'none' },
+        { label:'COMPS', value:r.comps.split(' \u00b7 ')[0], note:r.comps.split(' \u00b7 ')[1] || 'No programme', ink:'#F2F4F6', rule:'none' },
+        { label:'HOURS', value:r.hours, note:'Room floor hours', ink:'#F2F4F6', rule:'none' },
+        { label:'TABLES', value:String(r.tables), note:'Spread at peak', ink:'#F2F4F6', rule:'none' },
+        { label:'PARKING', value:r.park.indexOf('Free') === 0 ? 'Free' : 'Conditional', note:r.park, ink:r.park.indexOf('Free') === 0 ? '#4FBFAE' : '#F2F4F6', rule:'none' },
+        { label:'FOOD', value:r.a.indexOf('tableside') !== -1 ? 'Tableside' : 'At the bar', note:r.food, ink:'#F2F4F6', rule:'none' },
+        { label:'VERIFIED', value:r.verEst ? '\u2014' : r.ver, note:r.verEst ? 'Not yet confirmed' : 'Checked against the room', ink:r.verEst ? est : '#F2F4F6', rule:r.verEst ? '1px dotted rgba(242,244,246,.58)' : 'none' }
+      ],
+      cashVerified: r.verEst ? 'UNVERIFIED' : 'CASH SPECS VERIFIED ' + r.ver.toUpperCase(),
+      cash: [
+        { game:'$1/3 NLH', min:'$100', max:'$500', rake:r.rake, tables:String(Math.max(2, Math.round(r.tables * 0.45))), rakeInk:r.rakeEst ? 'rgba(242,244,246,.62)' : '#4FBFAE' },
+        { game:'$2/5 NLH', min:'$300', max:'$1,500', rake:r.rake, tables:String(Math.max(1, Math.round(r.tables * 0.25))), rakeInk:'#F2F4F6' },
+        { game:'$5/10 NLH', min:'$500', max:'Uncapped', rake:r.rake, tables:String(Math.max(1, Math.round(r.tables * 0.1))), rakeInk:'#F2F4F6' },
+        { game:'$1/2 PLO', min:'$200', max:'$1,000', rake:r.rake, tables:'1', rakeInk:'#F2F4F6' }
+      ].slice(0, r.a.indexOf('plo') !== -1 ? 4 : 3),
+      amenities: [
+        { label:'FOOD & DRINK', value:r.food + (r.a.indexOf('cocktail') !== -1 ? ' \u00b7 cocktail service at the table' : '') },
+        { label:'PARKING', value:r.park },
+        { label:'COMFORT', value:[r.a.indexOf('nonsmoking') !== -1 ? 'non-smoking' : 'smoking permitted', r.a.indexOf('usb') !== -1 ? 'USB at seat' : null, r.a.indexOf('tvs') !== -1 ? 'TVs at the table' : null].filter(Boolean).join(' \u00b7 ') },
+        { label:'SERVICES', value:[r.a.indexOf('massage') !== -1 ? 'massage' : null, r.a.indexOf('checkcash') !== -1 ? 'check cashing' : null, r.a.indexOf('phonein') !== -1 ? 'phone-in list' : null].filter(Boolean).join(' \u00b7 ') || 'None listed' }
+      ],
+      rules: [
+        { label:'STRADDLE', value:'Button straddle allowed, one per hand' },
+        { label:'MUST-POST', value:'Post or wait for the big blind' },
+        { label:'CHIPS', value:'Chip runner at the table, cash plays' },
+        { label:'PHONES', value:'Allowed away from the hand' }
+      ],
+      promos: [
+        { kind:'HIGH HAND', money:'$500', detail:r.hook, when:'EVERY HOUR \u00b7 10A\u201310P' },
+        { kind:'BAD BEAT', money:'$47,200', detail:'Quads beaten, both cards play. Table share to everyone seated.', when:'CLIMBING \u00b7 VERIFIED ' + (r.verEst ? 'PENDING' : r.ver.toUpperCase()) }
+      ],
+      footer: r.verEst ? 'UNVERIFIED \u00b7 WE HAVE NOT CONFIRMED THIS ROOM\u2019S FIGURES WITH THE ROOM' : 'CASH SPECS WEEKLY \u00b7 PROMOS DAILY \u00b7 LAST FULL CHECK ' + r.ver.toUpperCase()
+    };
+  }
+
+  urlState() {
+    try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(''); }
+  }
+  renderVals() {
+    const q = this.urlState();
+    const view = q.get('view') === 'page' ? 'page' : (this.props.view || 'map');
+    const isPage = view === 'page';
+    const routed = q.get('room') ? ROOMS.find(r => r.slug === q.get('room')) : null;
+    const picked = ROOMS.find(r => r.id === this.state.selected) || null;
+    const sel = routed || picked || ROOMS[0];
+    const hasPick = !!(routed || picked);
+    const clusterHint = !hasPick;
+    const inCompare = this.state.compare.indexOf(sel.slug) !== -1;
+    const matches = this.matches();
+    const matchNames = matches.map(r => r.name);
+    const acc = '#5E3A93', line = 'rgba(242,244,246,.3)';
+
+    const groups = GROUPS.map(g => ({
+      title: g.title,
+      items: g.items.map(([k, label]) => {
+        const on = this.state.checked.indexOf(k) !== -1;
+        const n = matches.filter(r => r.a.indexOf(k) !== -1).length;
+        return {
+          label, tick: on ? '\u2713' : '', box: on ? acc : 'transparent', line: on ? '#A98CE8' : line,
+          ink: on ? '#F2F4F6' : 'rgba(242,244,246,.72)', weight: on ? 600 : 400,
+          count: String(n), countInk: n ? 'rgba(242,244,246,.62)' : 'rgba(242,244,246,.4)',
+          toggle: () => this.toggle(k)
+        };
+      })
+    }));
+
+    const total = this.roster().length;
+    const det = this.detailData(sel);
+
+    return {
+      mapRef: (this.mapRef = this.mapRef || React.createRef()),
+      knockRef: (this.knockRef = this.knockRef || React.createRef()),
+      replayKnock: () => this.knock(),
+      statusLine: this.state.compare.length
+        ? 'VERIFIED DAILY'
+        : (this.state.season ? '17 + WSOP LIVE \u00b7 VERIFIED DAILY' : '17 ROOMS \u00b7 VERIFIED DAILY'),
+      headerChip: 'COMPARE ' + this.state.compare.length,
+      matchLine: this.state.checked.length ? matches.length + ' of ' + total + ' rooms match' : total + ' rooms',
+      matchNote: this.state.checked.length ? 'Rooms without every checked feature stay on the map, dimmed.' : 'Check a feature to dim the rooms that lack it.',
+      groups,
+      seasonBox: this.state.season ? acc : 'transparent', seasonLine: this.state.season ? '#A98CE8' : line,
+      seasonTick: this.state.season ? '\u2713' : '',
+      toggleSeason: () => this.setState({ season: !this.state.season }, () => this.push()),
+      clearAll: () => this.setState({ checked: [] }, () => this.push()),
+
+      popupOpen: !isPage && !this.state.detail && hasPick,
+      mapHint: clusterHint ? 'ALL 17 ROOMS PLOTTED \u00b7 CLICK A CLUSTER TO ZOOM IN, A ROOM FOR THE GLANCE' : 'CLICK A ROOM FOR THE GLANCE \u00b7 DOUBLE-CLICK FOR THE FULL CARD',
+      sel: {
+        name: sel.name, status: sel.open, statusInk: sel.seasonal ? '#A98CE8' : '#4FBFAE',
+        dot: sel.seasonal ? '#A98CE8' : '#4FBFAE', areaLine: '\u00b7 ' + sel.area + ' \u00b7 ' + sel.dist,
+        tablesLine: sel.tables + ' tables \u00b7 ' + sel.spread,
+        rakeLine: sel.rake + (sel.drop !== '\u2014' ? ' \u00b7 ' + sel.drop + ' drop' : ''),
+        hook: sel.hook, verified: sel.verEst ? 'UNVERIFIED' : 'VERIFIED ' + sel.ver.toUpperCase(),
+        verInk: sel.verEst ? 'rgba(242,244,246,.6)' : 'rgba(242,244,246,.62)',
+        path: '/rooms/' + sel.slug
+      },
+      closePopup: () => this.setState({ selected: 0 }),
+      openDetail: () => this.setState({ detail: true }),
+      closeDetail: () => { if (!isPage) this.setState({ detail: false }); },
+      detailOpen: isPage || this.state.detail,
+      det,
+      copyLabel: this.state.copied ? 'LINK COPIED' : 'COPY LINK',
+      hasCompare: this.state.compare.length > 0,
+      compareHeading: this.state.compare.length ? 'YOUR COMPARISON' : 'COMPARE ROOMS',
+      compareBlurb: this.state.compare.length
+        ? 'Open Just the facts to see only these rooms, ranked on rake, parking, food and tables.'
+        : 'Open any room and add it to your comparison. Collect a few, then rank just those in Just the facts.',
+      compareChip: this.state.compare.length === 1 ? '1 ROOM TO COMPARE' : this.state.compare.length + ' ROOMS TO COMPARE',
+      trayOpen: !isPage && this.state.compare.length >= 2,
+      trayExpanded: this.state.trayOpen !== false,
+      trayToggleLabel: this.state.trayOpen === false ? 'SHOW' : 'HIDE',
+      trayRule: this.state.trayOpen === false ? 'none' : '1px solid rgba(242,244,246,.1)',
+      toggleTray: () => this.setState({ trayOpen: this.state.trayOpen === false }, () => setTimeout(() => this.push(), 60)),
+      trayRooms: this.state.compare.slice(0, 4).map(slug => {
+        const r = ROOMS.find(x => x.slug === slug) || {};
+        return { name: r.name, remove: () => { const c = this.state.compare.filter(x => x !== slug); this.setState({ compare: c }, () => setTimeout(() => this.push(), 60)); this.persist(c); } };
+      }),
+      trayMore: this.state.compare.length > 4 ? '+' + (this.state.compare.length - 4) + ' more in the set' : '',
+      openCompare: () => this.flash('Opens Just the facts, filtered to your ' + this.state.compare.length + ' room' + (this.state.compare.length === 1 ? '' : 's') + ' \u2014 that screen is next.'),
+      compareBtnLabel: inCompare ? '\u2713 IN COMPARE' : 'ADD TO COMPARE',
+      compareBtnStyle: inCompare
+        ? "padding:13px 20px;background:#1D2128;border:1px solid #A98CE8;border-top:1px solid #A98CE8;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#A98CE8;cursor:pointer"
+        : "padding:13px 20px;background:#5E3A93;border:1px solid #5E3A93;border-top:1px solid #A98CE8;font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#F7F4FF;cursor:pointer",
+      toggleCompare: () => {
+        const c = this.state.compare.slice();
+        const i = c.indexOf(sel.slug);
+        if (i === -1) { c.push(sel.slug); this.flash(sel.name + ' added \u2014 ' + c.length + ' room' + (c.length === 1 ? '' : 's') + ' in your comparison.'); }
+        else { c.splice(i, 1); this.flash(sel.name + ' removed from your comparison.'); }
+        this.setState({ compare: c }, () => setTimeout(() => this.push(), 60)); this.persist(c);
+      },
+      copyLink: () => { this.setState({ copied: true }); this.flash('checkitdown.com' + det.path + ' copied \u2014 the card is a real page, not a modal-only view.'); setTimeout(() => this.setState({ copied: false }), 2000); },
+
+      isMapView: !isPage,
+      shellStyle: isPage
+        ? 'position:fixed;inset:64px 0 0 0;overflow-y:auto;background:#0C0E11;z-index:60;display:block'
+        : 'position:fixed;inset:0;z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:56px 24px',
+      scrimStyle: isPage ? 'display:none' : 'position:absolute;inset:0;background:rgba(6,8,10,.72);backdrop-filter:blur(2px)',
+      cardStyle: isPage
+        ? 'position:relative;max-width:1080px;margin:0 auto;background:#0C0E11;min-height:100%;padding-bottom:40px'
+        : 'position:relative;width:min(1080px,100%);max-height:calc(100vh - 112px);overflow-y:auto;background:#0C0E11;border:1px solid rgba(242,244,246,.16);box-shadow:0 50px 100px -40px rgba(0,0,0,.95)',
+      closeStyle: isPage
+        ? 'display:none'
+        : 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;font:400 20px/1 Archivo,sans-serif;color:rgba(242,244,246,.6);cursor:pointer;border:1px solid rgba(242,244,246,.18)',
+      toast: this.state.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

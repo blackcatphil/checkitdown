@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pmPing { 0% { transform: scale(1); opacity: .5 } 70%, 100% { transform: scale(2.6); opacity: 0 } }
+    @keyframes pmFade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    body { margin: 0; background: #07100C; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    a { color: #C9A24A; text-decoration: none; }
+    a:hover { color: #E3C578; }
+    :root{
+      --pm-bg:#0A0D0B; --pm-card-1:#171D19; --pm-card-2:#121714; --pm-seg:#212A24; --pm-toast:#1B211D;
+      --pm-nav:rgba(9,12,10,0.92); --pm-head:rgba(10,13,11,0.9); --pm-scrim:rgba(4,6,5,0.66);
+      --pm-ink:#F4F1E8; --pm-ink-2:#EDEAE0; --pm-ink-3:rgba(237,234,224,0.85);
+      --pm-dim-1:rgba(237,234,224,0.64); --pm-dim-2:rgba(237,234,224,0.6); --pm-dim-3:rgba(237,234,224,0.41); --pm-dim-4:rgba(237,234,224,0.33);
+      --pm-line-1:rgba(237,234,224,0.08); --pm-line-2:rgba(237,234,224,0.13); --pm-line-3:rgba(237,234,224,0.24); --pm-fill-1:rgba(237,234,224,0.045);
+      --pm-brass:#C9A24A; --pm-brass-2:#E3C578; --pm-brass-3:#D9B45F; --pm-live:#4ECB93; --pm-value:#4ECB93; --pm-caution:#D9A23F; --pm-alert:#D9603F;
+      --pm-promo-1:rgba(20,54,40,0.9); --pm-promo-2:rgba(17,32,26,0.45); --pm-promo-line:rgba(78,203,147,0.13);
+      --pm-src-empty-line:rgba(237,234,224,0.14);
+    }
+    [data-pm-theme="light"]{
+      --pm-bg:#EFECE3; --pm-card-1:#FFFFFF; --pm-card-2:#F8F6EF; --pm-seg:#E6E1D4; --pm-toast:#FFFFFF;
+      --pm-nav:rgba(248,246,239,0.94); --pm-head:rgba(239,236,227,0.94); --pm-scrim:rgba(24,28,20,0.42);
+      --pm-ink:#171C13; --pm-ink-2:#232A1D; --pm-ink-3:rgba(23,28,19,0.86);
+      --pm-dim-1:rgba(23,28,19,0.72); --pm-dim-2:rgba(23,28,19,0.66); --pm-dim-3:rgba(23,28,19,0.5); --pm-dim-4:rgba(23,28,19,0.42);
+      --pm-line-1:rgba(23,28,19,0.1); --pm-line-2:rgba(23,28,19,0.16); --pm-line-3:rgba(23,28,19,0.28); --pm-fill-1:rgba(23,28,19,0.045);
+      --pm-brass:#8A6716; --pm-brass-2:#6E5210; --pm-brass-3:#7C5C12; --pm-live:#0F7B52; --pm-value:#0F7B52; --pm-caution:#8A5B0F; --pm-alert:#9E3B1E;
+      --pm-promo-1:rgba(214,231,220,0.9); --pm-promo-2:rgba(232,238,231,0.6); --pm-promo-line:rgba(15,123,82,0.22);
+      --pm-src-empty-line:rgba(23,28,19,0.18);
+    }
+  </style>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" height="{{ frameH }}" hint-size="402px,874px">
+<div data-tourneys-root="1" data-screen-label="Tourneys" data-pm-theme="{{ theme }}" style="min-height:100%;display:flex;flex-direction:column;background:var(--pm-bg);color:var(--pm-ink-2);font-family:Archivo,system-ui,sans-serif;position:relative">
+
+  <div style="position:sticky;top:0;z-index:30;padding:58px 18px 13px;background:var(--pm-head);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--pm-line-1)">
+    <div style="display:flex;align-items:center;gap:11px">
+      <div style="flex:1;min-width:0;display:flex;align-items:center;gap:7px">
+        <span style="position:relative;width:6px;height:6px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass);animation:pmPing 2.6s ease-out infinite"></span></span>
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.19em;color:var(--pm-brass)">{{ nowLabel }}</span>
+        <span style="font:500 11px/1 Archivo,sans-serif;color:var(--pm-dim-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ location }}</span>
+      </div>
+      <div onClick="{{ cycleSort }}" style="flex:none;height:44px;padding:0 13px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;gap:8px;cursor:pointer" style-hover="border-color:rgba(201,162,74,0.5)">
+        <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ sortLabel }}</span>
+        <span style="font:400 9px/1 'IBM Plex Mono',monospace;color:var(--pm-brass)">&#8645;</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px">
+      <sc-for list="{{ windows }}" as="w" hint-placeholder-count="4">
+        <sc-if value="{{ w.active }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ w.onClick }}" style="height:48px;box-sizing:border-box;padding:0 4px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.5)">
+            <span style="font:700 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#17130A;white-space:nowrap">{{ w.label }}</span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.7)">{{ w.count }}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ w.inactive }}">
+          <div onClick="{{ w.onClick }}" style="height:48px;box-sizing:border-box;padding:0 4px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)">
+            <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-1);white-space:nowrap">{{ w.label }}</span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1)">{{ w.count }}</span>
+          </div>
+        </sc-if>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:22px 18px 0;display:flex;flex-direction:column;gap:11px">
+    <h1 style="margin:0;font:400 35px/0.98 'Instrument Serif',Georgia,serif;letter-spacing:-0.02em;color:var(--pm-ink)">What to play next</h1>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="position:relative;width:5px;height:5px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-live);animation:pmPing 2.2s ease-out infinite"></span></span>
+      <span style="font:500 11px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:0.02em;color:var(--pm-dim-1)">{{ ticker }}</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;overflow-x:auto;padding:16px 18px 4px;scrollbar-width:none">
+    <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+      <sc-if value="{{ c.active }}"><div onClick="{{ c.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;gap:7px;background:rgba(201,162,74,0.14);border:1px solid var(--pm-brass);cursor:pointer"><span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-brass-2);white-space:nowrap">{{ c.label }}</span><span style="font:400 10px/1 'IBM Plex Mono',monospace;color:var(--pm-brass-2)">&#10003;</span></div></sc-if>
+      <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ true }}"><div onClick="{{ c.onClick }}" style="flex:none;height:38px;padding:0 15px;border-radius:19px;display:flex;align-items:center;background:var(--pm-fill-1);border:1px solid var(--pm-line-1);cursor:pointer" style-hover="border-color:var(--pm-line-3)"><span style="font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-dim-1);white-space:nowrap">{{ c.label }}</span></div></sc-if>
+    </sc-for>
+  </div>
+
+  <div style="padding:14px 18px 0;display:flex;flex-direction:column;gap:22px">
+    <sc-for list="{{ groups }}" as="grp" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass-3)">{{ grp.title }}</span>
+          <span style="flex:1;height:1px;background:var(--pm-line-1)"></span>
+          <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ grp.count }}</span>
+        </div>
+        <sc-for list="{{ grp.items }}" as="t" hint-placeholder-count="3">
+          <div style="border-radius:17px;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border:1px solid {{ t.border }};box-shadow:0 10px 26px -14px rgba(0,0,0,0.85);padding:14px 15px 13px;display:flex;flex-direction:column;gap:12px;opacity:{{ t.fade }}">
+
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="flex:none;font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink)">{{ t.start }}</span>
+              <span style="width:3px;height:3px;flex:none;border-radius:50%;background:var(--pm-line-3)"></span>
+              <span style="flex:1;min-width:0;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-dim-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.day }}</span>
+              <sc-if value="{{ t.isSeries }}">
+                <span style="flex:none;padding:4px 7px;border-radius:5px;background:rgba(201,162,74,0.12);border:1px solid rgba(201,162,74,0.34);font:600 7.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass-2);white-space:nowrap">{{ t.seriesTag }}</span>
+              </sc-if>
+              <sc-if value="{{ t.reliable }}"><span style="flex:none;padding:4px 7px;border-radius:5px;background:rgba(78,203,147,0.08);border:1px solid rgba(78,203,147,0.28);font:600 7.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-live);white-space:nowrap">{{ t.flag }}</span></sc-if>
+              <sc-if value="{{ t.unreliable }}"><span style="flex:none;padding:4px 7px;border-radius:5px;background:rgba(217,162,63,0.1);border:1px solid rgba(217,162,63,0.32);font:600 7.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:var(--pm-caution);white-space:nowrap">{{ t.flag }}</span></sc-if>
+            </div>
+
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                <span style="font:400 21px/1.08 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-wrap:pretty">{{ t.name }}</span>
+                <div onClick="{{ t.onRoom }}" style="display:flex;align-items:center;gap:7px;min-height:26px;cursor:pointer">
+                  <span style="font:500 11px/1 Archivo,sans-serif;color:var(--pm-dim-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.room }}</span>
+                  <span style="font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2);white-space:nowrap">{{ t.roomMeta }}</span>
+                  <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-3)">&#8250;</span>
+                </div>
+              </div>
+              <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+                <span style="font:500 23px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;color:var(--pm-ink)">{{ t.buyin }}</span>
+                <span style="font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-dim-2);white-space:nowrap">{{ t.buyinNote }}</span>
+              </div>
+            </div>
+
+            <span style="font:400 10.5px/1.45 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);padding:9px 10px;border-radius:9px;background:var(--pm-fill-1);text-wrap:pretty">{{ t.working }}</span>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px 12px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">GUARANTEE</span>
+                <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ t.gtdInk }}">{{ t.gtd }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">STRUCTURE</span>
+                <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3)">{{ t.structure }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">LATE REG</span>
+                <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ t.regInk }}">{{ t.lateReg }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-dim-1)">PACE</span>
+                <span style="font:500 12.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3)">{{ t.pace }}</span>
+              </div>
+            </div>
+
+            <sc-if value="{{ t.cancelConfirmed }}">
+              <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;background:rgba(217,96,63,0.08);border:1px solid rgba(217,96,63,0.34)">
+                <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:var(--pm-alert)">CANCELLED TONIGHT</span>
+                <span style="flex:1;min-width:0;font:400 10.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-3);text-wrap:pretty">{{ t.cancelText }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ t.cancelPending }}">
+              <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;border:1px dashed rgba(78,203,147,0.2)">
+                <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:rgba(78,203,147,0.62);white-space:nowrap">PLAYER-REPORTED</span>
+                <span style="flex:1;min-width:0;font:400 11px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">1 report · cancelled · unconfirmed</span>
+                <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ t.cancelAge }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ t.hasVendorLive }}">
+              <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;background:rgba(201,162,74,0.07);border:1px solid rgba(201,162,74,0.32)">
+                <span style="flex:none;padding:4px 6px;border-radius:5px;background:rgba(201,162,74,0.2);font:700 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em;color:var(--pm-brass-2)">OFFICIAL</span>
+                <span style="flex:1;min-width:0;font:500 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.liveText }}</span>
+                <span style="position:relative;width:5px;height:5px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass-2)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--pm-brass-2);animation:pmPing 2.4s ease-out infinite"></span></span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ t.hasCrowdLive }}">
+              <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;background:rgba(78,203,147,0.05);border:1px dashed rgba(78,203,147,0.36)">
+                <span style="flex:none;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.15em;color:var(--pm-live);white-space:nowrap">PLAYER-REPORTED</span>
+                <span style="flex:1;min-width:0;font:500 11.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.liveText }}</span>
+                <span style="flex:none;font:400 10px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ t.liveAge }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ t.liveEmpty }}">
+              <div style="display:flex;align-items:center;gap:10px;padding:6px 6px 6px 11px;border-radius:11px;border:1px dashed var(--pm-src-empty-line)">
+                <span style="flex:1;min-width:0;font:400 11px/1.35 Archivo,sans-serif;color:var(--pm-dim-1)">{{ t.emptyLine }}</span>
+                <div onClick="{{ t.onReport }}" style="flex:none;height:44px;box-sizing:border-box;padding:0 13px;border-radius:10px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">REPORT</div>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;align-items:center;gap:9px;padding-top:2px;border-top:1px solid var(--pm-line-1)">
+              <sc-if value="{{ t.added }}">
+                <div onClick="{{ t.onCalendar }}" style="flex:1;height:44px;margin-top:9px;box-sizing:border-box;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(201,162,74,0.16);border:1px solid var(--pm-brass);cursor:pointer">
+                  <span style="font:600 10px/1 'IBM Plex Mono',monospace;color:var(--pm-brass-2)">&#10003;</span>
+                  <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass-2);white-space:nowrap">IN YOUR CALENDAR</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ t.notAdded }}" hint-placeholder-val="{{ true }}">
+                <div onClick="{{ t.onCalendar }}" style="flex:1;height:44px;margin-top:9px;box-sizing:border-box;border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(201,162,74,0.42);cursor:pointer" style-hover="background:rgba(201,162,74,0.12)">
+                  <span style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:var(--pm-brass);white-space:nowrap">ADD TO CALENDAR</span>
+                </div>
+              </sc-if>
+              <div onClick="{{ t.onRemind }}" style="flex:none;height:44px;margin-top:9px;box-sizing:border-box;padding:0 13px;border-radius:12px;border:1px solid var(--pm-line-2);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:{{ t.remindInk }}" style-hover="border-color:var(--pm-line-3)">{{ t.remindLabel }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+
+    <sc-if value="{{ isEmpty }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:13px;padding:34px 20px;border-radius:17px;border:1px dashed var(--pm-src-empty-line)">
+        <span style="font:400 21px/1.2 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">Nothing in that window</span>
+        <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:250px">No tournament matches those filters. Vegas dailies cluster around 11a, 2p and 7p — try a wider window.</span>
+        <div onClick="{{ clearFilters }}" style="height:44px;padding:0 17px;border-radius:12px;border:1px solid rgba(201,162,74,0.42);display:flex;align-items:center;cursor:pointer;font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-brass)" style-hover="background:rgba(201,162,74,0.12)">CLEAR FILTERS</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="padding:24px 18px 0;display:flex;flex-direction:column;gap:8px">
+    <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:var(--pm-dim-1)">HOW WE READ A BUY-IN</span>
+    <span style="font:400 11px/1.5 Archivo,sans-serif;color:var(--pm-dim-1);text-wrap:pretty">{{ methodology }}</span>
+  </div>
+
+  <div style="height:150px"></div>
+
+  <div style="position:sticky;bottom:0;margin-top:auto;z-index:30;background:var(--pm-nav);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--pm-line-1)">
+    <sc-if value="{{ sheetOpen }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;height:{{ frameH }}px;z-index:60;display:flex;flex-direction:column;justify-content:flex-end;background:var(--pm-scrim);animation:pmFade .18s ease both">
+        <div onClick="{{ closeSheet }}" style="flex:1"></div>
+        <div style="border-radius:22px 22px 0 0;background:linear-gradient(180deg,var(--pm-card-1) 0%,var(--pm-card-2) 100%);border-top:1px solid rgba(201,162,74,0.28);box-shadow:0 -20px 44px -14px rgba(0,0,0,0.95);padding:16px 16px 30px;display:flex;flex-direction:column;gap:15px">
+          <sc-if value="{{ sheetAsk }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:0.2em;color:var(--pm-brass)">REPORT EVENT · ANONYMOUS</span>
+                <span style="font:400 24px/1.12 'Instrument Serif',Georgia,serif;color:var(--pm-ink)">{{ sheetTitle }}</span>
+                <span style="font:400 11px/1.3 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:var(--pm-dim-2)">{{ sheetSub }}</span>
+              </div>
+              <div onClick="{{ closeSheet }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--pm-line-2);display:flex;align-items:center;justify-content:center;cursor:pointer;font:400 16px/1 'IBM Plex Mono',monospace;color:var(--pm-dim-2)">&times;</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+              <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="6">
+                <div onClick="{{ b.onClick }}" style="height:56px;border-radius:13px;border:1px solid {{ b.line }};background:{{ b.bg }};display:flex;align-items:center;justify-content:center;text-align:center;padding:0 8px;cursor:pointer;font:600 10.5px/1.25 'IBM Plex Mono',monospace;letter-spacing:0.09em;color:{{ b.ink }}" style-hover="border-color:rgba(201,162,74,0.6);background:rgba(201,162,74,0.1);color:var(--pm-brass-2)" style-active="transform:translateY(1px)">{{ b.label }}</div>
+              </sc-for>
+            </div>
+            <span style="font:400 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:0.06em;color:var(--pm-dim-2);text-wrap:pretty">One tap · no account. Field reports expire in 45 minutes; a cancellation needs a second player and then stands for the night.</span>
+          </sc-if>
+          <sc-if value="{{ sheetThanks }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:13px;padding:14px 0 6px;animation:pmFade .22s ease both">
+              <span style="width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#E2BE6C,#C89B3D);display:flex;align-items:center;justify-content:center;font:600 22px/1 'IBM Plex Mono',monospace;color:#17130A;box-shadow:0 0 0 6px rgba(201,162,74,0.14),0 12px 26px -10px rgba(201,162,74,0.75)">&#10003;</span>
+              <span style="font:400 24px/1.15 'Instrument Serif',Georgia,serif;color:var(--pm-ink);text-align:center">{{ thanksLine }}</span>
+              <span style="font:400 12px/1.45 Archivo,sans-serif;color:var(--pm-dim-1);text-align:center;max-width:260px">{{ thanksSub }}</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ toast }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:100%;margin-bottom:{{ toastLift }}px;padding:13px 15px;border-radius:13px;background:var(--pm-toast);border:1px solid rgba(201,162,74,0.28);box-shadow:0 14px 34px -10px rgba(0,0,0,0.9);font:500 12.5px/1.35 Archivo,sans-serif;color:var(--pm-ink-2);animation:pmFade .2s ease both">{{ toast }}</div>
+    </sc-if>
+    <sc-if value="{{ hasAdded }}">
+      <div style="padding:11px 14px 9px;border-bottom:1px solid var(--pm-line-1)">
+        <div onClick="{{ exportCalendar }}" style="height:58px;border-radius:14px;padding:0 16px;display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,#E2BE6C 0%,#C89B3D 55%,#BB8E30 100%);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,247,222,0.55),0 9px 24px -11px rgba(201,162,74,0.8)" style-hover="filter:brightness(1.05)" style-active="transform:translateY(1px)">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <span style="font:700 12.5px/1 Archivo,sans-serif;letter-spacing:0.1em;color:#17130A">{{ exportCta }}</span>
+            <span style="font:500 10.5px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:rgba(23,19,10,0.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ exportSub }}</span>
+          </div>
+          <span style="flex:none;font:400 17px/1 'IBM Plex Mono',monospace;color:rgba(23,19,10,0.5)">&#8250;</span>
+        </div>
+      </div>
+    </sc-if>
+    <div style="padding:9px 6px 30px;display:flex">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.onClick }}" style="flex:1;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer">
+          <sc-if value="{{ n.active }}" hint-placeholder-val="{{ true }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:var(--pm-brass)"></span>
+            <span style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-ink)">{{ n.label }}</span>
+          </sc-if>
+          <sc-if value="{{ n.inactive }}">
+            <span style="width:4px;height:4px;border-radius:50%;background:transparent"></span>
+            <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.13em;color:var(--pm-dim-1)">{{ n.label }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:940},&quot;access&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;off&quot;,&quot;on&quot;],&quot;default&quot;:&quot;off&quot;,&quot;tsType&quot;:&quot;'off' | 'on'&quot;,&quot;section&quot;:&quot;Live data&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;location&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;The Cosmopolitan&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Context&quot;},&quot;frameHeight&quot;:{&quot;editor&quot;:null,&quot;default&quot;:874,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { win: 'now', chips: [], sort: 'soonest', tick: 0, added: {}, reminded: {},
+    claims: { 4: { n: 1, mins: 12 } }, reports: {}, sheet: null, sheetDone: false, sheetOutcome: null, toast: null };
+
+  WINDOWS = [
+    { id: 'now', label: 'NOW' }, { id: 'soon', label: 'NEXT 2H' },
+    { id: 'tonight', label: 'TONIGHT' }, { id: 'tomorrow', label: 'TOMORROW' },
+  ];
+  CHIPS = [
+    { id: 'reg', label: 'Late reg open' }, { id: 'cheap', label: 'Under $200' },
+    { id: 'deep', label: 'Deep stack' }, { id: 'walk', label: 'Walkable' }, { id: 'series', label: 'Series' },
+  ];
+  BUCKETS = [
+    { id: 'level', label: 'CURRENT LEVEL' }, { id: 'left', label: 'PLAYERS LEFT' },
+    { id: 'pool', label: 'PRIZE POOL' }, { id: 'regopen', label: 'LATE REG OPEN' },
+    { id: 'regclosed', label: 'LATE REG CLOSED' }, { id: 'cancel', label: 'CANCELLED TONIGHT', hot: true },
+  ];
+
+  /* PLACEHOLDER schedule — entry/fee split, guarantees and structures are plausible, not sourced */
+  EVENTS = [
+    { id: 1, name: 'Daily Deep Stack', room: 'Venetian', area: 'strip', dist: 1.3, walk: 26, drive: 7, win: 'now',
+      start: '11:00', day: 'STARTED 40M AGO', entry: 360, fee: 40, stack: 25000, level: 40, regLevel: 9, regTime: '3:00p',
+      gtd: 40000, flag: 'TYPICALLY RUNS', kind: 'reliable', vendor: true, live: 'Level 4 · 86 left · $34,400 pool', verifiedH: 2 },
+    { id: 2, name: 'Noon Turbo', room: 'ARIA', area: 'strip', dist: 0.2, walk: 4, win: 'now',
+      start: '12:00', day: 'STARTS IN 20M', entry: 135, fee: 15, stack: 15000, level: 15, regLevel: 6, regTime: '1:30p',
+      gtd: 5000, flag: 'TYPICALLY RUNS', kind: 'reliable', crowd: { text: 'Reg open · 3 tables', mins: 6 }, verifiedH: 3 },
+    { id: 3, name: 'Wynn Classic · Day 1B', room: 'Wynn/Encore', area: 'strip', dist: 1.7, walk: 34, drive: 8, win: 'soon',
+      start: '12:00', day: 'TODAY', entry: 1500, fee: 100, stack: 50000, level: 40, regLevel: 12, regTime: '6:40p',
+      gtd: 150000, flag: 'SERIES ONLY', kind: 'series', series: 'WYNN CLASSIC', verifiedH: 1 },
+    { id: 4, name: 'Afternoon $125', room: 'Horseshoe', area: 'strip', dist: 0.6, walk: 12, win: 'soon',
+      start: '14:00', day: 'TODAY', entry: 110, fee: 15, stack: 12000, level: 20, regLevel: 8, regTime: '5:00p',
+      gtd: 0, flag: 'OFTEN CANCELS', kind: 'unreliable', verifiedH: 9 },
+    { id: 5, name: 'WSOP Circuit · Monster Stack', room: 'WSOP · Paris', area: 'strip', dist: 0.5, walk: 10, win: 'soon',
+      start: '13:00', day: 'TODAY', entry: 550, fee: 50, stack: 40000, level: 40, regLevel: 12, regTime: '7:20p',
+      gtd: 250000, flag: 'SERIES ONLY', kind: 'series', series: 'WSOP', gtdUnverified: true, verifiedH: 4 },
+    { id: 6, name: 'Evening $240', room: 'ARIA', area: 'strip', dist: 0.2, walk: 4, win: 'tonight',
+      start: '19:00', day: 'TONIGHT', entry: 215, fee: 25, stack: 20000, level: 20, regLevel: 8, regTime: '10:00p',
+      gtd: 8000, flag: 'OFTEN CANCELS', kind: 'unreliable', verifiedH: 3 },
+    { id: 7, name: 'Nightly $400', room: 'Wynn/Encore', area: 'strip', dist: 1.7, walk: 34, drive: 8, win: 'tonight',
+      start: '18:00', day: 'TONIGHT', entry: 365, fee: 35, stack: 30000, level: 30, regLevel: 9, regTime: '9:30p',
+      gtd: 20000, flag: 'TYPICALLY RUNS', kind: 'reliable', verifiedH: 1 },
+    { id: 8, name: 'Mixed Game Nightly', room: 'Orleans', area: 'offstrip', dist: 2.7, drive: 9, win: 'tonight',
+      start: '19:00', day: 'TONIGHT', entry: 120, fee: 15, stack: 15000, level: 25, regLevel: 6, regTime: '9:00p',
+      gtd: 3000, flag: 'TYPICALLY RUNS', kind: 'reliable', verifiedH: 7 },
+    { id: 9, name: 'Late Night Turbo', room: 'MGM Grand', area: 'strip', dist: 1.1, walk: 22, win: 'tonight',
+      start: '22:00', day: 'TONIGHT', entry: 110, fee: 15, stack: 10000, level: 12, regLevel: 6, regTime: '11:15p',
+      gtd: 0, flag: 'OFTEN CANCELS', kind: 'unreliable', verifiedH: 40 },
+    { id: 10, name: 'Sunday Deep Stack', room: 'South Point', area: 'locals', dist: 7.6, drive: 17, win: 'tomorrow',
+      start: '11:00', day: 'TOMORROW', entry: 180, fee: 20, stack: 20000, level: 30, regLevel: 9, regTime: '2:30p',
+      gtd: 15000, flag: 'TYPICALLY RUNS', kind: 'reliable', verifiedH: 12 },
+    { id: 11, name: 'Wynn Classic · Day 1C', room: 'Wynn/Encore', area: 'strip', dist: 1.7, walk: 34, drive: 8, win: 'tomorrow',
+      start: '12:00', day: 'TOMORROW', entry: 1500, fee: 100, stack: 50000, level: 40, regLevel: 12, regTime: '6:40p',
+      gtd: 150000, flag: 'SERIES ONLY', kind: 'series', series: 'WYNN CLASSIC', verifiedH: 1 },
+    { id: 12, name: 'Bounty Builder', room: 'Golden Nugget', area: 'downtown', dist: 4.4, drive: 13, win: 'tomorrow',
+      start: '18:00', day: 'TOMORROW', entry: 100, fee: 20, bounty: 30, stack: 12000, level: 20, regLevel: 8, regTime: '9:00p',
+      gtd: 0, flag: 'TYPICALLY RUNS', kind: 'reliable', verifiedH: 20 },
+  ];
+
+  GROUPS = [
+    { id: 'now', title: 'RIGHT NOW' }, { id: 'soon', title: 'NEXT TWO HOURS' },
+    { id: 'tonight', title: 'TONIGHT' }, { id: 'tomorrow', title: 'TOMORROW' },
+  ];
+  NAV = [{ id: 'rooms', label: 'ROOMS' }, { id: 'tourneys', label: 'TOURNEYS' }, { id: 'cash', label: 'CASH' }, { id: 'promos', label: 'PROMOS' }, { id: 'me', label: 'ME' }];
+  SORTS = [{ id: 'soonest', label: 'SOONEST' }, { id: 'cheapest', label: 'BUY-IN' }, { id: 'value', label: 'LOWEST FEE' }, { id: 'nearest', label: 'NEAREST' }];
+  CROWD_TTL = 45;
+
+  componentDidMount() { this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 1000); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.toastTimer); clearTimeout(this.sheetTimer); }
+
+  flash(msg) {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2800);
+  }
+
+  money(n) { return '$' + n.toLocaleString('en-US'); }
+  feePct(e) { return Math.round((e.fee / (e.entry + e.fee + (e.bounty || 0))) * 100); }
+  pace(e) {
+    const ratio = e.stack / e.level;
+    return ratio >= 800 ? 'DEEP' : ratio >= 500 ? 'STANDARD' : 'TURBO';
+  }
+  cancelClaim(id) { return this.state.claims[id] || null; }
+  cancelled(id) { const c = this.cancelClaim(id); return !!(c && c.n >= 2); }
+
+  submit(bucketId) {
+    this.setState(st => {
+      const id = st.sheet;
+      if (bucketId === 'cancel') {
+        const prev = st.claims[id];
+        const n = prev ? prev.n + 1 : 1;
+        return { claims: Object.assign({}, st.claims, { [id]: { n: n, mins: 0 } }), sheetDone: true, sheetOutcome: n >= 2 ? 'confirmed' : 'pending' };
+      }
+      const label = (this.BUCKETS.filter(b => b.id === bucketId)[0] || {}).label || '';
+      return { reports: Object.assign({}, st.reports, { [id]: { text: label.charAt(0) + label.slice(1).toLowerCase(), at: st.tick } }), sheetDone: true, sheetOutcome: 'ok' };
+    });
+    clearTimeout(this.sheetTimer);
+    this.sheetTimer = setTimeout(() => this.setState({ sheet: null, sheetDone: false }), 2700);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const accessOn = this.props.access === 'on';
+
+    const pass = e => {
+      if (st.chips.indexOf('reg') >= 0 && this.cancelled(e.id)) return false;
+      if (st.chips.indexOf('cheap') >= 0 && (e.entry + e.fee) >= 200) return false;
+      if (st.chips.indexOf('deep') >= 0 && this.pace(e) !== 'DEEP') return false;
+      if (st.chips.indexOf('walk') >= 0 && !(e.walk && e.walk <= 25)) return false;
+      if (st.chips.indexOf('series') >= 0 && e.kind !== 'series') return false;
+      return true;
+    };
+    const all = this.EVENTS.filter(pass);
+
+    const sortFn = (a, b) => {
+      if (st.sort === 'cheapest') return (a.entry + a.fee) - (b.entry + b.fee);
+      if (st.sort === 'value') return this.feePct(a) - this.feePct(b);
+      if (st.sort === 'nearest') return a.dist - b.dist;
+      return this.WINDOWS.map(w => w.id).indexOf(a.win) - this.WINDOWS.map(w => w.id).indexOf(b.win) || a.start.localeCompare(b.start);
+    };
+
+    const decorate = e => {
+      const cancelled = this.cancelled(e.id);
+      const claim = this.cancelClaim(e.id);
+      const mine = st.reports[e.id];
+      const mineMins = mine ? Math.floor((st.tick - mine.at) / 60) : null;
+      const crowdFresh = mine && mineMins <= this.CROWD_TTL ? { text: mine.text, age: (mineMins < 1 ? 'you · just now' : 'you · ' + mineMins + 'm ago') }
+        : (e.crowd && (e.crowd.mins + Math.floor(st.tick / 60)) <= this.CROWD_TTL
+            ? { text: e.crowd.text, age: (e.crowd.mins + Math.floor(st.tick / 60)) + 'm ago' } : null);
+      const vendorOn = !!e.vendor && accessOn;
+      return {
+        start: e.start,
+        day: e.day,
+        name: e.name,
+        room: e.room,
+        roomMeta: e.dist.toFixed(1) + ' mi · ' + (e.walk && e.walk <= 25 ? e.walk + ' min walk' : (e.drive || Math.round(e.dist * 2.4)) + ' min drive'),
+        buyin: this.money(e.entry + e.fee + (e.bounty || 0)),
+        buyinNote: e.bounty ? 'ENTRY + FEE + BOUNTY' : 'ENTRY + FEE',
+        working: this.money(e.entry) + ' to the prize pool + ' + this.money(e.fee) + ' fee'
+          + (e.bounty ? ' + ' + this.money(e.bounty) + ' bounty' : '')
+          + ' — the house keeps ' + this.feePct(e) + '%',
+        gtd: e.gtd ? (e.gtdUnverified ? '~' : '') + this.money(e.gtd) + ' GTD' : 'No guarantee',
+        gtdInk: e.gtdUnverified ? 'var(--pm-dim-1)' : e.gtd ? 'var(--pm-ink-3)' : 'var(--pm-dim-1)',
+        structure: (e.stack / 1000) + 'K · ' + e.level + '-min levels',
+        lateReg: 'Level ' + e.regLevel + ' · ' + e.regTime,
+        regInk: 'var(--pm-ink-3)',
+        pace: this.pace(e),
+        isSeries: e.kind === 'series',
+        seriesTag: e.series || 'SERIES',
+        reliable: e.kind === 'reliable',
+        unreliable: e.kind === 'unreliable',
+        flag: e.flag,
+        border: cancelled ? 'rgba(217,96,63,0.34)' : e.kind === 'series' ? 'rgba(201,162,74,0.3)' : 'var(--pm-line-1)',
+        fade: cancelled ? '0.72' : '1',
+        cancelConfirmed: cancelled,
+        cancelText: 'Confirmed by ' + (claim ? claim.n : 2) + ' players · stands for tonight, not on a 45-minute clock',
+        cancelPending: !!(claim && claim.n < 2),
+        cancelAge: claim ? ((claim.mins || 0) + Math.floor(st.tick / 60) < 1 ? 'just now' : ((claim.mins || 0) + Math.floor(st.tick / 60)) + 'm ago') : '',
+        hasVendorLive: vendorOn && !cancelled,
+        hasCrowdLive: !vendorOn && !!crowdFresh && !cancelled,
+        liveText: vendorOn ? e.live : (crowdFresh ? crowdFresh.text : ''),
+        liveAge: crowdFresh ? crowdFresh.age : '',
+        liveEmpty: !vendorOn && !crowdFresh && !cancelled,
+        emptyLine: e.win === 'now' ? 'No field report yet — level, players left, reg still open?' : 'Nothing reported yet on this one',
+        added: !!st.added[e.id],
+        notAdded: !st.added[e.id],
+        onCalendar: () => this.setState(s => {
+          const on = !s.added[e.id];
+          return { added: Object.assign({}, s.added, { [e.id]: on }),
+            toast: on ? e.name + ' · ' + e.start + ' added to your calendar.' : 'Removed from your calendar.' };
+        }),
+        remindLabel: st.reminded[e.id] ? 'REMINDER SET' : 'REMIND ME',
+        remindInk: st.reminded[e.id] ? 'var(--pm-brass-2)' : 'var(--pm-dim-1)',
+        onRemind: () => this.setState(s => {
+          const on = !s.reminded[e.id];
+          return { reminded: Object.assign({}, s.reminded, { [e.id]: on }),
+            toast: on ? 'Saved on this device — no push in this build, check ME.' : 'Reminder removed.' };
+        }),
+        onReport: () => this.setState({ sheet: e.id, sheetDone: false }),
+        onRoom: () => this.flash(e.room + ' · opening room detail.'),
+      };
+    };
+
+    const groups = this.GROUPS.map(g => {
+      const items = all.filter(e => e.win === g.id).sort(sortFn);
+      return { title: g.title, count: items.length + (items.length === 1 ? ' EVENT' : ' EVENTS'), items: items.map(decorate), any: items.length > 0 };
+    }).filter(g => g.any);
+
+    const addedIds = Object.keys(st.added).filter(k => st.added[k]);
+    const sheetEvent = this.EVENTS.filter(e => e.id === st.sheet)[0];
+    const running = this.EVENTS.filter(e => e.win === 'now' && !this.cancelled(e.id)).length;
+    const today = this.EVENTS.filter(e => e.win !== 'tomorrow' && !this.cancelled(e.id)).length;
+    const cheapest = all.slice().sort((a, b) => this.feePct(a) - this.feePct(b))[0];
+
+    return {
+      frameH: Number(this.props.frameHeight) || 874,
+      theme: this.props.theme === 'light' ? 'light' : 'dark',
+      location: this.props.location || 'The Cosmopolitan',
+      nowLabel: '12:20P · FROM',
+      ticker: today + ' events today · ' + running + ' in the air now' + (cheapest ? ' · lowest fee ' + this.feePct(cheapest) + '% at ' + cheapest.room : ''),
+      windows: this.WINDOWS.map(w => ({
+        label: w.label,
+        count: this.EVENTS.filter(e => e.win === w.id).length,
+        active: st.win === w.id, inactive: st.win !== w.id,
+        onClick: () => { this.setState({ win: w.id }); this.jump(w.id); },
+      })),
+      chips: this.CHIPS.map(c => ({
+        label: c.label,
+        active: st.chips.indexOf(c.id) >= 0, inactive: st.chips.indexOf(c.id) < 0,
+        onClick: () => this.setState(s => ({ chips: s.chips.indexOf(c.id) >= 0 ? s.chips.filter(x => x !== c.id) : s.chips.concat([c.id]) })),
+      })),
+      sortLabel: (this.SORTS.filter(s => s.id === st.sort)[0] || this.SORTS[0]).label,
+      cycleSort: () => this.setState(s => {
+        const i = this.SORTS.map(x => x.id).indexOf(s.sort);
+        return { sort: this.SORTS[(i + 1) % this.SORTS.length].id };
+      }),
+      groups: groups,
+      isEmpty: all.length === 0,
+      clearFilters: () => this.setState({ chips: [] }),
+      methodology: 'Every buy-in is split into the part that reaches the prize pool and the part the house keeps, then stated as a percentage of the TOTAL buy-in — $40 of a $400 entry is 10%. Some players and rooms quote fee against the prize pool instead ($40 of $360 is 11.1%); both describe the same event, so if our number looks low, that is why. A $200 event with a $40 fee is a different product from one with a $15 fee. Guarantees we have not confirmed are tilde\u2019d, never stated flat. Schedules are daily data; level, players left and prize pool are live where a room gives us a feed and player-reported otherwise. Pace is derived from starting stack against level length, not from what the room calls it.',
+      hasAdded: addedIds.length > 0,
+      exportCta: 'EXPORT ' + addedIds.length + (addedIds.length === 1 ? ' EVENT' : ' EVENTS'),
+      exportSub: 'Adds to your phone calendar · no permission needed',
+      exportCalendar: () => this.flash(addedIds.length + (addedIds.length === 1 ? ' event' : ' events') + ' exported — they are in your calendar app now.'),
+      toastLift: addedIds.length > 0 ? 182 : 104,
+      sheetOpen: st.sheet !== null,
+      sheetAsk: st.sheet !== null && !st.sheetDone,
+      sheetThanks: st.sheet !== null && st.sheetDone,
+      sheetTitle: sheetEvent ? sheetEvent.name + ' at ' + sheetEvent.room : '',
+      sheetSub: sheetEvent ? sheetEvent.start + ' · ' + this.money(sheetEvent.entry + sheetEvent.fee) + ' · late reg ' + sheetEvent.regTime : '',
+      buckets: this.BUCKETS.map(b => ({
+        label: b.label,
+        bg: b.hot ? 'rgba(217,96,63,0.07)' : 'var(--pm-fill-1)',
+        line: b.hot ? 'rgba(217,96,63,0.36)' : 'var(--pm-line-2)',
+        ink: b.hot ? 'var(--pm-alert)' : 'var(--pm-ink-2)',
+        onClick: () => this.submit(b.id),
+      })),
+      thanksLine: st.sheetOutcome === 'pending' ? 'Logged — one more confirms it'
+        : st.sheetOutcome === 'confirmed' ? 'Cancellation confirmed'
+        : 'Thanks — that event is fresh again',
+      thanksSub: st.sheetOutcome === 'pending' ? 'A wrong cancellation stops people leaving the house, so it shows as unconfirmed until a second player agrees.'
+        : st.sheetOutcome === 'confirmed' ? 'It now reads as cancelled for tonight and will not expire on the 45-minute clock.'
+        : 'Everyone deciding what to play next just got your update.',
+      closeSheet: () => { clearTimeout(this.sheetTimer); this.setState({ sheet: null, sheetDone: false }); },
+      navItems: this.NAV.map(n => ({
+        label: n.label, active: n.id === 'tourneys', inactive: n.id !== 'tourneys',
+        onClick: () => { if (n.id !== 'tourneys') this.flash(n.label.charAt(0) + n.label.slice(1).toLowerCase() + ' is next up in the build.'); },
+      })),
+      toast: st.toast,
+    };
+  }
+
+  jump(win) {
+    const root = document.querySelector('[data-tourneys-root]');
+    if (!root) return;
+    const titles = { now: 'RIGHT NOW', soon: 'NEXT TWO HOURS', tonight: 'TONIGHT', tomorrow: 'TOMORROW' };
+    const spans = Array.prototype.slice.call(root.querySelectorAll('span'));
+    const target = spans.filter(s => s.textContent === titles[win])[0];
+    const scroller = root.parentElement;
+    if (!target || !scroller) return;
+    const header = root.firstElementChild;
+    const chrome = header ? header.getBoundingClientRect().height : 170;
+    const row = target.parentElement;
+    scroller.scrollTop = Math.max(0, row.offsetTop - (chrome + 14));
+  }
+}
+</script>
+</body>
+</html>
