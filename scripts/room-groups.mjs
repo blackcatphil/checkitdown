@@ -28,6 +28,17 @@ const FETCHED = '2026-08-04'
 const W = 'https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Las_Vegas'
 const WNV = 'https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Nevada'
 const wiki = (page) => `https://en.wikipedia.org/wiki/${page}`
+/**
+ * A NAMED OSM polygon carrying a height tag IS a citable source: it has a
+ * stable URL, a version history with timestamps, and — crucially — an
+ * IDENTIFIABLE SUBJECT. That is more provenance than several facts already
+ * seeded here.
+ *
+ * The qualifier does all the work. An UNNAMED polygon has no identifiable
+ * subject: `way/316302064` identifies a shape, not a building, so a citation
+ * attached to it certifies nothing.
+ */
+const osm = (id) => `https://www.openstreetmap.org/way/${id}`
 
 /**
  * slug -> components. `osm` is the way id in scripts/.footprints/<slug>.json.
@@ -47,7 +58,12 @@ const GROUPS = {
     { osm: 30424125, file: '_palazzo', name: 'Palazzo', height: 196, src: W, note: '642 ft, 50 floors' },
   ],
   aria: [
-    { osm: 134930092, name: 'ARIA tower', height: 183, src: wiki('Aria_Resort_%26_Casino'), note: '600 ft, 48 floors. UNNAMED in OSM — identified by height and position, not by name' },
+    /* WEAKEST IDENTIFICATION IN THE SET, and flagged as such. The polygon is
+       UNNAMED, so it is identified by its own OSM height tag (183 m) matching
+       the Wikipedia figure — corroboration by number, not by name. That is
+       better than Red Rock, where nothing corroborates the choice at all, and
+       weaker than Palazzo, where two sources agree about a NAMED building. */
+    { osm: 134930092, name: 'ARIA tower', height: 183, src: wiki('Aria_Resort_%26_Casino'), identifiedBy: 'height-match on an unnamed polygon', note: '600 ft, 48 floors' },
     { osm: 52175576, name: 'ARIA podium', roomBuilding: true, note: 'the containment match: 20 m, and the reason ARIA read 20 m three times' },
   ],
   bellagio: [
@@ -66,17 +82,18 @@ const GROUPS = {
     { osm: 118347176, name: 'Delano', height: 148, src: W, note: '485 ft, 45 floors. OSM names this polygon "W Las Vegas" — same tower, different brand era; the mismatch is recorded rather than silently equated' },
   ],
   'caesars-palace': [
-    { osm: 1176928048, name: 'Augustus Tower', height: 105, src: W, note: '345 ft, 26 floors. OSM tags 111 m — minor disagreement, cited value used' },
-    { osm: 134949098, name: 'Julius Tower', height: 45, src: W, note: '14 floors, ~45 m. OSM tags 52 m' },
-    { osm: 134949402, name: 'Nobu / Centurion', height: 45, src: W, note: '14 floors, ~45 m. OSM tags 40 m' },
+    /* Where BOTH sources exist and disagree, both are recorded — the same
+       treatment Bellagio gets. Applying it to Bellagio and not here was the
+       inconsistency: OSM cannot be a source in one row and not in another. */
+    { osm: 1176928048, name: 'Augustus Tower', height: 105, src: W, conflict: { value: 111, source: osm(1176928048), note: '26 floors either way' }, note: '345 ft, 26 floors' },
+    { osm: 134949098, name: 'Julius Tower', height: 45, src: W, conflict: { value: 52, source: osm(134949098), note: 'Wikipedia gives floors (14); OSM gives metres' }, note: '14 floors, ~45 m' },
+    { osm: 134949402, name: 'Nobu / Centurion', height: 45, src: W, conflict: { value: 40, source: osm(134949402), note: 'Wikipedia gives floors (14); OSM gives metres' }, note: '14 floors, ~45 m' },
     { osm: 115672893, name: 'Caesars Palace podium', roomBuilding: true },
-    // Palace, Octavius and Forum Towers are named in the group but NOT seeded:
-    // no height was cited for them this session. They render flat, including
-    // Palace at OSM's 133 m — the property's tallest. That is the rule working
-    // and it is visibly odd, so it is flagged rather than quietly patched.
-    { osm: 134944648, name: 'Palace Tower' },
-    { osm: 126267789, name: 'Octavius Tower' },
-    { osm: 134949102, name: 'Forum Tower' },
+    /* NAMED OSM polygons with height tags — citable under the rule above, so
+       the property's tallest tower no longer sits flat beside a shorter one. */
+    { osm: 134944648, name: 'Palace Tower', height: 133, src: osm(134944648), note: '30 floors. OSM-sourced; no Wikipedia figure cited this session' },
+    { osm: 126267789, name: 'Octavius Tower', height: 107, src: osm(126267789), note: '23 floors. OSM-sourced' },
+    { osm: 134949102, name: 'Forum Tower', height: 71, src: osm(134949102), note: '22 floors. OSM-sourced' },
   ],
   horseshoe: [
     { osm: 116867081, name: 'Horseshoe Resort Tower', height: 83, src: 'https://www.caesars.com/horseshoe-las-vegas', roomBuilding: true, note: '26 floors, ~83 m. The 112 m polygon nearby is Le Boulevard At Paris — a DIFFERENT property, and the neighbour that contaminated the earlier room table' },
@@ -120,6 +137,7 @@ for (const [slug, comps] of Object.entries(GROUPS)) {
           height_verified_at: null,
         } : {}),
         ...(c.conflict ? { height_conflict: c.conflict } : {}),
+        ...(c.identifiedBy ? { identified_by: c.identifiedBy } : {}),
         isRoomBuilding: Boolean(c.roomBuilding),
         note: c.note ?? null,
       },

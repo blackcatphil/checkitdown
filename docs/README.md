@@ -85,6 +85,35 @@ knowing when your evidence has a timestamp and saying so.
 > Sourcing heights for 1,283 corridor buildings was never realistic — which is
 > precisely why we took what the tiles gave. Seventeen is tractable.
 
+**A CITED HEIGHT ON A GUESSED POLYGON IS THE ARIA ERROR WEARING A CITATION.**
+Two facts have to be sourced — *which polygon*, and *how tall* — and one without
+the other is **worse than neither**, because the citation lends false confidence
+to the guess. Red Rock's ~60 m is properly cited and still not seeded: no
+polygon there is named, so picking one means choosing the largest unnamed shape
+and calling it the tower.
+
+**A NAMED OSM polygon carrying a height tag IS a citable source.** It has a
+stable URL, a version history with timestamps, and an identifiable subject —
+more provenance than several facts already seeded here. The qualifier does all
+the work: an **unnamed** polygon has no identifiable subject, so
+`way/316302064` identifies a shape, not a building, and a citation attached to
+it certifies nothing.
+
+*This rule was arrived at by catching an inconsistency:* OSM's 120 m was being
+recorded as a citable figure in Bellagio's conflict while OSM's 133 m on a named
+Palace Tower was refused — so Caesars' tallest tower rendered flat beside a
+shorter one. **A source cannot count in one row and not in another.** Applying
+one rule to both seats Caesars properly and leaves Bellagio a genuine
+disagreement between two sources rather than a question about whether one counts.
+
+**Palazzo is the counter-case worth keeping.** OSM independently tags it 196 m,
+matching the Wikipedia figure, on a **named** building — two sources agreeing
+about an identified thing. That is exactly what ARIA's withdrawn cross-check was
+not: same shape, opposite outcome, and **the difference is whether the thing
+being agreed about has a name.** ARIA's tower is seeded on the weaker basis —
+an unnamed polygon whose own height tag matches the citation — and carries
+`identified_by` saying so.
+
 A footprint says *"there is a building here and we do not know its height."* A
 default extrusion says *"this building is 12 m tall"* — a claim nobody made.
 That is the inflation path again, which was deleted once already for fabricating
@@ -444,7 +473,7 @@ room is *inside*, which is what hover keys on — while the group supplies the
 skyline. Neither question replaces the other. Hovering any component lights the
 whole property: ARIA's podium and its tower are one building to a reader.
 
-**13 components across 8 properties carry a cited height and extrude.** Every
+**16 components across 8 properties carry a cited height and extrude.** Every
 one has `height_source_url` + `height_fetched_at` with `height_verified_at`
 NULL — candidate data, exactly like every other fact here.
 
@@ -462,11 +491,13 @@ NULL — candidate data, exactly like every other fact here.
 **ARIA confirms the podium diagnosis independently.** The tower is 183 m; the
 containment match was 20 m. It really was the podium — three times over.
 
-**Five components render FLAT, and each for a stated reason:**
-ARIA podium and Caesars podium have no cited height; **Palace, Octavius and
-Forum Towers are named in the group but uncited**, so Caesars' *tallest* tower
-(OSM says 133 m) renders flat. That is visibly odd and it is the rule working —
-flagged rather than quietly patched with a number nobody sourced.
+**Two components render FLAT** — the ARIA and Caesars podiums, neither of which
+has a cited height. Palace (133 m), Octavius (107 m) and Forum (71 m) now
+extrude on OSM sources under the named-polygon rule above.
+
+**Four conflicts are recorded rather than resolved:** Bellagio 156/120,
+Augustus 105/111, Julius 45/52, Nobu 45/40. Where Wikipedia gives floors and OSM
+gives metres, both are carried.
 
 **Bellagio is the first entry in the verification queue.** Wikipedia says 156 m,
 the OSM tag says 120 m — likely architectural vs roof height. **Both are
