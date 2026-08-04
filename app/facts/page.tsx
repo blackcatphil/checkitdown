@@ -213,6 +213,8 @@ export default async function JustTheFacts({
   /* Roster filter applied in the read path, not assumed from the seed. A closed
      room is not a row here and a seasonal one is off by default. */
   const rooms = ((data ?? []) as unknown as RoomRow[]).filter(inRoster)
+  /* Kept: eslint reported this unused, the compiler disagreed in three places.
+     The type checker is the authority on whether an identifier is read. */
   const total = rooms.length
 
   const derived = rooms.map((r) => {

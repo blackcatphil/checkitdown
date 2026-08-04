@@ -380,6 +380,45 @@ no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
 
+## The map runs on MapLibre (migrated 2026-08-04)
+
+Vector tiles from OpenFreeMap, extruded from `render_height`. **Every building
+in frame**, rather than eighteen hand-modelled shapes on a flat plane.
+
+**Deleted, not orphaned** — all of it existed only because we lacked building
+data, and dead code left uncalled is the hazard deferred:
+`app/massing-layer.ts` · `lib/massing.ts` · `makeProjector()` and the
+shared-camera fix · `scripts/map-tilt.mjs` · `scripts/map-fit.mjs`. **MapLibre
+has one native camera, so the pin-vs-massing misalignment class does not exist
+here** rather than being managed.
+
+**Constants RE-MEASURED, not ported** (`node scripts/map-measure.mjs`, using the
+real supercluster MapLibre uses internally). MapLibre tiles are 512px where
+Leaflet's were 256, so **every zoom is one step closer in pixel terms** —
+carrying z11 across would have been wrong before anything else was considered.
+
+| | Leaflet (old) | MapLibre (measured) |
+|---|---|---|
+| whole valley | z11, 40px absorption | **z10, cluster radius 50** |
+| — result | 9 pins, 17/17, gap 20.6px | **8 pins, 17/17, 0 overlaps, gap 71.2px** |
+| Strip landing | z14.5 / CSS tilt | z14.5 / **pitch 52** |
+
+**Cluster radius 40 was rejected on evidence:** it produced overlapping pins at
+z9.5 and z10.5. Supercluster **grids** rather than absorbing, so a smaller radius
+does not guarantee separation the way the old absorption pass did — the two
+algorithms are not interchangeable and the old constant would have looked
+reasonable while overlapping.
+
+**What we knowingly accept:** `render_height` is pre-merged from `height=` and
+`building:levels` upstream, so podium-tagged resorts render short — MGM Grand
+and New York New York as low boxes beside ARIA's correct height. Upstream OSM
+edits are the only lever. The flat-footprint rule above is superseded for the
+map, not deleted.
+
+**Provenance debt:** `lib/room-footprints.ts` is checked-in geometry with no
+`source_url` / `fetched_at` / `verified_at`. Fine for a migration; **not fine for
+production** — those 17 polygons belong in the database like every other fact.
+
 ## The landing view opens on the Strip
 
 The skyline is the front door. **z14.5, chosen on evidence** (`node
