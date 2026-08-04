@@ -58,7 +58,7 @@ export function applyGameFilter<T extends HasGames>(
   checked: readonly string[],
 ): { matches: T[]; activeKeys: GameKey[]; dropped: string[] } {
   const ok = shippableKeys(rooms)
-  const activeKeys = checked.filter((k): k is GameKey => ok.has(k as GameKey))
+  const activeKeys = checked as GameKey[]
   const dropped = checked.filter((k) => !ok.has(k as GameKey))
   const matches = activeKeys.length === 0
     ? [...rooms]
