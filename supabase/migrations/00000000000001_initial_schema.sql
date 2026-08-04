@@ -621,7 +621,7 @@ grant usage on schema public to anon, authenticated, service_role;
 -- plain text columns (source_url), not joins to sources, so read access
 -- to the registry is genuinely not required.
 grant select on
-  markets, rooms, cash_games, amenity_types, room_amenities, house_rules,
+  markets, cash_games, amenity_types, room_amenities, house_rules,
   tournament_series, tournament_templates, tournament_levels,
   tournament_instances, promotions, room_freshness
 to anon, authenticated;
