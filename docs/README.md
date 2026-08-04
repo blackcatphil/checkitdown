@@ -132,6 +132,43 @@ no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
 
+## The landing view opens on the Strip
+
+The skyline is the front door. **z14.5, chosen on evidence** (`node
+scripts/map-tilt.mjs`, Strip centre, tilted):
+
+| zoom | lean of a 155 m tower | rooms in view | rendered pins | closest pair | overlaps |
+|---|---|---|---|---|---|
+| 14 | 10px | 10/17 | 9 | 58.2px | 0 |
+| **14.5** | **14px** | **9/17** | **9** | **42.8px** | **0** |
+| 15 | 20px | 6/17 | 6 | 58.5px | 0 |
+
+z14 is the honesty *floor* and shows the weakest version of what we land there
+to show; z15 buys 6px more lean and costs a **third of the visible roster**.
+14.5 is the lowest zoom where the massing meaningfully reads with over half the
+roster still on screen.
+
+**One camera, because two disagreed.** Leaflet places markers untilted while the
+massing is tilted — measured at the landing view, a room's pin sat a median
+34–47px and up to **213px** from its own building. Pins now project through the
+same camera as the massing (`makeProjector`), and absorption runs in the space
+they are actually drawn in.
+
+**The count and the viewport no longer contradict each other.** The panel says
+"17 rooms" but the Strip view shows 9, so it also says *"Showing 9 of 17 on
+screen — see the whole valley"* with the control inline. **THE STRIP** and
+**WHOLE VALLEY** are peer controls: completeness is the product's claim, and the
+valley view is where "every poker room in the valley" is something you can count.
+
+**Tier A's whole-valley fit is unregressed** and re-verified after the change:
+z11 → 9 rendered pins for 17/17 rooms, 0 overlapping pairs, tightest edge gap
+20.6px.
+
+*Note on the 8-room cluster:* it contains The Orleans, ~2.7 mi off-Strip. It is
+a proximity artifact of absorption, not a geographic claim — clusters render a
+bare count and "N rooms here", never an area name. **Do not label a cluster by
+area**; the moment one reads "STRIP" it asserts something false.
+
 ## The 3D massing — what it is, and what it cannot be
 
 Tier B extrudes building massing over the Strip. Two limits are structural, not

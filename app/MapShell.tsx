@@ -4,12 +4,12 @@ import 'leaflet/dist/leaflet.css'
 
 import L from 'leaflet'
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
 
-import { drawMassing, MIN_3D_ZOOM, type Palette } from './massing-layer'
+import { drawMassing, makeProjector, MIN_3D_ZOOM, type Palette } from './massing-layer'
 
 export type MapRoom = {
   slug: string
@@ -31,8 +31,22 @@ export type MapRoom = {
  * ~4 km of Strip, so at z11 all 17 fit the crop and absorption yields 10
  * rendered pins whose closest pair is 34.6px — no two rendered pins overlap.
  */
-const HOME: [number, number] = [36.1309, -115.1709]
-const HOME_Z = 11
+const VALLEY: [number, number] = [36.1309, -115.1709]
+const VALLEY_Z = 11
+/**
+ * LANDING = the Strip, because the skyline is the front door.
+ *
+ * z14.5 chosen on evidence, not defaulted (scripts/map-tilt.mjs, Strip centre):
+ *   z14   lean 10px · 10/17 in view · 9 pins · closest 58.2px · 0 overlaps
+ *   z14.5 lean 14px ·  9/17 in view · 9 pins · closest 42.8px · 0 overlaps
+ *   z15   lean 20px ·  6/17 in view · 6 pins · closest 58.5px · 0 overlaps
+ * z14 is the honesty FLOOR and shows the weakest version of the thing we land
+ * here to show. z15 buys 6px more lean and costs a THIRD of the visible roster.
+ * z14.5 is the lowest zoom where the massing meaningfully reads while over half
+ * the roster is still on screen.
+ */
+const STRIP: [number, number] = [36.1120, -115.1726]
+const STRIP_Z = 14.5
 /**
  * Clustering is FORCED by the geography here, so clusters are permanent
  * furniture rather than an edge case — they get their own size and a ring so
@@ -68,9 +82,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const [checked, setChecked] = useState<string[]>([])
   const [season, setSeason] = useState(false)
   const [compare, setCompare] = useState<string[]>([])
-  const [zoom, setZoom] = useState(HOME_Z)
+  const [zoom, setZoom] = useState(STRIP_Z)
   const [tick, setTick] = useState(0)
   const [want3d, setWant3d] = useState(true)
+  const [inView, setInView] = useState<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paletteRef = useRef<Palette | null>(null)
   /* Tier B engages only when zoomed in. Below MIN_3D_ZOOM the pin layer owns
@@ -97,8 +112,8 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     const t = readTokens(MAP_TOKENS)
     paletteRef.current = t
     const map = L.map(mapEl.current, {
-      center: HOME,
-      zoom: HOME_Z,
+      center: STRIP,
+      zoom: STRIP_Z,
       zoomControl: false,
       attributionControl: true,
       zoomSnap: 0.5,
@@ -140,13 +155,24 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     if (!map || !layer) return
     layer.clearLayers()
 
+    /* Pins and massing must share ONE camera. Leaflet places markers untilted;
+       under tilt a room's pin would sit up to 213px from its own building. So in
+       3D the pins are positioned through the same projector, and absorption runs
+       in the space they are actually drawn in. */
+    const project = makeProjector(map, on3d)
     const placed: Placed[] = []
     for (const r of roster) {
-      const p = map.latLngToLayerPoint([r.latitude, r.longitude])
+      const p = project({ lat: r.latitude, lng: r.longitude })
       const host = placed.find((q) => Math.hypot(q.x - p.x, q.y - p.y) < PIN)
       if (host) host.members.push(r)
       else placed.push({ x: p.x, y: p.y, members: [r] })
     }
+
+    const size = map.getSize()
+    setInView(placed.reduce(
+      (n, g) => n + (g.x > -40 && g.x < size.x + 40 && g.y > -40 && g.y < size.y + 40 ? g.members.length : 0),
+      0,
+    ))
 
     for (const group of placed) {
       const n = group.members.length
@@ -169,9 +195,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           iconSize: [CLUSTER, CLUSTER],
           iconAnchor: [CLUSTER / 2, CLUSTER / 2],
         })
-        L.marker([anchor.latitude, anchor.longitude], { icon })
-          .on('click', () => map.setView([anchor.latitude, anchor.longitude], Math.min(15, map.getZoom() + 2.5)))
-          .addTo(layer)
+        const mk = L.marker(map.containerPointToLatLng([group.x, group.y]), { icon })
+        mk.on('click', () => map.setView([anchor.latitude, anchor.longitude], Math.min(16, map.getZoom() + 2)))
+        mk.addTo(layer)
       } else {
         const r = anchor
         const lit = matched.has(r.slug)
@@ -182,11 +208,11 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           iconSize: [SINGLE, SINGLE],
           iconAnchor: [SINGLE / 2, SINGLE / 2],
         })
-        const m = L.marker([r.latitude, r.longitude], { icon }).addTo(layer)
+        const m = L.marker(map.containerPointToLatLng([group.x, group.y]), { icon }).addTo(layer)
         m.bindPopup(popupHtml(r), { className: 'cid-popup', closeButton: false, minWidth: 240 })
       }
     }
-  }, [roster, matched, checked.length, tick])
+  }, [roster, matched, checked.length, on3d, tick])
 
   useEffect(() => {
     const map = mapRef.current
@@ -200,6 +226,11 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       enabled: on3d,
     })
   }, [roster, matched, on3d, tick])
+
+  /* Two canonical destinations now, not one. Completeness is the product's
+     actual claim, so the whole-valley view is a peer control, not a fallback. */
+  const goStrip = useCallback(() => { mapRef.current?.setView(STRIP, STRIP_Z) }, [])
+  const goValley = useCallback(() => { mapRef.current?.setView(VALLEY, VALLEY_Z) }, [])
 
   const toggle = (k: string) =>
     setChecked((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]))
@@ -224,11 +255,39 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           <p className="num" style={{ font: 'var(--cid-num-lg)', margin: 0 }}>
             {checked.length ? `${matches.length} of ${roster.length} rooms match` : `${roster.length} rooms`}
           </p>
+          {/* The landing view shows the Strip, so the roster count and the
+              viewport disagree on the FIRST screen anyone sees. Saying so — with
+              the control right here — beats letting the number next to it look
+              broken. */}
+          {inView != null && inView < roster.length && (
+            <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 'var(--cid-space-3) 0 0' }}>
+              Showing {inView} of {roster.length} on screen —{' '}
+              <button
+                type="button"
+                onClick={goValley}
+                style={{
+                  background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                  font: 'inherit', color: 'var(--cid-accent-300)',
+                  borderBottom: '1px solid var(--cid-accent-line)',
+                }}
+              >
+                see the whole valley
+              </button>
+            </p>
+          )}
           <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 'var(--cid-space-2) 0 0' }}>
             {checked.length
               ? 'Rooms without every checked game stay on the map, dimmed.'
               : 'Check a game to dim the rooms that lack it.'}
           </p>
+        </div>
+
+        {/* Two canonical destinations, both explicit. The valley view is where
+            "every poker room in the valley" is a thing you can count, so it is a
+            peer of the Strip, not a way back from it. */}
+        <div style={{ display: 'flex', gap: 'var(--cid-space-3)' }}>
+          <button type="button" onClick={goStrip} className="cid-viewbtn">THE STRIP</button>
+          <button type="button" onClick={goValley} className="cid-viewbtn">WHOLE VALLEY</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>

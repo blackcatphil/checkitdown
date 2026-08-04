@@ -176,3 +176,18 @@ a:hover { color: var(--cid-accent-200); }
    carry the depth cue instead — the mock dropped tiles entirely for the same
    reason. */
 .cid-3d .cid-tiles { opacity: .38; }
+
+/* The two canonical destinations. Peers, not a primary and a way back:
+   the valley view is where "every poker room in the valley" can be counted. */
+.cid-viewbtn {
+  flex: 1;
+  min-height: var(--cid-target);
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-text-3);
+  background: transparent;
+  border: 1px solid var(--cid-line-2);
+  border-radius: var(--cid-r-sm);
+  cursor: pointer;
+}
+.cid-viewbtn:hover { border-color: var(--cid-accent-line); color: var(--cid-text); }

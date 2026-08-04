@@ -121,3 +121,64 @@ for (const z of [13.5, 14, 15]) {
     console.log(`  z${z}  ${h}m -> ${(h * ppm * Math.cos((TILT * Math.PI) / 180)).toFixed(0)}px up, base shifts ${(h * ppm * Math.sin((TILT * Math.PI) / 180)).toFixed(0)}px in depth`)
   }
 }
+
+/* =====================================================================
+   LANDING-ZOOM EVIDENCE. The Strip is now the front door, so the pin
+   layer has to be re-measured AT THE LANDING ZOOM under tilt — its z11
+   numbers say nothing about z14+. Absorption is 40px (cluster 44 +
+   single 32, halved and summed = 38, plus a gap).
+   ===================================================================== */
+const ABSORB = 40
+const SINGLE = 32
+const CLUSTER = 44
+const stripC = { lat: centre.lat, lon: centre.lon }
+
+console.log('\n=== LANDING ZOOM CANDIDATES (Strip centre, tilted) ===')
+console.log('zoom  | lean 155m | in view | pins | closest pair | overlaps | pin-vs-building offset')
+for (const z of [14, 14.5, 15]) {
+  const ppm = pxPerMetre(stripC.lat, z)
+  const o = world(stripC.lat, stripC.lon, z)
+  const cps = rows.map((r) => {
+    const w = world(r.lat, r.lon, z)
+    return { ...r, cp: { x: w.x - o.x + VW / 2, y: w.y - o.y + VH / 2 } }
+  })
+  const inView = cps.filter((c) => c.cp.x > -60 && c.cp.x < VW + 60 && c.cp.y > -60 && c.cp.y < VH + 60)
+
+  /* Absorption must run in the space the pins are actually DRAWN in. */
+  const tp = inView.map((c) => ({ ...c, p: project(c.cp, 0, true) }))
+  const placed = []
+  for (const p of tp) {
+    const host = placed.find((q) => Math.hypot(q.p.x - p.p.x, q.p.y - p.p.y) < ABSORB)
+    if (host) host.members.push(p.name)
+    else placed.push({ ...p, members: [p.name] })
+  }
+  let closest = Infinity
+  let over = 0
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = i + 1; j < placed.length; j++) {
+      const d = Math.hypot(placed[i].p.x - placed[j].p.x, placed[i].p.y - placed[j].p.y)
+      const need = (placed[i].members.length > 1 ? CLUSTER : SINGLE) / 2
+        + (placed[j].members.length > 1 ? CLUSTER : SINGLE) / 2
+      if (d < need) over++
+      closest = Math.min(closest, d)
+    }
+  }
+
+  /* THE THING TO CHECK: Leaflet places markers UNTILTED; the canvas massing is
+     tilted. If a room's pin and its own building land far apart, the landing
+     view is visibly wrong. */
+  const offsets = inView.map((c) => {
+    const flat = project(c.cp, 0, false)
+    const tilted = project(c.cp, 0, true)
+    return Math.hypot(flat.x - tilted.x, flat.y - tilted.y)
+  })
+  const maxOff = Math.max(...offsets)
+  const medOff = offsets.sort((a, b) => a - b)[Math.floor(offsets.length / 2)]
+
+  console.log(
+    `z${String(z).padEnd(4)} | ${(155 * ppm * Math.cos((TILT * Math.PI) / 180)).toFixed(0).padStart(6)}px  `
+    + `| ${String(inView.length).padStart(2)}/${rows.length}   | ${String(placed.length).padStart(3)}  `
+    + `| ${closest === Infinity ? '   -  ' : closest.toFixed(1).padStart(6)}px    | ${String(over).padStart(2)}       `
+    + `| median ${medOff.toFixed(0)}px, max ${maxOff.toFixed(0)}px`,
+  )
+}

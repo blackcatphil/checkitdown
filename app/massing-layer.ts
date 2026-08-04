@@ -99,6 +99,34 @@ function ring(base: { lat: number; lon: number }, m: Mass) {
   })
 }
 
+/**
+ * The camera, exported so the PIN layer can share it.
+ *
+ * Leaflet places markers untilted. The massing is tilted. Measured on real
+ * centroids at the Strip landing view, a room's pin and its own building land a
+ * median 34-47px apart and up to 213px apart — pins visibly floating off their
+ * towers on the first screen anyone sees. One camera, or two layers that
+ * disagree about where a room is.
+ */
+export function makeProjector(map: L.Map, tilted: boolean) {
+  const size = map.getSize()
+  const T = ((tilted ? TILT : 0) * Math.PI) / 180
+  const ox = size.x * 0.5
+  const oy = size.y * 0.62
+  const px0 = size.x * 0.5
+  const py0 = size.y * 0.26
+  return (ll: { lat: number; lng: number }, hpx = 0): Pt => {
+    const cp = map.latLngToContainerPoint(ll as L.LatLngLiteral)
+    const vx = cp.x - ox
+    const vy = cp.y - oy
+    let y = vy * Math.cos(T)
+    let z = vy * Math.sin(T)
+    if (hpx) { y -= hpx * Math.sin(T); z += hpx * Math.cos(T) }
+    const s = PERSP / Math.max(80, PERSP - z)
+    return { x: px0 + (ox + vx - px0) * s, y: py0 + (oy + y - py0) * s, z }
+  }
+}
+
 export function drawMassing(
   map: L.Map,
   canvas: HTMLCanvasElement,
@@ -121,22 +149,8 @@ export function drawMassing(
   /* MIN_3D_ZOOM guarantees this; if it is ever lowered, drawing stops rather
      than silently resizing buildings to look better than the data supports. */
   if (ppm < FINE_PPM) return
-  const T = (TILT * Math.PI) / 180
-  const ox = size.x * 0.5
-  const oy = size.y * 0.62
-  const px0 = size.x * 0.5
-  const py0 = size.y * 0.26
 
-  const project = (ll: { lat: number; lng: number }, hpx: number): Pt => {
-    const cp = map.latLngToContainerPoint(ll as L.LatLngLiteral)
-    const vx = cp.x - ox
-    const vy = cp.y - oy
-    let y = vy * Math.cos(T)
-    let z = vy * Math.sin(T)
-    if (hpx) { y -= hpx * Math.sin(T); z += hpx * Math.cos(T) }
-    const s = PERSP / Math.max(80, PERSP - z)
-    return { x: px0 + (ox + vx - px0) * s, y: py0 + (oy + y - py0) * s, z }
-  }
+  const project = makeProjector(map, true)
 
   const vols: Vol[] = []
   const push = (base: { lat: number; lon: number }, m: Mass, kind: Vol['kind']) => {
