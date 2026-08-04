@@ -197,6 +197,28 @@ The ZERO, ONE and THREE scenarios all passed with LOWEST RAKE permanently empty:
 failed proved the gate; checking *which assertion* failed exposed a hole in it.
 Direct assertions added, verified to fail on the regression.
 
+*Corollary 3e — do not change the artifact under inspection.* A review of a
+moving target is not a review. This is the same family as a visual comparison
+made against a rendering that had since been replaced — except caught
+prospectively rather than discovered afterwards. If a change would improve the
+thing being looked at, it waits until the looking is done.
+
+*Corollary 3c — when two checkers disagree, the one with the DEEPER MODEL wins.*
+ESLint reported `total` unused; TypeScript found three readers. `no-unused-vars`
+works from syntax and cannot see a type-only or indirect reader; the type checker
+works from semantics. Removing it on the linter's word broke the build. The fix
+is not "trust TypeScript" as a slogan — it is to ask **what each tool can
+actually see** before believing the one that is easier to run. A comment at the
+site is the right artifact, because the next person meets the same disagreement.
+
+*Corollary 3d — when a COMPUTED figure and an OBSERVED one disagree and you know
+why, the observation wins and the computation gets a note saying what it cannot
+model.* A flat-viewport calculation put 5 rooms in the Strip landing frame; the
+browser showed 8, because pitch extends the visible ground toward the horizon —
+which the calculation does not model. **The tidier number is the tempting one**,
+and it was wrong. Record the observation, and record what the model omits so the
+gap is not rediscovered as a discrepancy.
+
 *Corollary 4 — test the GUARD, not just the thing guarded.* That same step was
 written to catch "a suite that ran nothing", and it could never pass: it grepped
 for `# pass` where Node prints `ℹ pass`. The suite had been tested; the assertion

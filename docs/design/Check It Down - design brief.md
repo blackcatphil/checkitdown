@@ -448,6 +448,34 @@ argument for testing a constraint BEFORE it shapes an architecture rather than
 after, which is exactly what this measurement was — and the hand-modelled
 massing is what it costs when you don't.
 
+### SPEC — the map DEV instrument (not built; build after Phil's review)
+
+Twice now an observer has stared at a blank map for ~90 seconds with a clean
+console and been unable to say whether it was broken. The user-facing loading
+state answers *"is this the map telling me there is nothing here?"* — a different
+question, already answered well, and it **stays exactly as built**. This is a
+separate, developer-facing readout, behind a flag or query param.
+
+**Three numbers, because two are not enough:**
+
+| number | source |
+|---|---|
+| tiles requested / loaded / errored | MapLibre `dataloading` / `data` / `error` |
+| elapsed since load fired | wall clock |
+| **time since the last rendered frame** | MapLibre `render` |
+
+**The third is the one that matters, and my first design omitted it.** Requested
+/ loaded / errored plus elapsed separates BLOCKED from ARRIVING — but not
+**ARRIVING-AND-NOT-PAINTING**, which is exactly what tab throttling does: Chrome
+starves `requestAnimationFrame` while the network keeps working. The panel would
+have read "requested 40, loaded 38" against a blank canvas, and been called
+healthy. A diagnostic that reports success while you look at nothing is the
+plausible-output failure inside the instrument built to prevent it.
+
+    loaded 0  · errored 0  · 87s              -> blocked or offline
+    loaded 38 · last frame 62s ago            -> throttled: data fine, compositor starved
+    loaded 38 · last frame 0.2s ago           -> working, just slow to finish
+
 ### SPIKE PASS 2 — dark theme, and hover on OUR OWN footprints
 
 **Hover highlights only the 17 rooms.** Built the robust version, not the quick
