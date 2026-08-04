@@ -99,6 +99,13 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$key"
           } >> "$GITHUB_ENV"
 
+      # The map's worker is a GENERATED copy of a file from node_modules. If it
+      # drifts from the installed maplibre-gl, the worker dies on load and the
+      # map requests NO TILES — silently, with a clean console and a 200 style.
+      # That failure survived weeks of investigation, so it gets a gate.
+      - name: "check:worker (the map's worker matches the installed package)"
+        run: npm run check:worker
+
       - name: next build
         run: npm run build
 
@@ -147,3 +154,31 @@ jobs:
 
       - name: lint
         run: npm run lint
+
+      # --- GATE 4: the map, OBSERVED IN A BROWSER. ---
+      #
+      # Everything above this line passed for months while the map drew nothing.
+      # No unit test, no rendered-HTML assertion and no type check can see a
+      # dead Web Worker: the markup is identical, the canvas element is present
+      # and correctly sized, and the console is empty. The only signal that
+      # separates a working map from a dead one is whether it ASKED FOR TILES.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: "test:map (tile requests + painted pixels, observed)"
+        env:
+          BASE_URL: http://localhost:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:map 2>&1 | tee /tmp/map.log
+          grep -q 'Map probe passed' /tmp/map.log \
+            || { echo "::error::the map probe did not pass"; exit 1; }
+          grep -q 'PASS  THE MAP REQUESTED TILES' /tmp/map.log \
+            || { echo "::error::the tile-request assertion did not run — it is the whole point of this gate"; exit 1; }
+          n=$(grep -c '  PASS' /tmp/map.log || true)
+          echo "map assertions: $n"
+          # 8 here, not 10: the two rendered-feature assertions need
+          # NEXT_PUBLIC_MAP_DEBUG=1, and CI deliberately probes the SHIPPING
+          # configuration rather than a build with a debug handle in it.
+          [ "$n" -ge 8 ] \
+            || { echo "::error::only $n map assertions ran (expected >= 8)"; exit 1; }

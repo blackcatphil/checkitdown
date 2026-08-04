@@ -75,80 +75,71 @@ a:hover { color: var(--cid-accent-200); }
 }
 
 /* ---------------------------------------------------------------------
-   MAP — pins, clusters, popup. Every colour is a --cid-* token, so the
-   palette tracks colors.css and the no-raw-colour lint rule needs no
-   exemption here. OSM tiles are light by default; the filter darkens them
-   to sit under an ink palette without shipping a second tile set.
+   MAP — MapLibre. Every colour is a --cid-* token; the extrusion colours
+   that need a JS string come from readTokens(MAP_TOKENS), so the
+   no-raw-colour lint rule applies here as it does everywhere in app/.
    --------------------------------------------------------------------- */
-.cid-tiles {
-  filter: invert(1) hue-rotate(180deg) brightness(0.86) contrast(0.92) saturate(0.55);
-}
-.leaflet-container { background: var(--cid-ink-800); outline: none; }
-.leaflet-control-attribution {
-  background: var(--cid-ink-700);
+.maplibregl-map { background: var(--cid-ink-800); }
+.maplibregl-ctrl-attrib {
+  background: var(--cid-ink-700) !important;
   color: var(--cid-dim);
   font: var(--cid-caption);
-  padding: 2px var(--cid-space-3);
-  border-top-left-radius: var(--cid-r-sm);
 }
-.leaflet-control-attribution a { color: var(--cid-accent-300); border-bottom: none; }
+.maplibregl-ctrl-attrib a { color: var(--cid-accent-300); border-bottom: none; }
 
-.cid-pin {
-  width: 32px; height: 32px;
-  border-radius: var(--cid-r-pill);
-  display: grid; place-items: center;
-  font: var(--cid-tag);
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: transform .12s ease;
+.cid-mapbadge {
+  position: absolute; right: var(--cid-space-5); bottom: var(--cid-space-8);
+  z-index: 5; font: var(--cid-tag); color: var(--cid-dim);
+  background: var(--cid-ink-700); border: 1px solid var(--cid-line-1);
+  border-radius: var(--cid-r-sm); padding: var(--cid-space-2) var(--cid-space-4);
 }
-.cid-pin:hover { transform: scale(1.08); }
 
-.cid-single {
-  background: var(--cid-pin);
-  border: 1px solid var(--cid-accent-300);
-  box-shadow: var(--cid-shadow-pop);
+/* Says WHICH empty state this is. "No buildings here" and "buildings have
+   not arrived" look identical and mean opposite things. */
+.cid-maploading {
+  position: absolute; left: 50%; top: var(--cid-space-7); transform: translateX(-50%);
+  z-index: 5; max-width: 420px; text-align: center;
+  background: var(--cid-ink-700); border: 1px solid var(--cid-line-2);
+  border-radius: var(--cid-r-md); padding: var(--cid-space-5) var(--cid-space-6);
 }
-/* Filtering DIMS, never removes — a room that vanishes reads as "we don't
-   have it" rather than "it doesn't match". */
-.cid-out { background: var(--cid-pin-dim); border-color: transparent; box-shadow: none; }
+.cid-maploading p { font: var(--cid-caption); color: var(--cid-dim); margin: var(--cid-space-3) 0 0; }
 
-/* A room you cannot enter is on the roster but flagged, the same way it is
-   badged in the table. Outline rather than fill: it is still a real room. */
-.cid-flagged { background: transparent; border: 2px dashed var(--cid-accent-300); }
+.cid-viewbtn {
+  flex: 1; min-height: var(--cid-target);
+  font: var(--cid-tag); letter-spacing: var(--cid-track-nav);
+  color: var(--cid-text-3); background: transparent;
+  border: 1px solid var(--cid-line-2); border-radius: var(--cid-r-sm); cursor: pointer;
+}
+.cid-viewbtn:hover { border-color: var(--cid-accent-line); color: var(--cid-text); }
 
-/* A cluster is a different OBJECT, not a pin with a digit on it: bigger, and
-   ringed so the count reads as "n rooms, tap to open". Absorption is widened to
-   40px to match, so the larger footprint still cannot overlap a neighbour. */
-.cid-cluster {
-  width: 44px; height: 44px;
-  color: var(--cid-paper);
-  font: var(--cid-num);
-  box-shadow: 0 0 0 3px var(--cid-accent-wash);
+.cid-inline-btn {
+  background: transparent; border: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--cid-accent-300);
+  border-bottom: 1px solid var(--cid-accent-line);
 }
-.cid-cluster::after {
-  content: '';
-  position: absolute;
-  inset: -7px;
-  border-radius: var(--cid-r-pill);
-  border: 1px solid var(--cid-accent-line);
-  pointer-events: none;
-}
-.cid-pin { position: relative; }
-.cid-all  { background: var(--cid-accent-700); border: 1px solid var(--cid-accent-300); }
-/* The number does the work dimming cannot: "some of these match" has no shade. */
-.cid-part { background: var(--cid-ink-700); border: 1px solid var(--cid-cluster-partial); color: var(--cid-cluster-partial); }
-.cid-none { background: var(--cid-ink-700); border: 1px solid var(--cid-line-2); color: var(--cid-disabled); }
 
-.cid-popup .leaflet-popup-content-wrapper {
-  background: var(--cid-ink-600);
-  border: 1px solid var(--cid-line-2);
-  border-radius: var(--cid-r-md);
-  box-shadow: var(--cid-shadow-pop);
-  color: var(--cid-text);
+.cid-check {
+  display: flex; align-items: center; gap: var(--cid-space-4);
+  min-height: var(--cid-target); padding: 0 var(--cid-space-3);
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  color: var(--cid-text-3); font: var(--cid-body);
 }
-.cid-popup .leaflet-popup-tip { background: var(--cid-ink-600); }
-.cid-popup .leaflet-popup-content { margin: var(--cid-space-5); }
+.cid-check[data-on="true"] { color: var(--cid-text); font: var(--cid-body-strong); }
+.cid-box {
+  width: 16px; height: 16px; flex: 0 0 16px;
+  border: 1px solid var(--cid-line-3); border-radius: var(--cid-r-sm);
+  display: grid; place-items: center; color: var(--cid-paper); font-size: 11px;
+}
+.cid-check[data-on="true"] .cid-box {
+  border-color: var(--cid-accent-300); background: var(--cid-accent-700);
+}
+
+.maplibregl-popup.cid-popup .maplibregl-popup-content {
+  background: var(--cid-ink-600); border: 1px solid var(--cid-line-2);
+  border-radius: var(--cid-r-md); box-shadow: var(--cid-shadow-pop);
+  color: var(--cid-text); padding: var(--cid-space-5);
+}
+.maplibregl-popup.cid-popup .maplibregl-popup-tip { border-top-color: var(--cid-ink-600); }
 .cid-pop { display: flex; flex-direction: column; gap: var(--cid-space-3); }
 .cid-pop-name { font: var(--cid-room-name); color: var(--cid-text); border-bottom: none; }
 .cid-pop-meta { font: var(--cid-caption); color: var(--cid-text-3); }
@@ -170,36 +161,3 @@ a:hover { color: var(--cid-accent-200); }
   min-height: var(--cid-target); display: grid; place-items: center;
   border-bottom: none;
 }
-
-/* In 3D the massing is tilted but the tiles are not, so a lit ground plane
-   under a leaning skyline reads as broken. Damping the tiles lets the massing
-   carry the depth cue instead — the mock dropped tiles entirely for the same
-   reason. */
-.cid-3d .cid-tiles { opacity: .38; }
-
-/* The two canonical destinations. Peers, not a primary and a way back:
-   the valley view is where "every poker room in the valley" can be counted. */
-.cid-viewbtn {
-  flex: 1;
-  min-height: var(--cid-target);
-  font: var(--cid-tag);
-  letter-spacing: var(--cid-track-nav);
-  color: var(--cid-text-3);
-  background: transparent;
-  border: 1px solid var(--cid-line-2);
-  border-radius: var(--cid-r-sm);
-  cursor: pointer;
-}
-.cid-viewbtn:hover { border-color: var(--cid-accent-line); color: var(--cid-text); }
-
-/* In 3D the building is the room and the pin is only a locator. A 32px disc on
-   a 28px building hides what it marks — and makes a low building read as a flat
-   pin with no massing at all. */
-.cid-dot {
-  width: 14px; height: 14px;
-  background: var(--cid-accent-300);
-  border: 1px solid var(--cid-ink-800);
-  box-shadow: 0 0 0 2px var(--cid-scrim);
-}
-.cid-dot.cid-out { background: var(--cid-pin-dim); box-shadow: none; }
-.cid-dot.cid-flagged { background: transparent; border: 2px dashed var(--cid-accent-300); }

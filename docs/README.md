@@ -69,17 +69,50 @@ knowing when your evidence has a timestamp and saying so.
 
 ### Untagged buildings render as FLAT FOOTPRINTS, never guessed volumes
 
-> **SUPERSEDED 2026-08-04 for the map, by `spike/maplibre-spike.html` — kept
-> because the principle still binds anywhere we control the data.** Vector tile
-> features expose only `render_height`, into which OpenMapTiles has already
-> merged `height=` and `building:levels` upstream. There is no untagged/tagged
-> distinction left to act on by the time a renderer sees a building, so this rule
-> has nothing to implement against. It was the honest answer to a choice the
-> tiles do not offer. **The measurement behind it still stands** — 72% of OSM
-> tagged buildings really are levels-only and the podium cases really are wrong;
-> what evaporated is the lever, not the finding. Consequence: bad heights can no
-> longer be routed around in the renderer, so **fixing `height=` upstream in OSM
-> is the only remaining lever**.
+> **UN-SUPERSEDED 2026-08-04, and worth reading as a pair.** It was briefly
+> marked moot because vector tiles expose only `render_height`, into which
+> OpenMapTiles has already merged `height=` and `building:levels` — there was no
+> tagged/untagged distinction left to act on, so the rule had nothing to
+> implement against.
+>
+> **Reverting to extruding only our own 17 casinos brings it back**, because it
+> brings back control of the data. That is the argument for the reversion, and it
+> was only visible after trying the other way: extruding from tiles meant
+> accepting `render_height`, which **is** the MGM-Grand-as-a-two-storey-box
+> problem. With our own polygons, the podium problem stops being a documented
+> wart and becomes a thing we decide.
+>
+> Sourcing heights for 1,283 corridor buildings was never realistic — which is
+> precisely why we took what the tiles gave. Seventeen is tractable.
+
+**A CITED HEIGHT ON A GUESSED POLYGON IS THE ARIA ERROR WEARING A CITATION.**
+Two facts have to be sourced — *which polygon*, and *how tall* — and one without
+the other is **worse than neither**, because the citation lends false confidence
+to the guess. Red Rock's ~60 m is properly cited and still not seeded: no
+polygon there is named, so picking one means choosing the largest unnamed shape
+and calling it the tower.
+
+**A NAMED OSM polygon carrying a height tag IS a citable source.** It has a
+stable URL, a version history with timestamps, and an identifiable subject —
+more provenance than several facts already seeded here. The qualifier does all
+the work: an **unnamed** polygon has no identifiable subject, so
+`way/316302064` identifies a shape, not a building, and a citation attached to
+it certifies nothing.
+
+*This rule was arrived at by catching an inconsistency:* OSM's 120 m was being
+recorded as a citable figure in Bellagio's conflict while OSM's 133 m on a named
+Palace Tower was refused — so Caesars' tallest tower rendered flat beside a
+shorter one. **A source cannot count in one row and not in another.** Applying
+one rule to both seats Caesars properly and leaves Bellagio a genuine
+disagreement between two sources rather than a question about whether one counts.
+
+**Palazzo is the counter-case worth keeping.** OSM independently tags it 196 m,
+matching the Wikipedia figure, on a **named** building — two sources agreeing
+about an identified thing. That is exactly what ARIA's withdrawn cross-check was
+not: same shape, opposite outcome, and **the difference is whether the thing
+being agreed about has a name.** ARIA's tower is seeded on the weaker basis —
+an unnamed polygon whose own height tag matches the citation — and carries
+`identified_by` saying so.
 
 A footprint says *"there is a building here and we do not know its height."* A
 default extrusion says *"this building is 12 m tall"* — a claim nobody made.
@@ -196,6 +229,28 @@ The ZERO, ONE and THREE scenarios all passed with LOWEST RAKE permanently empty:
 **the suite never asserted that a card shows its winner.** Checking *which* step
 failed proved the gate; checking *which assertion* failed exposed a hole in it.
 Direct assertions added, verified to fail on the regression.
+
+*Corollary 3e — do not change the artifact under inspection.* A review of a
+moving target is not a review. This is the same family as a visual comparison
+made against a rendering that had since been replaced — except caught
+prospectively rather than discovered afterwards. If a change would improve the
+thing being looked at, it waits until the looking is done.
+
+*Corollary 3c — when two checkers disagree, the one with the DEEPER MODEL wins.*
+ESLint reported `total` unused; TypeScript found three readers. `no-unused-vars`
+works from syntax and cannot see a type-only or indirect reader; the type checker
+works from semantics. Removing it on the linter's word broke the build. The fix
+is not "trust TypeScript" as a slogan — it is to ask **what each tool can
+actually see** before believing the one that is easier to run. A comment at the
+site is the right artifact, because the next person meets the same disagreement.
+
+*Corollary 3d — when a COMPUTED figure and an OBSERVED one disagree and you know
+why, the observation wins and the computation gets a note saying what it cannot
+model.* A flat-viewport calculation put 5 rooms in the Strip landing frame; the
+browser showed 8, because pitch extends the visible ground toward the horizon —
+which the calculation does not model. **The tidier number is the tempting one**,
+and it was wrong. Record the observation, and record what the model omits so the
+gap is not rediscovered as a discrepancy.
 
 *Corollary 4 — test the GUARD, not just the thing guarded.* That same step was
 written to catch "a suite that ran nothing", and it could never pass: it grepped
@@ -379,6 +434,259 @@ This is a structural constraint on build-order step 4, not a bug to fix later:
 no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
+
+## Map load time — ANSWERED. The map was never drawing. (2026-08-04)
+
+**The map had no worker, so it never requested a single tile.** MapLibre v6
+builds its worker from a Blob that imports `import.meta.url`; Turbopack rewrites
+that to the **page** url, so the worker fetched the HTML document as its own
+source and died. Vector tiles are fetched **inside the worker**. Everything on
+the main thread kept working perfectly: style `200`, TileJSON `200`, sprites
+`200`, `transformRequest` firing for all 12 tiles — and **zero network
+requests**, no exception, no console output, forever.
+
+Fixed by serving the worker ourselves (`setWorkerUrl`), from a **generated**
+copy: `scripts/sync-map-worker.mjs` walks the worker's import closure out of
+`node_modules` into `public/`, and `npm run check:worker` fails the build if it
+drifts from the installed package.
+
+**Measured, in a browser, n=3 each** (production build, self-hosted worker):
+
+| | time to first tile |
+|---|---|
+| cold cache | **1168 ms** |
+| warm cache | **457 ms** |
+
+So: not 26–46 seconds. Not tiles, not throttling, not the restyle.
+
+### What this retires
+
+- **"83 `setPaintProperty` calls" was not the cause.** That entry sat here as an
+  improvement *pending confirmation*; it is now confirmed **not** to have been
+  the problem. The style-object transform stays — doing the work once instead of
+  55 times against a live map is better on its own terms — but it fixed a map
+  that was never going to draw, and this file said it was fixed when it wasn't.
+- **The tile building layer was not the cause.** Also removed for real reasons.
+- **The throttled tab was not the cause.**
+- **The loading state was correct the entire time.** It said the ground map had
+  not arrived. It had not, and never would.
+
+### A subsystem that works off the main thread fails silently on it
+
+Every signal available on the main thread said the map was healthy. The failure
+lived one boundary away, where nothing was watching. **When work is delegated —
+worker, iframe, service worker, background job — the delegating side succeeding
+is not evidence the work happened.** Watch the thing that does the work.
+
+### One silent failure hid another
+
+With the worker dead, `load` never fired, so our own layers were never added, so
+`fill-extrusion-opacity: ['case', ['feature-state', 'hover'], ...]` never raised
+`data expressions not supported`. It surfaced the instant tiles started flowing.
+**Fixing the outer failure is how you find the inner one** — expect a second
+defect after a long-masked one clears, rather than reading first-green as done.
+
+### Ask what your observable cannot distinguish — THREE times in one session
+
+1. **Tile count.** The only signal that separates "slow map" from "dead map".
+   Style status, console output and canvas appearance are all identical between
+   them. A dark empty canvas looks exactly like a dark map.
+2. **`canvas.clientWidth`.** Used to test the resize path; it tracks the
+   container by CSS alone, so it passed with the guard ablated. It measured the
+   browser's layout engine while wearing the name of a test of our code.
+   `canvas.width` — the GL drawing buffer — is the number only `resize()` moves.
+3. **Window resize vs container resize.** MapLibre installs its own window
+   listener, so resizing the viewport tested the library, not us.
+
+The pattern each time was reaching for the number that is **easy to read** over
+the number that **can be wrong**.
+
+### A guard you did not ablate is not a guard
+
+A `ResizeObserver` was diagnosed as the fix for a 0x0 container. Direct
+measurement disagreed: the container was **1138x836 on the first probe, before
+any change**, and MapLibre v6 already observes its own container — with ours
+ablated, everything still passed. It is **not** in the code, and
+`app/MapShell.tsx` says why, because "add an observer" is a plausible-sounding
+fix someone will propose again. `scripts/map-probe.mjs` keeps the assertion:
+the behaviour matters whoever provides it.
+
+The diagnosis was wrong; the **method** was right, and it is what found the real
+cause — read the network log, notice the style loaded and no tile followed,
+refuse to accept a clean console as evidence of health.
+
+### A checked-in copy of someone else's file goes stale silently
+
+`public/maplibre-gl-worker.mjs` is exactly the hazard this project keeps
+relearning, so it is generated and hash-checked rather than copied by hand. The
+first attempt copied the worker **alone**; it 404'd on its sibling module and
+died just as quietly as the bug it was fixing — same zero tiles, same clean
+console. The script now walks the import closure and **hard-fails on a
+non-relative specifier** instead of discovering it in a browser.
+
+**A failed palette degrades visibly rather than blanking.** Moving construction
+behind a fetch introduced a failure whose symptom is identical to the blank map —
+no map either way. So if the fetch or transform throws, MapLibre is handed the
+style URL directly: a correctly-rendered map in the **wrong colours**, with
+`PALETTE FAILED` in the badge. A blank map tells you nothing; a
+Positron-coloured one tells you exactly which step failed.
+
+## The map instrument (`NEXT_PUBLIC_MAP_DEBUG=1`)
+
+Three numbers in the badge: **tiles requested / loaded**, **errors**, and **time
+since the last rendered frame**. `tiles 0 · frame NEVER` states this whole
+investigation in one reading, which is why it exists.
+
+Flag-gated, but the **counters always run** — an instrument you switch on after
+noticing a problem has already missed the first seconds, and load failures live
+there. Two things it does deliberately: it counts **distinct tiles** rather than
+`data` events (event-counting reported 48 loaded against 12 requested, and a
+badge that overstates is one you would trust while chasing something else), and
+its `error` handler **logs**, because registering one silences MapLibre's own
+console reporting.
+
+`window.__cid_map` is exposed under the same flag. Diagnosing this took far too
+long on inference because nothing could ask the map what it thought its own
+camera and sources were.
+
+## Building groups, and 13 seeded heights (2026-08-04)
+
+A property is a **group of masses**, not one polygon — `scripts/room-groups.mjs`
+generates them and group membership is hand-authored, because "which polygons
+belong to this property" is a judgement and it is what put **Bellagio Self
+Parking Garage** on Bellagio.
+
+`isRoomBuilding` still marks the containment match — which building the poker
+room is *inside*, which is what hover keys on — while the group supplies the
+skyline. Neither question replaces the other. Hovering any component lights the
+whole property: ARIA's podium and its tower are one building to a reader.
+
+**16 components across 8 properties carry a cited height and extrude.** Every
+one has `height_source_url` + `height_fetched_at` with `height_verified_at`
+NULL — candidate data, exactly like every other fact here.
+
+| property | extruded |
+|---|---|
+| Wynn/Encore | Encore 192 m · Wynn 187 m |
+| Venetian | Palazzo 196 m · Venetian tower 145 m |
+| ARIA | tower 183 m |
+| Bellagio | main tower 156 m ⚠ |
+| Mandalay Bay | Delano 148 m · main tower 146 m |
+| Caesars | Augustus 105 m · Julius 45 m · Nobu 45 m |
+| Horseshoe | Resort Tower 83 m |
+| South Point | towers 75 m |
+
+**ARIA confirms the podium diagnosis independently.** The tower is 183 m; the
+containment match was 20 m. It really was the podium — three times over.
+
+**Two components render FLAT** — the ARIA and Caesars podiums, neither of which
+has a cited height. Palace (133 m), Octavius (107 m) and Forum (71 m) now
+extrude on OSM sources under the named-polygon rule above.
+
+**Four conflicts are recorded rather than resolved:** Bellagio 156/120,
+Augustus 105/111, Julius 45/52, Nobu 45/40. Where Wikipedia gives floors and OSM
+gives metres, both are carried.
+
+**Bellagio is the first entry in the verification queue.** Wikipedia says 156 m,
+the OSM tag says 120 m — likely architectural vs roof height. **Both are
+recorded, neither is discarded.** It is the exact disagreement this product
+exists to surface, so it is carried in the data as `height_conflict` rather than
+resolved by preference.
+
+**Red Rock is NOT seeded although its ~60 m height IS cited.** No polygon in the
+cache is named, so choosing one means picking the largest unnamed shape and
+calling it the tower — a cited number attached to a guessed geometry, which is
+the ARIA error in a new hat. **A cited height is not enough; the polygon has to
+be identified too.** Same for the eight properties with uncited storey counts.
+
+## Extruding only our own 17 casinos — and the height debt that blocks it
+
+The tile building layer is **dropped**. Only the 17 footprints extrude, and only
+where a **sourced height** exists; everything else renders as a flat footprint.
+`building:levels` is deliberately NOT used to synthesise a height — that is the
+inflation path and the podium tag wearing a different hat.
+
+**Measured against the footprint file as it stands: 2 of 17 would extrude.**
+
+| | rooms |
+|---|---|
+| real `height=` | **2** — ARIA 20 m, Bellagio 120 m |
+| `building:levels` only | 4 — Horseshoe 26st, GVR 6st, MGM Grand 2st, South Point 1st |
+| nothing | 11 |
+
+**And one of the two is wrong.** ARIA's is **20 m** — the podium, not the 183 m
+tower. That is not a tagging accident: `scripts/room-footprints.mjs` picks by
+CONTAINMENT, which is the right question for *"which building is the poker room
+inside?"* and the wrong one for *"which mass represents this property on a
+skyline?"* At ARIA those are different buildings.
+
+**The right unit is the property's BUILDING GROUP, not one polygon.** ARIA
+genuinely *is* a podium with a tower on it; Caesars is a podium and four towers;
+Mandalay Bay is three wings. Extruding each component at its own height is what
+the building actually looks like, and it **dissolves the tension rather than
+choosing a side**: containment still identifies the room's building for hover,
+while the group supplies the skyline's mass. Keep the containment match and add
+group membership **alongside** it — replacing one with the other loses the
+question the other was answering.
+
+This is the third appearance of the same divergence — Overpass
+tallest-within-130m, then the hand-modelled massing, now containment — which is
+what makes it a modelling gap rather than three separate bugs.
+
+It does reopen the garage problem: *"which polygons belong to this property"* is
+a judgement, and it is what put **Bellagio Self Parking Garage** on Bellagio. At
+17 properties, verified by hand, that is tractable.
+
+**So the height work is two decisions per room, not one:**
+
+1. **which polygon** represents the property's mass — the containment match is
+   correct for the room and may be the podium for the skyline
+2. **what height** it is — from a published source, carried with `source_url`,
+   `fetched_at` and `verified_at` like every other fact in this product
+
+Until both are done, the map shows 15 flat footprints and 2 extrusions, one of
+them a 20 m ARIA. **That is the rule working**, not a bug — flat means "we have
+not sourced this", which is true. But it is a long way from a skyline, and the
+gap is data, not code.
+
+## The map runs on MapLibre (migrated 2026-08-04)
+
+Vector tiles from OpenFreeMap, extruded from `render_height`. **Every building
+in frame**, rather than eighteen hand-modelled shapes on a flat plane.
+
+**Deleted, not orphaned** — all of it existed only because we lacked building
+data, and dead code left uncalled is the hazard deferred:
+`app/massing-layer.ts` · `lib/massing.ts` · `makeProjector()` and the
+shared-camera fix · `scripts/map-tilt.mjs` · `scripts/map-fit.mjs`. **MapLibre
+has one native camera, so the pin-vs-massing misalignment class does not exist
+here** rather than being managed.
+
+**Constants RE-MEASURED, not ported** (`node scripts/map-measure.mjs`, using the
+real supercluster MapLibre uses internally). MapLibre tiles are 512px where
+Leaflet's were 256, so **every zoom is one step closer in pixel terms** —
+carrying z11 across would have been wrong before anything else was considered.
+
+| | Leaflet (old) | MapLibre (measured) |
+|---|---|---|
+| whole valley | z11, 40px absorption | **z10, cluster radius 50** |
+| — result | 9 pins, 17/17, gap 20.6px | **8 pins, 17/17, 0 overlaps, gap 71.2px** |
+| Strip landing | z14.5 / CSS tilt | z14.5 / **pitch 52** |
+
+**Cluster radius 40 was rejected on evidence:** it produced overlapping pins at
+z9.5 and z10.5. Supercluster **grids** rather than absorbing, so a smaller radius
+does not guarantee separation the way the old absorption pass did — the two
+algorithms are not interchangeable and the old constant would have looked
+reasonable while overlapping.
+
+**What we knowingly accept:** `render_height` is pre-merged from `height=` and
+`building:levels` upstream, so podium-tagged resorts render short — MGM Grand
+and New York New York as low boxes beside ARIA's correct height. Upstream OSM
+edits are the only lever. The flat-footprint rule above is superseded for the
+map, not deleted.
+
+**Provenance debt:** `lib/room-footprints.ts` is checked-in geometry with no
+`source_url` / `fetched_at` / `verified_at`. Fine for a migration; **not fine for
+production** — those 17 polygons belong in the database like every other fact.
 
 ## The landing view opens on the Strip
 

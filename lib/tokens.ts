@@ -35,17 +35,27 @@ export function readTokens<K extends string>(names: Record<K, string>): Record<K
 }
 
 /**
- * What the 3D map module needs when it is wired in. Named here rather than in
- * the module so the map's palette is reviewable alongside the rest.
+ * Every colour the map paints, named here rather than inside the map so the
+ * whole palette is reviewable in one place — and so a new colour has to be
+ * ADDED here rather than typed inline, which the no-raw-colour lint rule then
+ * enforces. MapLibre restyles each style layer individually, so it needs more
+ * of these than the Leaflet map did: that one toned raster tiles with a single
+ * CSS filter.
  */
 export const MAP_TOKENS = {
   pin: '--cid-pin',
-  accentDeep: '--cid-accent-900',
   pinDim: '--cid-pin-dim',
   clusterPartial: '--cid-cluster-partial',
+  accent: '--cid-accent-700',
+  accent300: '--cid-accent-300',
+  accentDeep: '--cid-accent-900',
   scrim: '--cid-scrim',
-  surface: '--cid-ink-700',
   base: '--cid-ink-800',
+  surface: '--cid-ink-700',
+  raised: '--cid-ink-600',
+  water: '--cid-ink-900',
+  line: '--cid-line-2',
+  dim: '--cid-dim',
   text: '--cid-text',
   value: '--cid-value',
 } as const

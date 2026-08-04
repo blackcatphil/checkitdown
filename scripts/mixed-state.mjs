@@ -100,6 +100,45 @@ async function roomPage(slug) {
   return main.replace(/<[^>]+>/g, ' ').replace(/&#x27;|&rsquo;/g, "'").replace(/\s+/g, ' ')
 }
 
+/**
+ * Warm every route the suite touches before asserting anything.
+ *
+ * `next dev` compiles routes on first request, so an unwarmed room page returns
+ * a shell and the room-page scenarios fail — 12 FAILs that look exactly like a
+ * regression and are not. It caught me twice. A suite that cries wolf gets
+ * ignored, so this is fixed in the harness rather than left as something to
+ * remember. (CI warms /facts and /rooms/horseshoe too; this makes that
+ * belt-and-braces rather than load-bearing.)
+ */
+async function warm() {
+  const routes = ['/', '/facts', '/rooms/horseshoe', '/rooms/aria', '/rooms/skyline', '/rooms/wynn-encore']
+  for (const r of routes) {
+    const res = await fetch(`${BASE}${r}`, { cache: 'no-store' }).catch(() => null)
+    if (!res?.ok) throw new Error(`warm-up failed for ${r} — the suite would fail for the wrong reason`)
+  }
+
+  /* PROVE THE SERVER RE-RENDERS before asserting anything about what it
+     renders.
+     This suite mutates the database and reads rendered output, so it needs a
+     server that re-renders per request. It cannot tell ITS server from ANY
+     server on the same port — and twice now it has reported 12 room-page
+     FAILURES that were really a production build on :3000 serving prerendered
+     pages (revalidate=300), which looks exactly like a regression.
+     So: flip one row, look for it, put it back. If the page does not move, say
+     WHY rather than emitting a dozen misleading assertion failures. */
+  sql("update rooms set verified_at = now() where slug = 'horseshoe'")
+  const probe = await fetch(`${BASE}/rooms/horseshoe`, { cache: 'no-store' }).then((r) => r.text())
+  sql('update rooms set verified_at = null')
+  if (!/VERIFIED ON SITE/.test(probe)) {
+    throw new Error(
+      `the server at ${BASE} did not reflect a database change.\n`
+      + '   It is serving prerendered output — a production build, or another\n'
+      + "   process on this port. Run `npm run dev` and point BASE_URL at it;\n"
+      + '   every room-page scenario below would otherwise fail for that reason.',
+    )
+  }
+}
+
 let failures = 0
 const check = (name, ok, detail = '') => {
   console.log(`   ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`)
@@ -121,6 +160,7 @@ async function scenario(label, slugs, assertions) {
 }
 
 try {
+  await warm()
   console.log(`rooms=${ROOMS.length} rakeable=${RAKEABLE.length}`)
 
   await scenario('ZERO — day one', [], ({ text, ranks }) => {
