@@ -432,6 +432,54 @@ handed the style URL directly: a correctly-rendered map in the **wrong colours**
 with `PALETTE FAILED` in the badge. A blank map tells you nothing; a
 Positron-coloured one tells you exactly which step failed.
 
+## Building groups, and 13 seeded heights (2026-08-04)
+
+A property is a **group of masses**, not one polygon — `scripts/room-groups.mjs`
+generates them and group membership is hand-authored, because "which polygons
+belong to this property" is a judgement and it is what put **Bellagio Self
+Parking Garage** on Bellagio.
+
+`isRoomBuilding` still marks the containment match — which building the poker
+room is *inside*, which is what hover keys on — while the group supplies the
+skyline. Neither question replaces the other. Hovering any component lights the
+whole property: ARIA's podium and its tower are one building to a reader.
+
+**13 components across 8 properties carry a cited height and extrude.** Every
+one has `height_source_url` + `height_fetched_at` with `height_verified_at`
+NULL — candidate data, exactly like every other fact here.
+
+| property | extruded |
+|---|---|
+| Wynn/Encore | Encore 192 m · Wynn 187 m |
+| Venetian | Palazzo 196 m · Venetian tower 145 m |
+| ARIA | tower 183 m |
+| Bellagio | main tower 156 m ⚠ |
+| Mandalay Bay | Delano 148 m · main tower 146 m |
+| Caesars | Augustus 105 m · Julius 45 m · Nobu 45 m |
+| Horseshoe | Resort Tower 83 m |
+| South Point | towers 75 m |
+
+**ARIA confirms the podium diagnosis independently.** The tower is 183 m; the
+containment match was 20 m. It really was the podium — three times over.
+
+**Five components render FLAT, and each for a stated reason:**
+ARIA podium and Caesars podium have no cited height; **Palace, Octavius and
+Forum Towers are named in the group but uncited**, so Caesars' *tallest* tower
+(OSM says 133 m) renders flat. That is visibly odd and it is the rule working —
+flagged rather than quietly patched with a number nobody sourced.
+
+**Bellagio is the first entry in the verification queue.** Wikipedia says 156 m,
+the OSM tag says 120 m — likely architectural vs roof height. **Both are
+recorded, neither is discarded.** It is the exact disagreement this product
+exists to surface, so it is carried in the data as `height_conflict` rather than
+resolved by preference.
+
+**Red Rock is NOT seeded although its ~60 m height IS cited.** No polygon in the
+cache is named, so choosing one means picking the largest unnamed shape and
+calling it the tower — a cited number attached to a guessed geometry, which is
+the ARIA error in a new hat. **A cited height is not enough; the polygon has to
+be identified too.** Same for the eight properties with uncited storey counts.
+
 ## Extruding only our own 17 casinos — and the height debt that blocks it
 
 The tile building layer is **dropped**. Only the 17 footprints extrude, and only

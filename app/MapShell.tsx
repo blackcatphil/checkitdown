@@ -66,7 +66,7 @@ const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
 export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const holder = useRef<HTMLDivElement>(null)
   const mapRef = useRef<InstanceType<typeof MLMap> | null>(null)
-  const hovered = useRef<string | number | null>(null)
+  const hovered = useRef<string | null>(null)
   const rosterRef = useRef<MapRoom[]>([])
   const [checked, setChecked] = useState<string[]>([])
   const [season, setSeason] = useState(false)
@@ -171,7 +171,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       /* OUR OWN 17 footprints, picked deliberately by scripts/room-footprints.mjs.
          Hover lives here and ONLY here — never on tile feature-state, which
          would inherit missing ids, per-tile splitting and podium ambiguity. */
-      map.addSource('fp', { type: 'geojson', data: ROOM_FOOTPRINTS as never, promoteId: 'slug' })
+      /* No promoteId: components share a slug, so the generated numeric ids are
+         the only unique handle. Hover then lights the whole GROUP by slug. */
+      map.addSource('fp', { type: 'geojson', data: ROOM_FOOTPRINTS as never })
       /* THE FLAT-FOOTPRINT RULE IS LIVE AGAIN. It was marked moot only because
          the tiles offered no tagged/untagged distinction; with our own data it
          applies as originally reasoned. A polygon with a sourced height is
@@ -263,19 +265,32 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         },
       })
 
-      for (const layer of ['rooms-fp', 'rooms-flat']) map.on('mousemove', layer, (e) => {
-        const f = e.features?.[0]
-        if (!f) return
-        if (hovered.current != null) map.setFeatureState({ source: 'fp', id: hovered.current }, { hover: false })
-        hovered.current = f.id ?? null
-        if (hovered.current != null) map.setFeatureState({ source: 'fp', id: hovered.current }, { hover: true })
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      for (const layer of ['rooms-fp', 'rooms-flat']) map.on('mouseleave', layer, () => {
-        if (hovered.current != null) map.setFeatureState({ source: 'fp', id: hovered.current }, { hover: false })
-        hovered.current = null
-        map.getCanvas().style.cursor = ''
-      })
+      /* Hovering any component lights the WHOLE property — ARIA's podium and
+         its tower are one building to a reader, and lighting half of it would
+         be the group model leaking through as a rendering artefact. */
+      const setGroupHover = (slug: string | null) => {
+        if (hovered.current === slug) return
+        for (const f of ROOM_FOOTPRINTS.features) {
+          if (f.properties.slug === hovered.current) map.setFeatureState({ source: 'fp', id: f.id }, { hover: false })
+        }
+        hovered.current = slug
+        if (slug) {
+          for (const f of ROOM_FOOTPRINTS.features) {
+            if (f.properties.slug === slug) map.setFeatureState({ source: 'fp', id: f.id }, { hover: true })
+          }
+        }
+      }
+      for (const layer of ['rooms-fp', 'rooms-flat']) {
+        map.on('mousemove', layer, (e) => {
+          const slug = e.features?.[0]?.properties?.slug
+          if (slug) setGroupHover(String(slug))
+          map.getCanvas().style.cursor = 'pointer'
+        })
+        map.on('mouseleave', layer, () => {
+          setGroupHover(null)
+          map.getCanvas().style.cursor = ''
+        })
+      }
       map.on('click', 'clusters', (e) => {
         const f = e.features?.[0]
         if (f) map.easeTo({ center: (f.geometry as GeoJSON.Point).coordinates as [number, number], zoom: map.getZoom() + 2 })
