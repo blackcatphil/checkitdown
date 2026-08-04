@@ -149,38 +149,44 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         } catch { /* a style layer rejecting a paint property is not fatal */ }
       }
 
-      map.addSource('ofm', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' })
-      /* The city. `render_height` is all the tiles expose — OpenMapTiles merges
-         height= and building:levels upstream, which is why the height=-only
-         rule is UNAVAILABLE rather than rejected. Podium-tagged resorts render
-         short; upstream OSM edits are the only remaining lever. */
-      map.addLayer({
-        id: 'city',
-        source: 'ofm',
-        'source-layer': 'building',
-        type: 'fill-extrusion',
-        minzoom: 13,
-        paint: {
-          'fill-extrusion-color': T.raised,
-          'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 0],
-          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-          'fill-extrusion-opacity': 0.85,
-        },
-      })
+      /* NO TILE BUILDING LAYER. Extruding from tiles meant taking
+         `render_height`, which OpenMapTiles pre-merges from height= and
+         building:levels — that IS the MGM-Grand-as-a-two-storey-box problem.
+         Owning the polygons gives back control of the heights, so the podium
+         problem disappears rather than being documented as a known wart.
+         The ground map stays as the style ships it. */
 
       /* OUR OWN 17 footprints, picked deliberately by scripts/room-footprints.mjs.
          Hover lives here and ONLY here — never on tile feature-state, which
          would inherit missing ids, per-tile splitting and podium ambiguity. */
       map.addSource('fp', { type: 'geojson', data: ROOM_FOOTPRINTS as never, promoteId: 'slug' })
+      /* THE FLAT-FOOTPRINT RULE IS LIVE AGAIN. It was marked moot only because
+         the tiles offered no tagged/untagged distinction; with our own data it
+         applies as originally reasoned. A polygon with a sourced height is
+         extruded to it. A polygon without one renders FLAT — "there is a
+         building here and we do not know its height" — never a volume
+         synthesised from `building:levels`, which is the inflation path and the
+         podium tag wearing a different hat. */
+      map.addLayer({
+        id: 'rooms-flat',
+        source: 'fp',
+        type: 'fill',
+        paint: {
+          'fill-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.value, T.pin] as ExpressionSpecification,
+          'fill-opacity': 0.45,
+          'fill-outline-color': T.accent300,
+        },
+      })
       map.addLayer({
         id: 'rooms-fp',
         source: 'fp',
         type: 'fill-extrusion',
-        minzoom: 13,
+        filter: ['has', 'height'],
         paint: {
           'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.value, T.pin] as ExpressionSpecification,
-          'fill-extrusion-height': ['+', ['coalesce', ['get', 'height'], ['*', ['coalesce', ['get', 'levels'], 1], 3.2]], 3] as ExpressionSpecification,
-          'fill-extrusion-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.6] as ExpressionSpecification,
+          'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.75] as ExpressionSpecification,
         },
       })
 
@@ -245,7 +251,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         },
       })
 
-      map.on('mousemove', 'rooms-fp', (e) => {
+      for (const layer of ['rooms-fp', 'rooms-flat']) map.on('mousemove', layer, (e) => {
         const f = e.features?.[0]
         if (!f) return
         if (hovered.current != null) map.setFeatureState({ source: 'fp', id: hovered.current }, { hover: false })
@@ -253,7 +259,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         if (hovered.current != null) map.setFeatureState({ source: 'fp', id: hovered.current }, { hover: true })
         map.getCanvas().style.cursor = 'pointer'
       })
-      map.on('mouseleave', 'rooms-fp', () => {
+      for (const layer of ['rooms-fp', 'rooms-flat']) map.on('mouseleave', layer, () => {
         if (hovered.current != null) map.setFeatureState({ source: 'fp', id: hovered.current }, { hover: false })
         hovered.current = null
         map.getCanvas().style.cursor = ''
@@ -279,8 +285,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
        and the UI says which. Structural, not cosmetic. */
     const check = () => {
       setZoom(Number(map.getZoom().toFixed(2)))
-      setTilesIn(map.getZoom() >= 13 && map.areTilesLoaded()
-        && map.queryRenderedFeatures({ layers: ['city'] }).length > 0)
+      /* Our footprints are bundled, so they paint immediately. What can still
+         be missing is the GROUND MAP, and a blank ground is as ambiguous as a
+         blank skyline was. */
+      setTilesIn(map.areTilesLoaded())
       const b = map.getBounds()
       setInView(rosterRef.current.filter((r) => b.contains([r.longitude, r.latitude])).length)
     }
@@ -407,17 +415,17 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
             apart on its own, so it says which one it is. */}
         {in3d && !tilesIn && (
           <div className="cid-maploading">
-            <span className="cid-label">BUILDINGS LOADING</span>
+            <span className="cid-label">MAP LOADING</span>
             <p>
               {ready
-                ? 'Tiles are still downloading. This is not the map telling you there is nothing here.'
+                ? 'Ground tiles are still downloading. This is not the map telling you there is nothing here.'
                 : 'Starting the map…'}
             </p>
           </div>
         )}
 
         <div className="num cid-mapbadge">
-          z{zoom} · {roster.length} ROOMS · {in3d ? (tilesIn ? '3D' : '3D · LOADING') : `FLAT · 3D AT z${MIN_3D_ZOOM}`}
+          z{zoom} · {roster.length} ROOMS · {in3d ? '3D' : `FLAT · 3D AT z${MIN_3D_ZOOM}`}{tilesIn ? '' : ' · LOADING'}
         </div>
       </div>
     </div>

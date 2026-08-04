@@ -69,17 +69,21 @@ knowing when your evidence has a timestamp and saying so.
 
 ### Untagged buildings render as FLAT FOOTPRINTS, never guessed volumes
 
-> **SUPERSEDED 2026-08-04 for the map, by `spike/maplibre-spike.html` — kept
-> because the principle still binds anywhere we control the data.** Vector tile
-> features expose only `render_height`, into which OpenMapTiles has already
-> merged `height=` and `building:levels` upstream. There is no untagged/tagged
-> distinction left to act on by the time a renderer sees a building, so this rule
-> has nothing to implement against. It was the honest answer to a choice the
-> tiles do not offer. **The measurement behind it still stands** — 72% of OSM
-> tagged buildings really are levels-only and the podium cases really are wrong;
-> what evaporated is the lever, not the finding. Consequence: bad heights can no
-> longer be routed around in the renderer, so **fixing `height=` upstream in OSM
-> is the only remaining lever**.
+> **UN-SUPERSEDED 2026-08-04, and worth reading as a pair.** It was briefly
+> marked moot because vector tiles expose only `render_height`, into which
+> OpenMapTiles has already merged `height=` and `building:levels` — there was no
+> tagged/untagged distinction left to act on, so the rule had nothing to
+> implement against.
+>
+> **Reverting to extruding only our own 17 casinos brings it back**, because it
+> brings back control of the data. That is the argument for the reversion, and it
+> was only visible after trying the other way: extruding from tiles meant
+> accepting `render_height`, which **is** the MGM-Grand-as-a-two-storey-box
+> problem. With our own polygons, the podium problem stops being a documented
+> wart and becomes a thing we decide.
+>
+> Sourcing heights for 1,283 corridor buildings was never realistic — which is
+> precisely why we took what the tiles gave. Seventeen is tractable.
 
 A footprint says *"there is a building here and we do not know its height."* A
 default extrusion says *"this building is 12 m tall"* — a claim nobody made.
@@ -401,6 +405,39 @@ This is a structural constraint on build-order step 4, not a bug to fix later:
 no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
+
+## Extruding only our own 17 casinos — and the height debt that blocks it
+
+The tile building layer is **dropped**. Only the 17 footprints extrude, and only
+where a **sourced height** exists; everything else renders as a flat footprint.
+`building:levels` is deliberately NOT used to synthesise a height — that is the
+inflation path and the podium tag wearing a different hat.
+
+**Measured against the footprint file as it stands: 2 of 17 would extrude.**
+
+| | rooms |
+|---|---|
+| real `height=` | **2** — ARIA 20 m, Bellagio 120 m |
+| `building:levels` only | 4 — Horseshoe 26st, GVR 6st, MGM Grand 2st, South Point 1st |
+| nothing | 11 |
+
+**And one of the two is wrong.** ARIA's is **20 m** — the podium, not the 183 m
+tower. That is not a tagging accident: `scripts/room-footprints.mjs` picks by
+CONTAINMENT, which is the right question for *"which building is the poker room
+inside?"* and the wrong one for *"which mass represents this property on a
+skyline?"* At ARIA those are different buildings.
+
+**So the height work is two decisions per room, not one:**
+
+1. **which polygon** represents the property's mass — the containment match is
+   correct for the room and may be the podium for the skyline
+2. **what height** it is — from a published source, carried with `source_url`,
+   `fetched_at` and `verified_at` like every other fact in this product
+
+Until both are done, the map shows 15 flat footprints and 2 extrusions, one of
+them a 20 m ARIA. **That is the rule working**, not a bug — flat means "we have
+not sourced this", which is true. But it is a long way from a skyline, and the
+gap is data, not code.
 
 ## The map runs on MapLibre (migrated 2026-08-04)
 
