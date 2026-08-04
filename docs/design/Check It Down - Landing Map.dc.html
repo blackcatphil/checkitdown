@@ -336,12 +336,34 @@ const ROOMS = [
     a:['nlh','plo','mixed','tableside','cocktail','validated','nonsmoking'], spread:'Series events, $400 \u2013 $250k', hook:'Largest poker venue on earth while it runs', slug:'wsop-paris' }
 ];
 
+/* FILTER GROUPS \u2014 `shipped` is a COVERAGE GATE, not a feature flag.
+ *
+ * A dim on this map means "this room does not have it". That is only true
+ * if we know. At current coverage an amenity dim would actually mean "we
+ * have not checked": tick Tableside food and 15 rooms go dark, most of
+ * them rooms that probably do serve at the table. Rendering an unknown as
+ * a negative is the one thing this product must never do, and the filter
+ * is the only surface with no unknown state \u2014 everywhere else an unknown
+ * is tilde'd, dotted, never ranked, with the exclusion line naming it.
+ *
+ * GAMES ships because its data is complete: 75 cash games across all 17
+ * rooms, so a non-match really is a non-match and the dim is a claim we
+ * can stand behind. The signature interaction is intact; it filters on
+ * the axis where coverage is total.
+ *
+ * The amenity groups stay here, off, and come back PER SLUG once that
+ * slug is answered for enough rooms. Amenity facts are not unavailable,
+ * they are UN-SCRAPABLE \u2014 a person standing in the room knows all twelve
+ * in about ninety seconds, which is what the floor-visit pass produces.
+ * Amenity DATA still ships: it renders on the room detail card, where
+ * absence reads as absence-of-information rather than absence-of-amenity.
+ */
 const GROUPS = [
-  { title:'GAMES', items:[['nlh',"No-Limit Hold'em"],['plo','Pot-Limit Omaha'],['limit','Limit hold\u2019em'],['mixed','Mixed games']] },
-  { title:'FOOD & DRINK', items:[['tableside','Tableside food'],['cocktail','Cocktail service'],['kitchen24','24-hour kitchen']] },
-  { title:'PARKING', items:[['freeself','Free self-park'],['freevalet','Free valet'],['validated','Validated']] },
-  { title:'COMFORT', items:[['nonsmoking','Non-smoking room'],['usb','USB at seat'],['tvs','TVs at the table']] },
-  { title:'SERVICES', items:[['massage','Massage'],['checkcash','Check cashing'],['phonein','Phone-in list']] }
+  { title:'GAMES', shipped:true, items:[['nlh',"No-Limit Hold'em"],['plo','Pot-Limit Omaha'],['limit','Limit hold\u2019em'],['mixed','Mixed games']] },
+  { title:'FOOD & DRINK', shipped:false, items:[['tableside','Tableside food'],['cocktail','Cocktail service'],['kitchen24','24-hour kitchen']] },
+  { title:'PARKING', shipped:false, items:[['freeself','Free self-park'],['freevalet','Free valet'],['validated','Validated']] },
+  { title:'COMFORT', shipped:false, items:[['nonsmoking','Non-smoking room'],['usb','USB at seat'],['tvs','TVs at the table']] },
+  { title:'SERVICES', shipped:false, items:[['massage','Massage'],['checkcash','Check cashing'],['phonein','Phone-in list']] }
 ];
 
 class Component extends DCLogic {
@@ -484,7 +506,8 @@ class Component extends DCLogic {
     const matchNames = matches.map(r => r.name);
     const acc = '#5E3A93', line = 'rgba(242,244,246,.3)';
 
-    const groups = GROUPS.map(g => ({
+    /* Coverage gate — only groups whose dim is a claim we can stand behind. */
+    const groups = GROUPS.filter(g => g.shipped).map(g => ({
       title: g.title,
       items: g.items.map(([k, label]) => {
         const on = this.state.checked.indexOf(k) !== -1;

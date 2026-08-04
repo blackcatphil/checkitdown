@@ -455,3 +455,100 @@ update cash_games c
  where s.url = c.source_url and s.data_type = 'cash' and c.source_id is null;
 
 commit;
+
+-- =====================================================================
+-- AMENITY TYPES — reconciled against the REAL filter panel.
+--
+-- Source of truth: the GROUPS constant in
+--   docs/design/Check It Down - Landing Map.dc.html
+-- which defines 16 checkboxes across five groups. GAMES holds 4 of them
+-- (nlh, plo, limit, mixed) and those are NOT amenity types — which games
+-- a room spreads lives in cash_games.game, one source of truth. So the
+-- amenity taxonomy is the remaining 12, exactly.
+--
+-- Slugs are the panel's own keys verbatim, not prettier synonyms, so the
+-- filter can query these rows directly with no translation layer to drift.
+-- The amenity_group enum still carries 'games'; no row uses it, and none
+-- should.
+-- =====================================================================
+
+begin;
+
+insert into amenity_types (slug, label, grp, sort_order) values
+  ('tableside',   'Tableside food',   'food_drink', 1),
+  ('cocktail',    'Cocktail service', 'food_drink', 2),
+  ('kitchen24',   '24-hour kitchen',  'food_drink', 3),
+  ('freeself',    'Free self-park',   'parking',    1),
+  ('freevalet',   'Free valet',       'parking',    2),
+  ('validated',   'Validated',        'parking',    3),
+  ('nonsmoking',  'Non-smoking room', 'comfort',    1),
+  ('usb',         'USB at seat',      'comfort',    2),
+  ('tvs',         'TVs at the table', 'comfort',    3),
+  ('massage',     'Massage',          'services',   1),
+  ('checkcash',   'Check cashing',    'services',   2),
+  ('phonein',     'Phone-in list',    'services',   3);
+
+-- Amenity sources: same pages, third data_type. "The amenities changed"
+-- is a different maintenance job again from rake or closure.
+insert into sources (data_type, url, label, cadence_hours, status, last_fetched_at, last_ok_at)
+select 'amenities', url, label, 336, status, last_fetched_at, last_ok_at
+from sources
+where data_type = 'rooms'
+  and url in (
+    'https://vegasadvantage.com/open-las-vegas-poker-rooms/aria/',
+    'https://vegasadvantage.com/open-las-vegas-poker-rooms/bellagio/',
+    'https://vegasadvantage.com/open-las-vegas-poker-rooms/venetian/',
+    'https://vegasadvantage.com/open-las-vegas-poker-rooms/wynn/',
+    'https://vegasadvantage.com/open-las-vegas-poker-rooms/green-valley-ranch/',
+    'https://vegasadvantage.com/open-las-vegas-poker-rooms/boulder-station/');
+
+-- ---------------------------------------------------------------------
+-- ROOM AMENITIES — only what a source actually states.
+--
+-- 8 rows across 6 rooms. ELEVEN OF SEVENTEEN ROOMS GET NOTHING, and that
+-- is the correct outcome, not a shortfall: amenities are the category
+-- casinos publish least and the floor confirms fastest.
+--
+-- Rejected rather than stretched, because false presence is worse than
+-- false absence:
+--   Venetian "free parking with three hours of play"  -> validated, NOT
+--       freeself. Free self-park means free to everyone; conditional on
+--       play is a different claim and the panel separates them.
+--   Golden Nugget "televisions along the walls"       -> NOT tvs. The
+--       checkbox says at the table; the source says the opposite.
+--   MGM Grand "noise and smoke are generally not an issue" -> NOT
+--       nonsmoking. That is a description of comfort, not a policy.
+--   Red Rock "restroom within the poker room"         -> no slug exists.
+--       Real fact, no home in the panel. Dropped, not invented.
+--   Skyline's amenity list came from a search summary of a page that
+--       404s. Unreadable at source is unusable.
+-- ---------------------------------------------------------------------
+insert into room_amenities (room_id, amenity_id, available, detail, source_url, fetched_at)
+select r.id, a.id, true, v.detail, v.source_url, timestamptz '2026-08-03 12:00:00-07'
+from (values
+  ('aria','cocktail',            'Quick drink service with premium options',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/aria/'),
+  ('bellagio','cocktail',        'Quick drink service',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/bellagio/'),
+  ('venetian','validated',       'Free parking with at least three hours of cash game or tournament action',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/venetian/'),
+  ('wynn-encore','validated',    'Validated with three or more hours of action; complimentary same-day parking for poker room guests',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/wynn/'),
+  ('wynn-encore','cocktail',     'Quick drink service with a wide variety',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/wynn/'),
+  ('green-valley-ranch','usb',   'Each seat has a charging station',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/green-valley-ranch/'),
+  ('green-valley-ranch','tvs',   'More than 20 75-inch TVs',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/green-valley-ranch/'),
+  ('boulder-station','nonsmoking','Walled off from the casino floor; smoking prohibited',
+   'https://vegasadvantage.com/open-las-vegas-poker-rooms/boulder-station/')
+) as v(room_slug, amenity_slug, detail, source_url)
+join rooms r         on r.slug = v.room_slug
+join amenity_types a on a.slug = v.amenity_slug;
+
+update room_amenities ra
+   set source_id = s.id
+  from sources s
+ where s.url = ra.source_url and s.data_type = 'amenities';
+
+commit;

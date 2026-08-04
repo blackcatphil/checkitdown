@@ -1,0 +1,34 @@
+/* Desktop-first. Mobile is deferred but coming: every target here is already
+   >= 44px so the responsive pass is a reflow, not a redesign. */
+:root {
+  --cid-space-1: 4px;
+  --cid-space-2: 6px;
+  --cid-space-3: 9px;
+  --cid-space-4: 12px;
+  --cid-space-5: 14px;
+  --cid-space-6: 20px;
+  --cid-space-7: 26px;
+  --cid-space-8: 34px;
+  --cid-space-9: 52px;
+
+  --cid-page-max: 1240px;
+  --cid-gutter: 20px;
+  --cid-header-h: 64px;
+  --cid-panel-w: 302px;       /* map filter panel */
+  --cid-measure: 760px;       /* prose max-width */
+
+  --cid-target: 44px;         /* never smaller, desktop included */
+  --cid-row-h: 56px;          /* table row */
+
+  /* the superlatives table grid — fr tracks MUST be minmax(0,…) or long
+     cells push the page past the viewport */
+  --cid-table-cols: 112px minmax(0,1.55fr) minmax(0,1.2fr) minmax(0,.62fr)
+                    minmax(0,1.25fr) minmax(0,1.55fr) minmax(0,.78fr) minmax(0,1fr);
+
+  --cid-r-sm: 3px;            /* actions, chips — nearly square */
+  --cid-r-md: 4px;
+  --cid-r-pill: 999px;        /* pins only */
+
+  --cid-tray-w: 236px;
+  --cid-tray-h: 190px;        /* capped; scrolls internally past 4 rooms */
+}

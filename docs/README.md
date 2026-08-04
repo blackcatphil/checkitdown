@@ -140,6 +140,31 @@ therefore about *host accessibility*, not about how stable the page is.
 - **Provenance:** two states only — verified (date shown) and unverified
   (tilde'd, dotted rule, never ranked). When an unverified figure is excluded
   from a "best" column, **name the room and the reason**, never "1 room skipped".
+- **`area` is a CLASSIFICATION field, not a fact field — same category as
+  `slug`.** It is wayfinding, not a finding: nobody reads "STRIP" as a
+  measurement. It therefore does **not** carry fact-provenance, even though it
+  sits on `rooms` and rides that row's `verified_at`. Do not mark it editorial —
+  the editorial label is for *judgements dressed as findings* (`reliability`'s
+  "typically runs" is a claim about the world and needs marking); applying it to
+  a navigational bucket would over-apply the rule until the label means nothing.
+  Disputed classifications go through the correction flow. **Do not collapse
+  `off_strip` and `locals`** — that distinction is real and players make it
+  constantly, since rake, comps and game quality genuinely differ; losing it to
+  dodge a judgement call costs more than the call.
+- **Amenity filters are coverage-gated; a dim must never mean "we haven't
+  checked".** A dim on the map *means* the room lacks the feature. That is only
+  true where coverage is real: 7 of 12 amenity slugs currently match zero rooms
+  and 11 of 17 rooms have no amenity data, so an amenity dim would darken rooms
+  that probably do have the feature — rendering an unknown as a negative, in the
+  product's most visible interaction. Every other surface has an unknown state
+  (tilde'd, dotted, never ranked, exclusion line naming the reason); **the filter
+  has none**, which is why it must only point at complete data. **v1 ships the
+  GAMES group only** — 75 cash games across all 17 rooms, so a non-match really
+  is a non-match. Amenity *data* still ships on the room detail card, where
+  absence reads as absence-of-information. A group switches on **per slug**, once
+  that slug is answered for enough rooms that the dim is a claim we can stand
+  behind. Amenity facts aren't unavailable, they're **un-scrapable** — a person
+  in the room knows all twelve in ninety seconds.
 - **Two sources of truth drift, so games have exactly one.** Which games a room
   spreads lives in `cash_games.game` and is never duplicated into
   `amenity_types`. The filter panel's GAMES group queries `cash_games`

@@ -1,0 +1,15 @@
+/* CHECK IT DOWN — one import for everything.
+   Designs are authored with INLINE styles; these tokens are the handoff contract
+   for the build, and the reference the guideline cards render from. */
+@import url('./tokens/fonts.css');
+@import url('./tokens/colors.css');
+@import url('./tokens/typography.css');
+@import url('./tokens/layout.css');
+@import url('./tokens/motion.css');
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; background: var(--cid-ink-800); color: var(--cid-text); }
+body { font-family: var(--cid-font-ui); -webkit-font-smoothing: antialiased; }
+a { color: var(--cid-accent-300); text-decoration: none; border-bottom: 1px solid var(--cid-accent-line); }
+a:hover { color: var(--cid-accent-200); }
+[data-num], .num { font-family: var(--cid-font-mono); font-variant-numeric: tabular-nums; }

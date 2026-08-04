@@ -1,0 +1,75 @@
+/* The design system is the handoff contract — tokens copied in per SKILL.md,
+   not re-invented here. Do not add colours, type sizes or spacing values that
+   are not in tokens/; if something is missing it goes in the token file. */
+@import url('./styles/tokens/fonts.css');
+@import url('./styles/tokens/colors.css');
+@import url('./styles/tokens/typography.css');
+@import url('./styles/tokens/layout.css');
+@import url('./styles/tokens/motion.css');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--cid-ink-800);
+  color: var(--cid-text);
+}
+
+body {
+  font-family: var(--cid-font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--cid-accent-300);
+  text-decoration: none;
+  border-bottom: 1px solid var(--cid-accent-line);
+}
+a:hover { color: var(--cid-accent-200); }
+
+[data-num], .num {
+  font-family: var(--cid-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.cid-page {
+  max-width: var(--cid-page-max);
+  margin: 0 auto;
+  padding: 0 var(--cid-gutter);
+}
+
+.cid-label {
+  font: var(--cid-label);
+  letter-spacing: var(--cid-track-label);
+  color: var(--cid-dim);
+  text-transform: uppercase;
+}
+
+/* The unverified treatment: neutral grey with a dotted rule. Never ochre —
+   ochre reads as the gold we banned. */
+.cid-unverified {
+  color: var(--cid-unverified);
+  border-bottom: 1px dotted var(--cid-unverified-rule);
+}
+
+/* Every fr track is minmax(0,…) — see --cid-table-cols. Without it one long
+   room name puts a horizontal scrollbar on the page. */
+.cid-trow {
+  display: grid;
+  grid-template-columns: var(--cid-table-cols);
+  gap: var(--cid-space-4);
+  align-items: center;
+  padding: 0 var(--cid-space-5);
+  min-height: var(--cid-row-h);
+  border-bottom: 1px solid var(--cid-line-1);
+}
+.cid-trow > * { min-width: 0; }
+
+.cid-thead {
+  position: sticky;
+  top: var(--cid-header-h);
+  background: var(--cid-ink-700);
+  border-bottom: 1px solid var(--cid-line-2);
+  min-height: var(--cid-target);
+  z-index: 2;
+}

@@ -7,6 +7,14 @@ _Current state of the design, the rules that govern it, and what needs deciding.
 
 Probe the DOM and read the measured numbers back. Do not eyeball. Every invariant below was measured in the live render.
 
+**Data layer — query it, don't read the seed file.** Stack up via `supabase start`, then:
+- `supabase test db` → **10 pgTAP assertions, all pass.** It fails if a relation appears in `public` that it does not classify as public-read / service-only / write-only, so adding a table without deciding who may read it is a failing build. Proven against three injected regressions (revoked anon SELECT; leaked `sources` to anon; unclassified new table).
+- Counts: **17 rooms · 75 cash games · 12 amenity types · 8 room-amenity links · 42 sources** (18 rooms + 18 cash + 6 amenities — one page can be three maintenance jobs).
+- **7 of 12 amenity types have zero rooms; 11 of 17 rooms have zero amenities.** These two numbers are the whole of decisions 1–3.
+- `select count(*) from rooms where verified_at is not null` → **0**, and the same for `cash_games`, `room_amenities` and `cash_games.rake_verified_at`. Any non-zero means someone marked research as verification.
+- **12 amenity types, not 17**: the panel has 16 checkboxes over five groups, GAMES holds 4, and games are not amenity types.
+- `select count(*) from cash_games where small_bet is not null` → **27**; `where rake_type is null` → **2** (Horseshoe publishes no rake figure); `where rake_source_url is not null` → **13** (The Orleans, whose cap is sourced separately from its stakes).
+
 **Board — `Check It Down - Palette and Logo.dc.html`** (desktop canvas, open in canvas/pan-zoom mode)
 - Turn 4 `#4a` is the locked comp: **1240 × 1102**, header mark carries `knockR1`+`knockR2`, CTA fill **rgb(94,58,147)**, 8 pins with **0** behind the popup, panel clip **0**, 9 table rows, no gold.
 - Six comps, all **1240 × 1102**: `#4a` (locked), `#2a` `#2b`, `#1a` `#1b` `#1c`. Logo cards `#1d`–`#1g` and `#3a`–`#3c` each **600** wide. Sections run newest-first: turn 4, 3, 2, 1.
@@ -183,7 +191,25 @@ Persistent side panels instead of sheets · hover states exist but nothing depen
 
 ## 8. Data
 
-Every figure on the board is a **researched placeholder**: rake caps, drops, comp rates, the Wynn/Encore time charge, table counts, parking and food strings. None of it is a live feed. The roster is **17 permanent valley rooms**, reconciled against PokerAtlas and Vegas Advantage. **WSOP·Paris is modelled, not deleted:** `seasonal: true`, excluded from the default roster, the pin set and every match count, and shown when the series is live (late May – mid July), when it is the largest poker venue on earth.
+Every figure **on the board** is still a researched placeholder. But as of 2026-08-03 there is now a **real data layer behind it**, and the two do not agree about how much there is to show.
+
+The roster is **17 permanent valley rooms**, reconciled against Vegas Advantage's open-rooms list. **WSOP·Paris is modelled, not deleted:** `seasonal: true`, excluded from the default roster, the pin set and every match count, and shown when the series is live (late May – mid July).
+
+**What is actually in the database** (`supabase/seed.sql`, all of it candidate data — `source_url` and `fetched_at` set, `verified_at` NULL on every row):
+
+| | seeded |
+|---|---|
+| rooms | 17 / 17, each with lat/lon, area, hours |
+| cash games | 75 across all 17 rooms |
+| amenity types | 12 — the panel's non-GAMES checkboxes exactly |
+| room ↔ amenity links | **8, across 6 rooms** |
+| verified anything | **0** |
+
+**THE DESIGN AND THE DATA DISAGREE ON AMENITY DENSITY, AND THE DATA IS RIGHT.** The landing-map mock gives each room six to ten amenity keys (Red Rock carries ten). Published sources support **0–2 per room**, and **11 of 17 rooms have none at all**. Seven of the twelve filters — `tableside`, `kitchen24`, `freeself`, `freevalet`, `massage`, `checkcash`, `phonein` — currently match **zero** rooms. The AMENITIES block on the detail card and the filter panel's match counts were both designed against a density that published sources do not provide. This is a design consequence, not only a seeding shortfall — see decisions.
+
+**Games are not amenity types.** Which games a room spreads lives in `cash_games.game`; the GAMES group queries it directly. `amenity_types` covers only the other four groups. Two records of the same fact drift.
+
+Three things the seeding pass proved about the schema, all now fixed: fixed-limit games had no home (`small_bet`/`big_bet` added — 27 of 75 games use them), rake could not be recorded as unknown (`rake_type` nullable; Horseshoe publishes no figure at all), and rake needed its own receipt (`rake_source_url`, because The Orleans publishes stakes on Boyd's site and its cap only on a third party).
 
 ---
 
@@ -203,7 +229,9 @@ The token file and `SKILL.md` are what the build actually consumes, so they are 
 
 ## 9. Known limitations
 
-1. All numbers are placeholders — nothing goes in front of a real user until real feeds replace them.
+1. All numbers **on the comps** are placeholders. The database behind them is real but **entirely unverified** (`verified_at` NULL on every row), so it is displayable — tilde'd, dotted, never ranked — and nothing in it may be ranked or presented as fact until a floor visit confirms it. A "best rake" column cannot honestly be computed from this dataset today.
+8. **Dress code and drinks are 0/17 and will stay there.** Not a research gap — no room publishes either. Those two fields are permanently in-person or permanently empty, so the first-timer strip may not ship in v1.
+9. **Five properties block automated fetching entirely** — all four MGM rooms (ARIA, Bellagio, MGM Grand, Mandalay Bay) plus Golden Nugget. That is half the Strip roster, and it means no tier-1 scraper will ever serve them; they are permanently Tier 2.
 2. ~~Map modules need re-skinning~~ — **done.** `checkitdown-map-3d.html` carries the locked aubergine palette, cluster pins and the building dim. `poker-map-tier-a.html` remains as the Tier A fallback and is not wired into the desktop landing map.
 3. ~~Tokens and components are still the mobile felt/brass system~~ — **done.** `tokens/` and `components/` are the Check It Down system as of this pass; see §10.
 4. The board's map band is a **treatment mock**, not the live 3D module; it shows pins, popup, side panel and dim behaviour in each palette. The real map exists as its own file.
@@ -217,9 +245,40 @@ The token file and `SKILL.md` are what the build actually consumes, so they are 
 
 The last three are **answered and folded into the spec above**: superlatives dim picks in place and keep true rank order (with true citywide ranks even when filtered) · an excluded unverified figure is named with its reason, never counted · tournaments ship as a sortable table with a routable `/tournaments/<slug>` detail and the dailies-PDF / series-transcription split intact.
 
-**Nothing is blocked.** All four desktop surfaces are built and verified, and the design system has been rebuilt onto the locked palette. Both open calls are answered: `OUR READ` stays **off** Just the facts (rake, drop, parking, food and tables are all published, so judgement there would dilute the one screen whose credibility rests on being purely sourced — the name is the promise), and mobile **stops at six surfaces** rather than being re-skinned, because the parked files are stale in scope and a re-skin would carefully preserve features that are not in v1.
+### RULED 2026-08-03 — the amenity filter does not ship in v1; the amenity data does
 
-Two things worth your call after that, neither blocking: whether the editorial `OUR READ` column should also appear on Just the facts (it currently exists only on tournaments), and whether the desktop pass now goes back over the mobile files or stops at the six surfaces.
+**The problem was never density, it was that a dim renders an unknown as a negative.** A dim on that map *means* "this room does not have it". At current coverage it would actually mean "we have not checked" — tick Tableside food and fifteen rooms go dark, most of them rooms that probably do serve at the table. That is the one thing this product cannot do, and it would do it in its most visible interaction. Every other surface has an unknown state: tilde'd, dotted rule, never ranked, exclusion line naming the room and the reason. **The filter has no such state**, so it must not be pointed at data that is mostly unknown.
+
+- **Hiding zero-coverage checkboxes: yes, but as a floor, not a fix.** A checkbox that can never match is broken rather than honest — but hiding the seven empties would still leave five filters dimming on 0–2 rows of evidence.
+- **The filter panel ships with GAMES only.** 75 cash games across all 17 rooms is total coverage, so a non-match really is a non-match and the dim is a claim we can stand behind. The signature interaction survives; it filters on the axis where our data is complete.
+- **Amenity data still ships** — on the room detail card, where each fact carries provenance and absence reads as absence-of-information. This is *not* parking it like Promos: Promos has nothing behind it, amenities have real sourced facts and a real home.
+- **Trigger to switch a group on, per slug not someday:** a group appears when its slugs are answered for enough rooms that a dim is a claim we can stand behind. Amenity facts are not unavailable, they are **un-scrapable** — a person in the room knows all twelve in ninety seconds. This is the strongest argument yet for the floor-visit pass.
+
+Implemented: `GROUPS` in `Check It Down - Landing Map.dc.html` now carries a `shipped` flag consumed by `GROUPS.filter(g => g.shipped)`. The four amenity groups remain in source, off, so they return per slug rather than being rebuilt. Verified that `checked` is never restored from URL or localStorage (only `compare` is), so no stale slug can filter behind a hidden group.
+
+**Red Rock's "restroom within the poker room"** — dropped. The panel is authoritative; a 13th slug invented at seed time is the drift the GAMES ruling forbids.
+
+### RULED 2026-08-03 — the honest state is a design deliverable, not a fallback
+
+**1. AMENITIES empty state: ships, naming the reason.** "Not yet checked on site", with the correction link beside it. This is not damage control — it is the clearest statement of what makes the product different: PokerAtlas shows undated facts and lets you assume they are current; we show a **dated gap**. The correction link turns that gap into an input, and it doubles as a visible pipeline to-do.
+
+**2. Just the Facts builds against the database, not the mock.** Verifying a subset first is the *launch* answer, not an alternative to building against real data now — the screen fills in as verification lands.
+
+The consequence is the point: **building against real data stress-tests the honest state, which the mock never did.** The comps show a fully-populated, fully-verified table that will never exist on day one. With zero verified rows Just the Facts must still look **intentional** — and if it looks broken, that is a design flaw to fix now, because a partly-verified table is exactly what launch day looks like.
+
+> **NEW DESIGN NEED — the three superlative cards need a designed zero-verified state.** LOWEST RAKE / BEST FOOD / MOST TABLES with nothing rankable can neither render blank nor show a placeholder winner. Same discipline as the exclusion line: say what is missing and why. This state **will exist in production**, so it must exist in the design.
+
+**3. `area` ships as is — it is wayfinding, not a finding.** No editorial label: that label is for judgements dressed as findings, and applying it to a navigational bucket would over-apply the rule until it means nothing. `off_strip` and `locals` are **not** collapsed — the distinction is real, players make it constantly, and rake, comps and game quality genuinely differ. `area` is documented in the README as a **classification field, not a fact field**, in the same category as `slug`; disputed classifications go through the correction flow.
+
+### Nothing is blocked
+
+All three open calls from the data pass are ruled above. Step 3 — the Next.js
+build — is unblocked and proceeds against the exported tokens and components
+rather than new styling.
+
+The one thing carried into that build as **design work, not plumbing**, is the
+zero-verified state of the three superlative cards. It is not a fallback: on day
+one it is the only state that exists.
 
 Settled during the superlatives build, and now rules rather than choices:
 1. Sort control sits **in the sticky table header**, next to the columns it sorts.
