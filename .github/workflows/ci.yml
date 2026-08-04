@@ -36,15 +36,22 @@ jobs:
       - run: npm ci
 
       # --- GATE 1: pure logic. Cheapest, so it runs first and fails fastest. ---
-      - name: test:unit
-        run: npm run test:unit
-
-      - name: Assert the unit suite actually ran assertions
+      #
+      # Each gate RUNS ONCE, ECHOES, then asserts. The first version ran each
+      # suite twice — once for the exit code, once to grep — which doubles the
+      # work and lets the two runs disagree. It also captured output into a
+      # variable and never printed it, so when the assertion failed the log
+      # showed the complaint and not the evidence. Both fixed here.
+      - name: "test:unit (6 assertions)"
         run: |
           set -euo pipefail
-          out=$(npm run --silent test:unit 2>&1)
-          echo "$out" | grep -qE '^# pass [1-9]' \
-            || { echo "::error::test:unit reported no passing assertions — a suite that runs nothing is not a gate"; exit 1; }
+          npm run --silent test:unit 2>&1 | tee /tmp/unit.log
+          grep -qE '^. fail 0' /tmp/unit.log \
+            || { echo "::error::test:unit reported failures"; exit 1; }
+          n=$(grep -oE '^. tests [0-9]+' /tmp/unit.log | grep -oE '[0-9]+')
+          echo "unit assertions: $n"
+          [ "${n:-0}" -ge 6 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 6) — a suite that shrinks to nothing still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -67,18 +74,16 @@ jobs:
           [ "$games" = "75" ] || { echo "::error::expected 75 seeded cash games, got '$games'"; exit 1; }
 
       # --- GATE 2: RLS + grants, against the real roles. ---
-      - name: test:rls
-        run: supabase test db
-
-      - name: Assert the RLS suite ran its assertions
+      - name: "test:rls (10 pgTAP assertions)"
         run: |
           set -euo pipefail
-          out=$(supabase test db 2>&1)
-          echo "$out"
-          echo "$out" | grep -q 'All tests successful' \
+          supabase test db 2>&1 | tee /tmp/rls.log
+          grep -q 'All tests successful' /tmp/rls.log \
             || { echo "::error::pgTAP did not report success"; exit 1; }
-          echo "$out" | grep -qE 'Tests=1[0-9]|Tests=[1-9][0-9]' \
-            || { echo "::error::pgTAP ran fewer tests than expected — a shrinking suite is a silent regression"; exit 1; }
+          n=$(grep -oE 'Tests=[0-9]+' /tmp/rls.log | head -1 | cut -d= -f2)
+          echo "pgTAP assertions: $n"
+          [ "${n:-0}" -ge 10 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 10) — a shrinking suite is a silent regression"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
@@ -109,17 +114,16 @@ jobs:
             || { echo "::error::the app never became reachable — test:mixed reads rendered output and would otherwise pass vacuously"; exit 1; }
 
       # --- GATE 3: rendered output against a seeded database. ---
-      - name: test:mixed
+      - name: "test:mixed (63 assertions, 15 scenarios)"
         env:
           PSQL: psql
           BASE_URL: http://127.0.0.1:3000
         run: |
           set -euo pipefail
-          out=$(npm run --silent test:mixed 2>&1)
-          echo "$out"
-          echo "$out" | grep -q 'All mixed-state checks passed' \
+          npm run --silent test:mixed 2>&1 | tee /tmp/mixed.log
+          grep -q 'All mixed-state checks passed' /tmp/mixed.log \
             || { echo "::error::mixed-state suite did not pass"; exit 1; }
-          n=$(echo "$out" | grep -c '^   PASS' || true)
+          n=$(grep -c '^   PASS' /tmp/mixed.log || true)
           echo "assertions passed: $n"
           [ "$n" -ge 60 ] || { echo "::error::only $n assertions ran (expected >= 60) — the suite shrank, which is a silent regression"; exit 1; }
 
