@@ -5,9 +5,14 @@ Las Vegas valley: games, rake, amenities, promotions and tournaments, ranking wh
 is best at what. Independent of the casinos; every fact carries a source and a
 verified date.
 
-Repo lives in `~/Projects/` deliberately — **not** Desktop, because iCloud
+Repo lives in `~/projects/` deliberately — **not** Desktop, because iCloud
 Desktop & Documents sync has previously duplicated and deleted files under a
 running dev server.
+
+Note the lowercase. APFS here is case-insensitive, so `~/Projects/` resolves to
+the same inode and any path written either way works locally — which is exactly
+what makes the casing wrong in docs survive until it reaches a case-sensitive
+filesystem (CI runners, Docker images, Linux) and fails there.
 
 ## Layout
 
