@@ -443,6 +443,30 @@ argument for testing a constraint BEFORE it shapes an architecture rather than
 after, which is exactly what this measurement was — and the hand-modelled
 massing is what it costs when you don't.
 
+**BEFORE ANY MIGRATION — the throwaway spike, and its inventory.**
+
+The one claim none of these numbers can settle is whether a `height=`-only
+render actually reads as a skyline at z14.5 on real tiles. It needs eyes. But it
+is also the exact claim the mock got wrong three times, so it gets built as a
+standalone page — MapLibre + OpenFreeMap, Strip centre, z14.5, `height=`-only —
+touching no application code and deleted either way.
+
+**It must PRINT ITS INVENTORY ON LOAD, before anyone looks at it:**
+
+- how many buildings extruded in the current view
+- which of our 17 rooms are among them
+- **the known absences BY NAME** — Trump International 205 m flat, Horseshoe
+  83 m flat, The LINQ 64 m flat
+
+Without that, "it looks sparse" arrives unattributed, and a hole where the
+corridor's tallest building should be reads as a rendering fault rather than as
+the rule working correctly. The inventory turns a judgement into an attributed
+one. *This is the same discipline as the exclusion line: name what is missing
+and why, on the surface where someone will notice the gap.*
+
+Loop: build the spike → look at it in a browser → Phil decides. No migration
+touched until after.
+
 **Default if you say decide for me: path 2, with (a2) and the flat-footprint fallback.**
 It is a real rework, so it is Phil's call — but it deletes more than it adds,
 and every deletion is code that exists only because of a constraint that turned
