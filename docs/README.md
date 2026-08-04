@@ -148,6 +148,29 @@ to show; z15 buys 6px more lean and costs a **third of the visible roster**.
 14.5 is the lowest zoom where the massing meaningfully reads with over half the
 roster still on screen.
 
+**In 3D the building is the room; the pin is a locator.** A single pin renders
+as a 32px disc in flat mode and a **14px dot** in 3D. Measured at the landing
+view, **10 of 17 buildings are narrower than the 32px disc standing on them** —
+Westgate is 28×13px under a 32px pin, which is why one room read as "a flat disc
+where everything else is extruded". It was never missing massing; the marker was
+hiding it. With the dot, buildings narrower than their marker drop from
+**11/17 to 1/17** at z14.5. The one remaining is Skyline, which is small because
+it *is* small — a 12 m single-storey room — and that is a fact, not a failure.
+
+**Is there a useful step between 14.5 and 15?** Measured, and essentially no:
+
+| zoom | lean | in view | buildings under a 32px pin |
+|---|---|---|---|
+| 14.5 | 14px | 9/17 | 10/17 |
+| 14.6 | 15px | 9/17 | 8/17 |
+| 14.75 | 17px | **7/17** | 3/17 |
+| 15 | 20px | 6/17 | 1/17 |
+
+The legibility cliff sits between **14.6 and 14.75**, and crossing it costs two
+rooms (9 → 7), dropping below the ~8-in-view floor. **14.6 is the only step that
+holds coverage**, and it buys little. Note also that `zoomSnap` is 0.5, so 14.6
+and 14.75 are not reachable resting zooms without lowering it to 0.1.
+
 **One camera, because two disagreed.** Leaflet places markers untilted while the
 massing is tilted — measured at the landing view, a room's pin sat a median
 34–47px and up to **213px** from its own building. Pins now project through the

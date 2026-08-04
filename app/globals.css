@@ -191,3 +191,15 @@ a:hover { color: var(--cid-accent-200); }
   cursor: pointer;
 }
 .cid-viewbtn:hover { border-color: var(--cid-accent-line); color: var(--cid-text); }
+
+/* In 3D the building is the room and the pin is only a locator. A 32px disc on
+   a 28px building hides what it marks — and makes a low building read as a flat
+   pin with no massing at all. */
+.cid-dot {
+  width: 14px; height: 14px;
+  background: var(--cid-accent-300);
+  border: 1px solid var(--cid-ink-800);
+  box-shadow: 0 0 0 2px var(--cid-scrim);
+}
+.cid-dot.cid-out { background: var(--cid-pin-dim); box-shadow: none; }
+.cid-dot.cid-flagged { background: transparent; border: 2px dashed var(--cid-accent-300); }

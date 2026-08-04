@@ -59,6 +59,16 @@ const STRIP_Z = 14.5
  * into the Strip cluster, which becomes 8.
  */
 const SINGLE = 32
+/**
+ * In 3D the BUILDING is the room; the pin is only a locator.
+ *
+ * Measured at the landing view: 10 of 17 buildings are narrower than the 32px
+ * pin standing on them (Westgate is 28x13px under a 32px disc), so the marker
+ * hides the thing it marks and a low building reads as "flat pin, no massing".
+ * A 14px dot lets the massing carry identity. Skyline stays small because it IS
+ * small — a 12 m single-storey room — and that is a fact, not a failure.
+ */
+const SINGLE_3D = 14
 const CLUSTER = 44
 const PIN = 40
 
@@ -202,11 +212,12 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         const r = anchor
         const lit = matched.has(r.slug)
         const badge = STATUS_LABEL[r.status]
+        const size = on3d ? SINGLE_3D : SINGLE
         const icon = L.divIcon({
           className: '',
-          html: `<div class="cid-pin cid-single${lit ? '' : ' cid-out'}${badge ? ' cid-flagged' : ''}"></div>`,
-          iconSize: [SINGLE, SINGLE],
-          iconAnchor: [SINGLE / 2, SINGLE / 2],
+          html: `<div class="cid-pin ${on3d ? 'cid-dot' : 'cid-single'}${lit ? '' : ' cid-out'}${badge ? ' cid-flagged' : ''}"></div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
         })
         const m = L.marker(map.containerPointToLatLng([group.x, group.y]), { icon }).addTo(layer)
         m.bindPopup(popupHtml(r), { className: 'cid-popup', closeButton: false, minWidth: 240 })
