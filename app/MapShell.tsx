@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
+import { applyPalette, type MapStyle } from '@/lib/map-style'
 import { ROOM_FOOTPRINTS } from '@/lib/room-footprints'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
@@ -60,6 +61,7 @@ const PITCH = 52
 /** Below this the camera flattens: the tile building layer carries no data
  *  lower, so a pitched empty view would be all cost and no skyline. */
 const MIN_3D_ZOOM = 13.5
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
 
 export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const holder = useRef<HTMLDivElement>(null)
@@ -112,43 +114,34 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   useEffect(() => {
     if (!holder.current || mapRef.current) return
     const T = readTokens(MAP_TOKENS)
+    let cancelled = false
+    let map: InstanceType<typeof MLMap> | null = null
 
-    const map = new MLMap({
-      container: holder.current,
-      style: 'https://tiles.openfreemap.org/styles/positron',
-      center: STRIP,
-      zoom: STRIP_Z,
-      pitch: PITCH,
-      bearing: -18,
-      /* OSM's tile usage policy REQUIRES visible attribution. It was actively
-         suppressed once already; MapLibre shows it by default and it stays. */
-      attributionControl: { compact: false },
-    })
-    mapRef.current = map
+    /* Recolour the style BEFORE the map exists. The first version walked it
+       after `load` and fired 83 setPaintProperty calls across 55 layers, each
+       against a live map, each a style diff and a repaint. MapLibre fetches this
+       JSON anyway — fetching it ourselves costs the same request and does the
+       work once. */
+    void (async () => {
+      const raw: MapStyle = await fetch(STYLE_URL).then((r) => r.json())
+      if (cancelled || !holder.current) return
+      map = new MLMap({
+        container: holder.current,
+        style: applyPalette(raw, T) as never,
+        center: STRIP,
+        zoom: STRIP_Z,
+        pitch: PITCH,
+        bearing: -18,
+        /* OSM's tile usage policy REQUIRES visible attribution. It was actively
+           suppressed once already; MapLibre shows it by default and it stays. */
+        attributionControl: { compact: false },
+      })
+      mapRef.current = map
+      wire(map, T)
+    })()
 
+    function wire(map: InstanceType<typeof MLMap>, T: Record<string, string>) {
     map.on('load', () => {
-      /* Restyle every layer individually — the capability Leaflet lacked. That
-         map toned raster tiles with a single CSS filter, a blunt instrument
-         applied to a picture; here water, roads, labels and fills each take
-         their own token. */
-      for (const l of map.getStyle().layers ?? []) {
-        const water = /water|ocean|river/i.test(l.id)
-        try {
-          if (l.type === 'background') map.setPaintProperty(l.id, 'background-color', T.base)
-          else if (l.type === 'fill') {
-            map.setPaintProperty(l.id, 'fill-color', water ? T.water : T.surface)
-            map.setPaintProperty(l.id, 'fill-opacity', water ? 1 : 0.5)
-          } else if (l.type === 'line') {
-            map.setPaintProperty(l.id, 'line-color', water ? T.water : T.line)
-          } else if (l.type === 'symbol') {
-            map.setPaintProperty(l.id, 'text-color', T.dim)
-            map.setPaintProperty(l.id, 'text-halo-color', T.base)
-          } else if (l.type === 'fill-extrusion') {
-            map.setPaintProperty(l.id, 'fill-extrusion-opacity', 0)
-          }
-        } catch { /* a style layer rejecting a paint property is not fatal */ }
-      }
-
       /* NO TILE BUILDING LAYER. Extruding from tiles meant taking
          `render_height`, which OpenMapTiles pre-merges from height= and
          building:levels — that IS the MGM-Grand-as-a-two-storey-box problem.
@@ -295,7 +288,13 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     map.on('moveend', check)
     map.on('idle', check)
 
-    return () => { map.remove(); mapRef.current = null }
+    }
+
+    return () => {
+      cancelled = true
+      map?.remove()
+      mapRef.current = null
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- created once; data flows in through the effects below
   }, [])
 

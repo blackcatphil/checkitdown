@@ -427,6 +427,23 @@ CONTAINMENT, which is the right question for *"which building is the poker room
 inside?"* and the wrong one for *"which mass represents this property on a
 skyline?"* At ARIA those are different buildings.
 
+**The right unit is the property's BUILDING GROUP, not one polygon.** ARIA
+genuinely *is* a podium with a tower on it; Caesars is a podium and four towers;
+Mandalay Bay is three wings. Extruding each component at its own height is what
+the building actually looks like, and it **dissolves the tension rather than
+choosing a side**: containment still identifies the room's building for hover,
+while the group supplies the skyline's mass. Keep the containment match and add
+group membership **alongside** it — replacing one with the other loses the
+question the other was answering.
+
+This is the third appearance of the same divergence — Overpass
+tallest-within-130m, then the hand-modelled massing, now containment — which is
+what makes it a modelling gap rather than three separate bugs.
+
+It does reopen the garage problem: *"which polygons belong to this property"* is
+a judgement, and it is what put **Bellagio Self Parking Garage** on Bellagio. At
+17 properties, verified by hand, that is tractable.
+
 **So the height work is two decisions per room, not one:**
 
 1. **which polygon** represents the property's mass — the containment match is
