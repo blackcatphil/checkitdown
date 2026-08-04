@@ -79,10 +79,23 @@ async function probe(browser, { cold }) {
      are still settling after the vector tiles stop arriving. An assertion that
      can differ between two identical runs is a flake generator, and this suite
      exists to be believed. */
-  const styleDeadline = Date.now() + 10000
-  while (Date.now() < styleDeadline) {
-    const done = await page.evaluate(() => window.__cid_map?.isStyleLoaded() ?? null)
-    if (done !== false) break
+  /* WAIT FOR EXACTLY WHAT THE QUERY NEEDS, in one loop.
+     Two earlier versions raced: the first broke out on `null` (handle not yet
+     assigned) because `null !== false`; the second checked for the handle ONCE,
+     which is the same race moved up a line. Both reported 0 extruded masses on
+     a map that was drawing 13 — a red assertion pointing at the test, not the
+     map, which is the most expensive kind of false alarm here.
+     So: poll for the handle AND a settled style AND the layer being queried,
+     and record which of them was missing if it times out. */
+  let waited = null
+  const readyDeadline = Date.now() + 15000
+  while (Date.now() < readyDeadline) {
+    waited = await page.evaluate(() => {
+      const m = window.__cid_map
+      if (!m) return { handle: false }
+      return { handle: true, styleLoaded: m.isStyleLoaded() === true, layer: !!m.getLayer('rooms-fp') }
+    })
+    if (!waited.handle || (waited.styleLoaded && waited.layer)) break
     await page.waitForTimeout(400)
   }
 
@@ -195,7 +208,9 @@ for (const [i, r] of results.entries()) {
   if (r.rendered) {
     console.log(`  extruded    ${r.rendered.extruded} masses on screen · tallest ${r.rendered.heights.join(', ')}m`)
     console.log(`  flat        ${r.rendered.flat} masses`)
-    ok(r.rendered.extruded > 0, `the sourced buildings are RENDERED, not merely in the data (${r.rendered.extruded})`)
+    ok(r.rendered.extruded > 0,
+      `the sourced buildings are RENDERED, not merely in the data (${r.rendered.extruded}`
+      + `${r.rendered.extruded === 0 ? `; styleLoaded=${r.rendered.styleLoaded}` : ''})`)
     ok(r.rendered.styleLoaded, 'the style reports itself fully loaded')
   } else {
     console.log('  (build with NEXT_PUBLIC_MAP_DEBUG=1 for the rendered-feature assertions)')

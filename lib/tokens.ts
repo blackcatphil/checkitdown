@@ -53,8 +53,21 @@ export const MAP_TOKENS = {
   base: '--cid-ink-800',
   surface: '--cid-ink-700',
   raised: '--cid-ink-600',
-  water: '--cid-ink-900',
   line: '--cid-line-2',
+  /* GROUND MAP. Separate from the ink scale on purpose: these are tinted
+     toward the accent, and reusing --cid-ink-* would have quietly changed the
+     panels and popups too. */
+  land: '--cid-map-land',
+  land2: '--cid-map-land-2',
+  natural: '--cid-map-natural',
+  water: '--cid-map-water',
+  waterLine: '--cid-map-water-line',
+  building: '--cid-map-building',
+  buildingEdge: '--cid-map-building-edge',
+  roadMinor: '--cid-map-road-minor',
+  roadCasing: '--cid-map-road-casing',
+  roadMajor: '--cid-map-road-major',
+  boundary: '--cid-map-boundary',
   dim: '--cid-dim',
   text: '--cid-text',
   value: '--cid-value',

@@ -46,6 +46,31 @@
   --cid-unverified-rule: rgba(242, 244, 246, 0.34); /* dotted underline */
   --cid-dim-row: 0.42;                        /* opacity for de-emphasised rows */
 
+  /* map — GROUND.
+     Aubergine lives in the SHADOWS here, never the highlights. The dark end
+     (land, parks, water depth) is tinted toward the accent; the light end
+     (road bodies, labels) stays close to neutral paper. That ordering is what
+     keeps the extruded buildings and the room pins the brightest things on the
+     map — if the streets went aubergine at the buildings' weight, the towers
+     would stop reading and the whole 3D arc would be for nothing.
+
+     WATER IS DESATURATED ON PURPOSE. --cid-value (#4FBFAE) means verified: good
+     rake, confirmed figures, the live dot. A decorative saturated teal on the
+     same screen would compete for that meaning, exactly as a brand-red that
+     cannot mean warning. Same family, far less saturation — the data signal
+     always wins the saturated value. */
+  --cid-map-land: #0B0910;          /* background / land base */
+  --cid-map-land-2: #120E1A;        /* landuse polygons, one step up */
+  --cid-map-natural: #16101F;       /* parks, wood, GOLF — tinted, never green */
+  --cid-map-water: #142029;         /* desaturated teal-slate */
+  --cid-map-water-line: #1B2C38;    /* waterways */
+  --cid-map-building: #191322;      /* the tiles' own buildings, kept quiet */
+  --cid-map-building-edge: #251C34; /* their hairline; Positron ships it near-WHITE */
+  --cid-map-road-minor: #241E30;    /* stays out of the way */
+  --cid-map-road-casing: #3A3149;   /* frames the major roads */
+  --cid-map-road-major: #6B5C85;    /* the Strip reads as a spine */
+  --cid-map-boundary: rgba(169, 140, 232, 0.22);
+
   /* map */
   --cid-pin: var(--cid-accent-500);
   --cid-pin-dim: rgba(242, 244, 246, 0.26);
@@ -74,6 +99,20 @@
   --cid-line-3: rgba(16, 19, 26, 0.3);
   --cid-fill-1: rgba(16, 19, 26, 0.04);
   --cid-fill-2: rgba(16, 19, 26, 0.07);
+
+  /* map — ground, on paper. Same ordering inverted: the accent tint now lives
+     in the LIGHT end's shadows, and the buildings still sit above everything. */
+  --cid-map-land: #ECEAF0;
+  --cid-map-land-2: #E2DEE9;
+  --cid-map-natural: #DCD5E6;
+  --cid-map-water: #CBD8DE;
+  --cid-map-water-line: #B6C7D0;
+  --cid-map-building: #DAD4E2;
+  --cid-map-building-edge: #C6BDD3;
+  --cid-map-road-minor: #D6D0DE;
+  --cid-map-road-casing: #BCB2CB;
+  --cid-map-road-major: #FFFFFF;
+  --cid-map-boundary: rgba(94, 58, 147, 0.28);
 
   --cid-accent-300: #5E3A93;   /* accent type darkens on paper */
   --cid-accent-wash: rgba(94, 58, 147, 0.1);

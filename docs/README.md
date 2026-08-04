@@ -531,6 +531,84 @@ style URL directly: a correctly-rendered map in the **wrong colours**, with
 `PALETTE FAILED` in the badge. A blank map tells you nothing; a
 Positron-coloured one tells you exactly which step failed.
 
+## The ground map carries the palette (2026-08-04)
+
+The ground was neutral dark while only the buildings were aubergine. It now
+carries the palette, under **two rules that are about meaning, not taste** —
+both of which are what stop it reading muddy.
+
+**1. Saturation carries meaning, so decoration gets the desaturated end.**
+`--cid-value` (#4FBFAE) means *verified*: good rake, confirmed figures, the live
+dot. A decorative saturated teal on the same screen would blunt it exactly as a
+brand-red that cannot mean warning. Water is the same family at a fraction of
+the **chroma**, so it never competes. Where a map layer and a data signal could
+sit adjacent, **the data signal wins the saturated value.**
+
+**2. Aubergine goes in the shadows, not the highlights.** The buildings are the
+figure and the ground map is the ground. The dark end (land, parks, water) is
+tinted toward the accent; the light end (road bodies, labels) stays near-neutral
+paper. If the streets went aubergine at the buildings' weight, the towers would
+stop reading — and the towers are what the whole 3D arc was for.
+
+Parks, woodland and golf are **aubergine-tinted, never green**. The palette bans
+green-as-good, and the Wynn golf course rendering green beside a teal "verified"
+marker would contradict that on the front page.
+
+All of it lives in `applyPalette` (pure, testable) and every colour is a
+`--cid-map-*` token in both themes. `classifyLayer` sorts the style's **real 55
+layers** into ten classes; `other` is a real answer and those layers keep their
+upstream paint rather than being coloured on a guess.
+
+### Six rules, each proven to go red
+
+`lib/map-style.test.mjs` asserts against the **real palette parsed out of
+colors.css**, not a mock — a mock satisfies whatever invariant you write for it
+while the shipped colours quietly break the same rule. Each was verified by
+injecting a violation: a green park, a road brighter than a building, a
+saturated decorative teal, a land colour too light for label contrast.
+
+**Two measures, because "saturated" means two things.** *Chroma* (absolute
+colourfulness) answers "does this compete with the teal that means verified?".
+HSL *saturation* answers "is the tint in the shadows?". Using saturation for
+both called a near-black teal-slate (0.34) a rival to vivid #4FBFAE (0.47) — it
+divides by lightness, so it cannot tell a faint lean from a real colour.
+
+### A colour you never chose cannot be caught by checking the colours you chose
+
+Positron ships `fill-outline-color: rgb(219,219,218)` on its building layer —
+the only one in the style. Setting `fill-color` and leaving it painted a
+**near-white mesh over every block in the valley**: the brightest thing on the
+map, on a layer meant to be quiet texture, straight through a figure/ground rule
+that only ever inspected our own tokens.
+
+The fix is a guard that does not depend on having imagined the failure: **no
+`*-color` on a layer we claim to have recoloured may still hold its upstream
+value.** Positron is a light theme, so every colour it ships is wrong for us —
+survival is the defect, whatever the property is called.
+
+The same audit found route shields, which are **sprite images**: `icon-color`
+does nothing to them, and at full strength they measured as pure white
+(L=1.00) against buildings at L=0.19. Muted to 0.5 rather than hidden, because
+I-15 and Las Vegas Blvd are real wayfinding.
+
+### The rendered pixels, not just the tokens
+
+The token tests pass on values we control; they cannot see what actually
+reaches the screen. Sampling the rendered canvas found **0 green-dominant
+pixels** and cut the brightest pixel from **L=1.00 to L=0.44**.
+
+One honest exception: **label text is brighter than a building** (0.31% of
+pixels) and stays that way. It has to hold 4.5:1 or it is not legible. The
+figure/ground rule governs the map's **masses** — fills and lines — not the
+information layer on top of them.
+
+### Contrast is now measured rather than asserted in prose
+
+The ≥4.5:1 floor existed only as a comment beside `--cid-dim`. It is a test now,
+measured **against the halo** rather than the land: a label crosses water, park
+and road within one pan, so there is no single background to measure, and the
+halo is the background the text actually sits on.
+
 ## The map instrument (`NEXT_PUBLIC_MAP_DEBUG=1`)
 
 Three numbers in the badge: **tiles requested / loaded**, **errors**, and **time
