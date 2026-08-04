@@ -125,6 +125,23 @@ no tier-1 parser will ever run against these hosts. It should shape the Cowork
 tier split — these five are permanently Tier 2, and the tier boundary is
 therefore about *host accessibility*, not about how stable the page is.
 
+## The migration is still a draft — and the exact day it stops being one
+
+`00000000000001_initial_schema.sql` is edited **in place**, not fixed forward.
+It has run many times locally, which sounds like it should count, and doesn't.
+
+**The trigger is not "it has been applied" and not "it is on GitHub". It is:
+any database you cannot freely reset has run it.**
+
+- `supabase db reset` regenerates from scratch on demand → still a draft.
+- A fresh clone resets the same way, so **pushing to GitHub changes nothing**.
+- **Creating a hosted Supabase project changes it permanently**, because that
+  database holds state nobody can casually throw away.
+
+So: keep editing the migration in place until the hosted project exists, and
+switch to fix-forward the day it does. Written here so it is a trigger to check
+rather than a judgement call to relitigate.
+
 ## Enforcement audit — which decisions have something behind them
 
 A locked decision can sit in this list for days with nothing enforcing it.
@@ -149,20 +166,22 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 | A sort's direction and metric are part of the claim | code + test | `sortCaption()` derives from `direction`; `test:mixed` |
 | Rank is tied to the active sort and says so | code | `sortHead()` — `# BY RAKE` derives from the same spec |
 | RLS needs explicit GRANTs | test | `supabase test db`, 10 assertions |
-| A row cites its own source, never its parent's | prose | **no automated check is possible** — a correct pointer to the wrong document is indistinguishable from a correct one |
+| A row cites its own source, never its parent's | prose | **no useful guard exists.** A partial check flagging rows that inherit the parent's `source_id` was considered and rejected: 15 of 16 rooms legitimately cite one page for both rake and stakes, so it would be almost entirely false positives. Stated as a limit, not an oversight |
 | Games have exactly one source of truth | code | `amenity_types` holds no game rows; GAMES group queries `cash_games` |
 | Amenity filters are coverage-gated | code | `shipped` flag on `GROUPS` |
 | `area` is a classification, not a fact | prose | naming convention; no runtime meaning |
 | Zero-verified is the primary state | test | `test:mixed` ZERO scenario |
 | Floor visit records absences explicitly | prose | a capture-process rule — nothing in the app can enforce what a person writes down |
-| Palette / type / logo / no gold | **GAP** | design-system tokens exist, but nothing fails if a raw hex is used. A lint rule banning non-token colours would close it |
+| Palette / no raw colour | code | `no-restricted-syntax` in `eslint.config.mjs` — hex, `rgb()`/`hsl()` and template-literal forms all error on `app/`, `lib/`, `components/`. Exemptions written down in that file; `readToken()` in `lib/tokens.ts` is the sanctioned path for canvas |
 | Compare dims in place and never reorders | **GAP** | not built yet — belongs with the landing map |
 | Editorial content is labelled as editorial | **GAP** | `reliability` is display-only by convention; nothing stops a future surface sorting it |
 | Mobile: no interaction without a touch equivalent | prose | a design review rule |
 
-The three GAPs are known and unclosed. Two of them (`compare`, editorial
-labelling) are surfaces not yet built, so they close when those are built. The
-palette one is real today and worth a lint rule.
+Two GAPs remain, both surfaces not yet built (`compare`, editorial labelling),
+so they close when those are built. The palette gap is **closed** — deliberately
+before the landing map rather than after, because the map is the surface most
+likely to acquire ad-hoc colour, and a rule added afterwards is a cleanup while a
+rule added first means the drift never gets written.
 
 ## Locked decisions worth not relitigating
 
