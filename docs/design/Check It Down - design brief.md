@@ -369,6 +369,11 @@ ARIA's correct 183 m — a confident false claim nobody made. Measured:
 So "24% have a usable height" quietly includes some that are usable **and
 wrong**, and the honest headline is weaker than the raw number suggests.
 
+**Sub-decision (a) — CLOSED by the spike.** The tiles expose only
+`render_height`, so (a1) is the only implementable option and (a2) is not
+available. Retained below for the reasoning, which still applies wherever we
+control the data.
+
 **Sub-decision (a) — what do we trust enough to extrude?**
   - **(a1)** Extrude anything with a usable height, accept that ~40 named
     buildings draw short and confident.
@@ -442,6 +447,62 @@ more likely wrong than right.** That is the strongest
 argument for testing a constraint BEFORE it shapes an architecture rather than
 after, which is exactly what this measurement was — and the hand-modelled
 massing is what it costs when you don't.
+
+### SPIKE RESULT (2026-08-04) — `spike/maplibre-spike.html`
+
+**The spike answered both questions, and killed one of our decisions.**
+
+**a2 IS NOT IMPLEMENTABLE.** Tile feature properties are `render_height` and
+`render_min_height` — nothing else. **OpenMapTiles merges `height=` and
+`building:levels` upstream**, so the distinction we measured, argued and ruled
+on is gone before the renderer ever sees it. The page derives this from the live
+features (`Object.keys(properties)`) rather than asserting it, so it is a
+finding, not an opinion — and it is exactly what the printed inventory existed to
+surface *before* anyone formed a view of the render.
+
+Note the measurement itself still stands: 72% of OSM tagged buildings really are
+levels-only, and the podium cases really are wrong. What evaporated is the
+**lever**, not the finding.
+
+**The view is what Phil has been pointing at.** 112 of 112 features extruded, 52
+above 60 m, tallest 235 / 206 / 196 / 195 / 184 / 183 m. The whole city, not our
+eighteen shapes on a flat plane. 7 of 17 rooms in the viewport.
+
+**⚠️ One gap worth closing before this is quoted:** the spike was viewed at
+**z14.97**; the landing constant is **z14.5**. So "it reads as a skyline" is
+established at ~z15, not at the zoom we actually land on. That is the same shape
+as the earlier comparison that turned out to be against a superseded rendering —
+either the landing constant moves to ~15, or the skyline claim gets re-checked at
+14.5 before it is relied on.
+
+**Consequences:**
+
+1. **The flat-footprint rule is MOOT — superseded, not wrong.** It was the honest
+   answer to a choice the tiles do not offer. Nothing to implement. The
+   reasoning is kept because the principle still holds anywhere we *do* control
+   the data, and `render_height` being pre-merged is precisely why we cannot
+   apply it here.
+2. **Upstream OSM edits stop being optional.** Sub-decision (b) was "an option
+   with blast radius" while we could route around bad tags in the renderer. We
+   cannot. **Correcting `height=` at source is now the only lever that makes MGM
+   Grand stand up.** The motive constraint still binds: the edit is made because
+   the data is wrong, sourced and cited in the changeset — our map improving is
+   the consequence, not the reason.
+3. **The podium problem weighs less.** The confidently-wrong worry formed when
+   only our 18 buildings existed, where a short tower was a false claim about
+   *our room*, in isolation. Among hundreds of accurate neighbours it reads as
+   one oddly-squat building in a city. Still wrong; materially less loud.
+
+**The building layer carries NO `name` property** — every entry in the tall list
+renders as "unnamed". So per-building identification from tiles alone is
+unavailable, which **closes the one future case we noted** for building-to-room
+mapping (highlighting a selected room's own mass in 3D). Same schema decision
+upstream, same cause as the merged heights. Recorded so it is not rediscovered.
+
+**Recommendation: take it.** The render is dramatically better than
+hand-modelling reaches, the podium cases are documentable, and roughly five OSM
+edits fix the five that matter. It is a real trade — known-wrong heights on named
+properties in exchange for a real city — and it is Phil's call.
 
 **BEFORE ANY MIGRATION — the throwaway spike, and its inventory.**
 

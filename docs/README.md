@@ -69,6 +69,18 @@ knowing when your evidence has a timestamp and saying so.
 
 ### Untagged buildings render as FLAT FOOTPRINTS, never guessed volumes
 
+> **SUPERSEDED 2026-08-04 for the map, by `spike/maplibre-spike.html` — kept
+> because the principle still binds anywhere we control the data.** Vector tile
+> features expose only `render_height`, into which OpenMapTiles has already
+> merged `height=` and `building:levels` upstream. There is no untagged/tagged
+> distinction left to act on by the time a renderer sees a building, so this rule
+> has nothing to implement against. It was the honest answer to a choice the
+> tiles do not offer. **The measurement behind it still stands** — 72% of OSM
+> tagged buildings really are levels-only and the podium cases really are wrong;
+> what evaporated is the lever, not the finding. Consequence: bad heights can no
+> longer be routed around in the renderer, so **fixing `height=` upstream in OSM
+> is the only remaining lever**.
+
 A footprint says *"there is a building here and we do not know its height."* A
 default extrusion says *"this building is 12 m tall"* — a claim nobody made.
 That is the inflation path again, which was deleted once already for fabricating
@@ -125,6 +137,18 @@ produced a figure nobody would ever query. **It would have survived forever.**
 It was not found by noticing something wrong — it was found by *changing how the
 question was asked*, from "which building is nearest" to "which building is
 named this property".
+
+**A later instance, same shape:** the `height=`-only rule was measured, argued
+and ruled on for hours — all of it correct about OSM, none of it checkable
+against the renderer until someone read the tile feature properties. The output
+of the reasoning was sound; the method never asked what the tiles actually
+expose. One `Object.keys(properties)` settled it.
+
+**And the same schema decision closes something else:** the building layer
+carries **no `name` property**, so per-building identification from tiles alone
+is unavailable. That closes the one future case we had noted for building-to-room
+mapping — highlighting a selected room's own mass in 3D. Recorded so it is not
+rediscovered as a bug.
 
 So when a result looks right, that is not evidence. Ask what the method cannot
 distinguish: proximity cannot express "belongs to"; a valid FK cannot express

@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<title>SPIKE MapLibre height-only Strip z14.5</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet"/>
+<style>
+html,body{margin:0;height:100%;background:#0C0E11;color:#F2F4F6;font-family:ui-monospace,Menlo,monospace}
+#map{position:absolute;top:0;right:0;bottom:0;left:430px}
+#inv{position:absolute;top:0;left:0;width:430px;height:100%;overflow:auto;background:#14171B;
+border-right:1px solid #2a2f36;padding:16px 18px;font-size:11.5px;line-height:1.55;z-index:2;box-sizing:border-box}
+h1{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#A98CE8;margin:0 0 4px}
+h2{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#8a93a0;margin:18px 0 6px;
+border-top:1px solid #2a2f36;padding-top:12px}
+.sub{color:#8a93a0;margin:0 0 8px}.ok{color:#4FBFAE}.flat{color:#c98a8a}.dim{color:#8a93a0}
+table{border-collapse:collapse;width:100%}td{padding:1px 0;vertical-align:top}
+td.r{text-align:right;padding-left:8px;white-space:nowrap}.big{font-size:20px}
+code{background:#0C0E11;padding:1px 4px;border-radius:3px;color:#A98CE8}
+</style></head><body>
+<div id="inv"><h1>Inventory</h1><p class="sub">reading tiles...</p></div><div id="map"></div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+var ROOMS=[["ARIA",36.107029,-115.177998],["Bellagio",36.113115,-115.177007],
+["Boulder Station",36.133783,-115.085261],["Caesars Palace",36.116628,-115.176757],
+["Golden Nugget",36.169798,-115.145791],["Green Valley Ranch",36.020683,-115.089697],
+["Horseshoe",36.113482,-115.169055],["Mandalay Bay",36.092246,-115.175824],
+["MGM Grand",36.102789,-115.169401],["Orleans",36.103470,-115.201374],
+["Red Rock",36.156842,-115.333559],["Santa Fe Station",36.249887,-115.244822],
+["Skyline",36.062348,-115.008311],["South Point",36.011939,-115.176115],
+["Venetian",36.121707,-115.169335],["Westgate",36.135655,-115.151343],
+["Wynn/Encore",36.128935,-115.165362]];
+var KF=[["Trump International","205 m","levels-only, corridor tallest"],
+["Horseshoe Las Vegas","83 m","levels-only"],["The LINQ","64 m","levels-only"],
+["MGM Grand","tagged 2 storeys","podium tag on a 30-storey tower"],
+["New York New York","tagged 2 storeys","podium tag"]];
+var map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/positron",
+center:[-115.1709,36.1105],zoom:14.5,pitch:52,bearing:-18,canvasContextAttributes:{antialias:true}});
+map.on("load",function(){
+ map.addSource("ofm",{type:"vector",url:"https://tiles.openfreemap.org/planet"});
+ map.addLayer({id:"a2f",source:"ofm","source-layer":"building",type:"fill",minzoom:13,
+  paint:{"fill-color":"#3a3550","fill-opacity":0.55}});
+ map.addLayer({id:"a2b",source:"ofm","source-layer":"building",type:"fill-extrusion",minzoom:13,
+  paint:{"fill-extrusion-color":"#8A66C9",
+   "fill-extrusion-height":["coalesce",["get","render_height"],0],
+   "fill-extrusion-base":["coalesce",["get","render_min_height"],0],
+   "fill-extrusion-opacity":0.92}});
+ ROOMS.forEach(function(r){var e=document.createElement("div");
+  e.style.cssText="width:12px;height:12px;border-radius:50%;background:#A98CE8;border:2px solid #0C0E11";
+  new maplibregl.Marker({element:e}).setLngLat([r[2],r[1]]).addTo(map);});
+ map.once("idle",report);
+ map.on("moveend",function(){clearTimeout(window._t);window._t=setTimeout(report,500);});
+});
+function report(){
+ var f=map.queryRenderedFeatures({layers:["a2b"]}),s=new Map();
+ f.forEach(function(x){var k=x.id!=null?x.id:JSON.stringify(x.geometry.coordinates[0]&&x.geometry.coordinates[0][0]);
+  if(!s.has(k))s.set(k,x);});
+ var all=Array.from(s.values());
+ var wh=all.filter(function(x){return +x.properties.render_height>0;});
+ var tall=wh.filter(function(x){return +x.properties.render_height>=60;})
+   .sort(function(a,b){return b.properties.render_height-a.properties.render_height;});
+ var b=map.getBounds();
+ var iv=ROOMS.filter(function(r){return b.contains([r[2],r[1]]);});
+ var p=all.length?Object.keys(all[0].properties):[];
+ var hasH=p.indexOf("height")>-1,hasL=p.indexOf("building:levels")>-1||p.indexOf("levels")>-1;
+ document.getElementById("inv").innerHTML=
+ "<h1>Inventory</h1><p class='sub'>printed before judging the view - z"+map.getZoom().toFixed(2)+
+ ", pitch "+(map.getPitch()|0)+"</p>"+
+ "<h2>Can a2 even be implemented?</h2><p>Tile feature properties:<br><code>"+
+ (p.join("</code> <code>")||"none")+"</code></p>"+
+ "<p>raw <code>height</code>: <b class='"+(hasH?"ok":"flat")+"'>"+(hasH?"YES":"NO")+"</b>"+
+ " &nbsp; <code>building:levels</code>: <b class='"+(hasL?"ok":"flat")+"'>"+(hasL?"YES":"NO")+"</b></p>"+
+ (hasH?"":"<p class='flat'><b>NO means:</b> OpenMapTiles pre-merges height and building:levels into "+
+ "<code>render_height</code>. a2 (height-only) is then NOT IMPLEMENTABLE from these tiles - the "+
+ "distinction is gone before we see it. A finding, not a rendering fault.</p>")+
+ "<h2>Extruded in view</h2><p><span class='big'>"+wh.length+"</span> <span class='dim'>of "+all.length+
+ " features carry height &gt; 0 &nbsp;.&nbsp; "+tall.length+" at 60m+</span></p><table>"+
+ tall.slice(0,12).map(function(x){return "<tr><td>"+(x.properties.name||"<span class='dim'>unnamed</span>")+
+ "</td><td class='r'>"+Math.round(x.properties.render_height)+" m</td></tr>";}).join("")+"</table>"+
+ "<h2>Our rooms in this viewport</h2><p>"+iv.length+" of 17</p><table>"+
+ iv.map(function(r){return "<tr><td>"+r[0]+"</td></tr>";}).join("")+"</table>"+
+ "<h2 class='flat'>Known absences - expected, not faults</h2>"+
+ "<p class='dim'>If the view reads sparse, check here first.</p><table>"+
+ KF.map(function(k){return "<tr><td class='flat'>"+k[0]+"</td><td class='r flat'>"+k[1]+
+ "</td></tr><tr><td colspan='2' class='dim'>"+k[2]+"</td></tr>";}).join("")+"</table>";
+}
+</script></body></html>
