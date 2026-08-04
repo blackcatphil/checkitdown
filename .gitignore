@@ -63,3 +63,11 @@ coverage/
 #   - Next/JSX types resolve without it
 #   - `next build` succeeds and REGENERATES the file
 next-env.d.ts
+
+# Overpass response caches from scripts/osm-heights.mjs. Regenerable evidence,
+# not source: the script is the durable artifact and re-running it re-derives
+# these. Kept out of git so a 220KB API dump doesn't read as a reviewed change.
+scripts/.rooms/
+scripts/.osm-heights-cache.json
+scripts/.strip-buildings.json
+scripts/.fetch-rooms.sh

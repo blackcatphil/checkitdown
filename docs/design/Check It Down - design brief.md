@@ -239,12 +239,12 @@ The token file and `SKILL.md` are what the build actually consumes, so they are 
 ## 9. Known limitations
 
 1. All numbers **on the comps** are placeholders. The database behind them is real but **entirely unverified** (`verified_at` NULL on every row), so it is displayable — tilde'd, dotted, never ranked — and nothing in it may be ranked or presented as fact until a floor visit confirms it. A "best rake" column cannot honestly be computed from this dataset today.
-8. **Dress code and drinks are 0/17 and will stay there.** Not a research gap — no room publishes either. Those two fields are permanently in-person or permanently empty, so the first-timer strip may not ship in v1.
+8. **Dress code and drinks are 0/17.** *("and will stay there" is an inference from 17 pages, not a test — see the constraint table in the README.)* Not a research gap — no room publishes either. Those two fields are permanently in-person or permanently empty, so the first-timer strip may not ship in v1.
 9. **Five properties block automated fetching entirely** — all four MGM rooms (ARIA, Bellagio, MGM Grand, Mandalay Bay) plus Golden Nugget. That is half the Strip roster, and it means no tier-1 scraper will ever serve them; they are permanently Tier 2.
 2. **Map re-skinning was claimed done and was not.** `checkitdown-map-3d.html` carries the aubergine palette in its *chrome*, but its building gradients were still the old felt green (`rgb 84,100,89`, `66,80,72`) — only the selected state was aubergine. Found when the massing was ported. The APP's massing (`app/massing-layer.ts`) now takes every fill from `readTokens(MAP_TOKENS)`, so it cannot drift again; **the standalone HTML still has the green** and is kept only as design reference. This is the `is_seasonal` pattern a second time: prose asserting something no code did.
 3. ~~Tokens and components are still the mobile felt/brass system~~ — **done.** `tokens/` and `components/` are the Check It Down system as of this pass; see §10.
 4. The board's map band is a **treatment mock**, not the live 3D module; it shows pins, popup, side panel and dim behaviour in each palette. The real map exists as its own file.
-5. Only Strip-area geometry is extruded in Tier B; surrounding blocks stay flat (Overpass footprints unreachable from this environment).
+5. ~~Only Strip-area geometry is extruded in Tier B; surrounding blocks stay flat (Overpass footprints unreachable from this environment).~~ **The parenthetical was never true.** Overpass answers normally (it 406s a request with no `User-Agent`). This untested line justified hand-modelling eighteen buildings; see the README's *"a claim that was never tested reads exactly like one that was"*. The Tier B limitation is real only for as long as the hand-modelled approach is kept.
 6. ~~No desktop layout exists yet~~ — **four desktop surfaces are built** (map, superlatives, tournaments, promos) plus the direction board.
 7. The parked mobile screens are stale in **scope**, not only palette — they are built around crowd reporting, wait times and a waitlist button, all out of v1. They are pattern reference for stacked cards and sheets, nothing more.
 
@@ -279,7 +279,176 @@ The consequence is the point: **building against real data stress-tests the hone
 
 **3. `area` ships as is — it is wayfinding, not a finding.** No editorial label: that label is for judgements dressed as findings, and applying it to a navigational bucket would over-apply the rule until it means nothing. `off_strip` and `locals` are **not** collapsed — the distinction is real, players make it constantly, and rake, comps and game quality genuinely differ. `area` is documented in the README as a **classification field, not a fact field**, in the same category as `slug`; disputed classifications go through the correction flow.
 
-### Nothing is blocked
+### DECISION NEEDED — the map engine. Three paths, measured.
+
+Phil wants the landing map to look like Apple Maps' 3D Strip: every building
+modelled, not eighteen hand-drawn shapes. Our current approach cannot get there,
+and polish will not close it. **Measured first** (`scripts/osm-heights.mjs`,
+`scripts/.strip-buildings.json`, 2026-08-04):
+
+**Strip corridor, 1,283 buildings:** 308 (24%) carry a usable height; 975 (76%)
+carry none. **But the distribution is the finding, not the percentage** — the
+tagging is inverted from the worry. 49 buildings are tagged ≥60 m and 31 ≥100 m,
+and the tallest list (205, 196, 192, 187, 184, 184, 184, 183, 165, 163 m) *is*
+the Strip skyline. Median tagged height is 10 m. **The towers are tagged; the
+low-rise is not.** For a product whose rooms are in the towers, that is close to
+the ideal failure mode.
+
+**Our 17 rooms — 12/17 carry a usable height, but read the split:**
+
+| | rooms | note |
+|---|---|---|
+| real `height=` on a tower | **7** | ARIA 183, Wynn 192, Mandalay 148, Venetian 145, Caesars 133, Bellagio 120, Horseshoe 112 — **all Strip** |
+| only `building:levels`, materially short | 5 | MGM Grand 14 m, Golden Nugget 19 m, GVR 22 m, Westgate 16 m, South Point 3 m — levels tagged on a podium, not the tower |
+| nothing | 5 | Orleans, Boulder Station, Red Rock, Santa Fe, Skyline — **4 of 5 are locals rooms that genuinely are low-rise** |
+
+**That 7/17 was itself unverified, and re-checking by NAME broke it.** "Tallest
+building within 130 m" cannot tell this property's tower from the next
+property's, and on the Strip resorts sit shoulder to shoulder. Re-matched
+against the OSM `name` on each building:
+
+| room | height= building | verdict |
+|---|---|---|
+| Bellagio | "Bellagio Las Vegas" (op: MGM Resorts) | ✅ name-confirmed |
+| Caesars Palace | "Palace Tower" — with Augustus, Octavius, Forum, Julius alongside | ✅ name-confirmed |
+| Venetian | "Venetian Tower" | ✅ name-confirmed |
+| Wynn/Encore | "Encore Las Vegas" — and the room *is* at Encore | ✅ name-confirmed |
+| ARIA | **unnamed** way at 183 m; the *named* "Aria Resort & Casino" way is the 20 m podium | ⚠️ inferred — 183 m matches ARIA's real height and the independent hand-model, but nothing names it |
+| Mandalay Bay | "W Las Vegas" at 148 m, beside "Mandalay Bay Resort & Casino" at 146 m | ⚠️ same complex, **wrong tower** — 2 m apart so materially harmless, methodologically not |
+| Horseshoe | **"Le Boulevard At Paris"** | ❌ **a neighbouring property's building.** Horseshoe's own is likely the unnamed 80 m way |
+
+**So: 4 name-confirmed, 1 corroborated-but-unnamed, 1 same-complex mis-pick, 1
+plain wrong.** "7 of 17 render as recognisable towers" must not be quoted.
+
+**This is the Westgate provenance bug again** — a fact from one source filed
+against a row it does not describe, which is precisely what `rake_source_url`
+was added to the schema to prevent. The method that rescued ARIA from its podium
+is the method that broke Horseshoe: proximity cannot express "belongs to".
+
+It does **not** weaken a2 — if anything it strengthens it, because a2 rests on
+`height=` tags in the tiles, not on our proximity heuristic. MapLibre renders
+buildings; it never attributes them to rooms.
+
+**SCOPE CALL: the room-height column is retired as instrumentation, not
+repaired.** It existed to answer skyline-or-parking-lot, and it did. Under a2
+the map extrudes from tiles and **no surface displays or ranks a room's
+height**, so nothing consumes this table. Fixing it properly means per-room OSM
+relation matching — real work for a column with no reader. The defect is
+recorded above and left recorded.
+
+*The one future case that would need building-to-room mapping:* highlighting a
+selected room's own mass in 3D. That feature does not exist and may never; if it
+is ever built, it must match by OSM relation or name — **not by distance**, for
+the reason this section documents.
+
+~~Cross-check that the tags are real and not defaults: ARIA's OSM `height` is
+183 m, matching the independently hand-modelled 183 m exactly.~~
+**WITHDRAWN.** That cross-check rested on an **unnamed** way — the building
+actually named "Aria Resort & Casino" is the 20 m podium. So it is two
+independent sources agreeing about a building neither of them names: probably
+ARIA, not established. It cannot be used to argue the tag data is real rather
+than a default, and should not be quoted that way anywhere.
+
+**RULED already:** untagged buildings render as flat footprints, never guessed
+volumes — see the README. A default extrusion is the deleted inflation path
+wearing a different hat.
+
+**THE HARDER PROBLEM — mis-tagged renders WRONG, not missing.** Untagged is a
+gap that says nothing. A `building:levels` tag sitting on a resort's podium
+renders a thirty-storey tower as a 6 m box, with the same visual authority as
+ARIA's correct 183 m — a confident false claim nobody made. Measured:
+
+- **72% of tagged corridor buildings (222/308) are levels-only**, no `height=`
+- **40 named buildings are levels-only and ≤3 storeys**, including
+  **"Hotel MGM Grand Las Vegas" at 2 storeys**, New York New York at 2,
+  Park MGM at 3, Hard Rock at 1
+- **0 buildings carry `building:part`** — so podium-vs-tower is **undetectable
+  from the tiles**. The tallest-within-130m fix that saved our room table cannot
+  save the map, because the error is in the source data, not the query.
+
+So "24% have a usable height" quietly includes some that are usable **and
+wrong**, and the honest headline is weaker than the raw number suggests.
+
+**Sub-decision (a) — what do we trust enough to extrude?**
+  - **(a1)** Extrude anything with a usable height, accept that ~40 named
+    buildings draw short and confident.
+  - **(a2)** *Extrude only `height=` tags; treat levels-only as untagged and
+    render it flat* — **my default**. It applies the flat-footprint rule
+    consistently: extrude heights someone RECORDED, not heights we INFERRED from
+    a proxy that demonstrably fails on multi-part buildings.
+
+**What a2 actually costs, measured rather than assumed** — "308 → 86" overstates
+it, but not to zero:
+
+| band | buildings | from `height=` | a2 drops |
+|---|---|---|---|
+| ≥100 m | 31 | **30 (97%)** | 1 |
+| ≥60 m | 49 | **43 (88%)** | 6 |
+| ≥30 m | 69 | 51 (74%) | 18 |
+| everything dropped | 222 | — | **median 10 m** |
+
+So a2 keeps 97% of the ≥100 m set and 88% of the ≥60 m set, and what it discards
+is overwhelmingly ground plane — 10 m boxes becoming flat footprints, barely a
+visual change. **But it is not free:** six buildings ≥60 m go flat, including
+**Trump International at 205 m (64 storeys) — the tallest building in the
+corridor** — plus Horseshoe Las Vegas at 83 m and The LINQ at 64 m.
+
+**And note what that means:** Trump's levels-derived 205 m is *correct*. So a2
+does not remove wrong data, it removes **unverifiable** data, some of which is
+right. That is precisely the `verified_at` trade the whole product makes — we
+exclude unverified figures that may well be true, because we cannot tell which.
+Extending it to geometry is consistent, not conservative.
+
+For our own rooms a2 costs the 5 levels-only entries, leaving **the 7 real
+towers** — MGM Grand renders honestly flat instead of dishonestly short.
+
+**Sub-decision (b) — fix the ones that matter upstream?** MGM Grand's height is
+a single OSM edit. It is permanent, improves the map for everyone, and roughly
+five edits fixes five of our own rooms. Offered as an option, **not done
+unasked** — editing a shared public dataset on a client's behalf is a decision
+with a blast radius past this project.
+
+**If it is taken, the motive matters.** The edit is made because **the data is
+wrong**, not because it improves our map. OSM has its own verifiability norms,
+and a contribution made to flatter a downstream renderer is the same category
+error as inflating our own massing — optimising a shared record for how it makes
+our output look. Get the heights from a real source, cite it in the changeset,
+and our map improving is a *consequence* rather than the reason.
+
+1. **Leaflet + real Overpass footprints.** Newly possible — the "Overpass
+   unreachable" constraint was never true. But it means fetching and maintaining
+   1,283 footprints ourselves through a rate-limited API (this measurement alone
+   took repeated 504s, three endpoints and a resume cache), **and it keeps the
+   two-camera misalignment class alive**. The Overpass finding made this path
+   possible; the distribution makes it pointless.
+2. **MapLibre GL JS + OpenFreeMap vector tiles** — *recommended*. Every building
+   in frame from vector tiles, no key, no fetching. **One native camera, so the
+   pin-vs-massing misalignment stops being managed and starts not existing.**
+   Deletes `app/massing-layer.ts`, `lib/massing.ts`, `makeProjector()`,
+   `scripts/map-tilt.mjs` and the "18 venues + 5 landmarks" limitation. Pitch,
+   bearing, clustering and data-driven dimming are first-class. Non-map code is
+   untouched: `inRoster()`, compare, the GAMES filter, every other surface.
+3. **Google Photorealistic 3D Tiles** — closest to what Phil showed (it is
+   photogrammetry, which is why it looks like that). Paid and usage-metered, via
+   a MapLibre 3D-tiles plugin or Cesium. Carries an **attribution obligation as
+   well as a bill** — same category as the OSM attribution we just restored,
+   which was a licensing violation, not a style choice.
+
+**Calibration fact worth weighing — it is a majority, not a rate.** Five stated
+limitations have now been tested and **three were false**: "Overpass
+unreachable", "next-env.d.ts must be committed", and "OSM heights are either
+right or absent". **In this project, a stated limitation you have not tested is
+more likely wrong than right.** That is the strongest
+argument for testing a constraint BEFORE it shapes an architecture rather than
+after, which is exactly what this measurement was — and the hand-modelled
+massing is what it costs when you don't.
+
+**Default if you say decide for me: path 2, with (a2) and the flat-footprint fallback.**
+It is a real rework, so it is Phil's call — but it deletes more than it adds,
+and every deletion is code that exists only because of a constraint that turned
+out not to exist.
+
+### Nothing else is blocked
 
 All three open calls from the data pass are ruled above. Step 3 — the Next.js
 build — is unblocked and proceeds against the exported tokens and components

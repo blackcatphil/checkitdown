@@ -67,6 +67,101 @@ That last one is the rule applied *correctly*: stating the limit of the evidence
 instead of asserting past it. That is the standard — not never being stale, but
 knowing when your evidence has a timestamp and saying so.
 
+### Untagged buildings render as FLAT FOOTPRINTS, never guessed volumes
+
+A footprint says *"there is a building here and we do not know its height."* A
+default extrusion says *"this building is 12 m tall"* — a claim nobody made.
+That is the inflation path again, which was deleted once already for fabricating
+how big a building is, on the surface where this product's honesty is most
+visible.
+
+**This is `verified_at` applied to geometry.** The skyline ends up composed
+entirely of heights someone actually recorded, and the flat ground plane is
+honest rather than a rendering gap. It also happens to be closer to the truth:
+the untagged rooms are mostly genuinely low-rise — Red Rock, Santa Fe, Boulder
+Station really are single-storey locals casinos, so a flat footprint is nearer
+reality than any guessed tower would be.
+
+### Mis-tagged is worse than untagged: it renders WRONG, not missing
+
+The flat-footprint rule handles buildings with no height. It does **not** handle
+buildings with a *bad* height, and that is the more dangerous case.
+
+A building rendering flat says *"we do not know."* A building rendering at 14 m
+says *"this is 14 m tall"* — drawn with exactly the same visual authority as
+ARIA's correct 183 m, and **nobody said it**. Measured in the Strip corridor:
+
+- **72% of tagged buildings (222 of 308) are `building:levels` only**, no `height=`
+- **40 named buildings are levels-only and ≤3 storeys** — including
+  **"Hotel MGM Grand Las Vegas" at 2 storeys**, New York New York at 2,
+  Park MGM at 3, Hard Rock at 1. Those are thirty-storey towers.
+- **Zero buildings in the corridor carry `building:part`**, the OSM pattern that
+  distinguishes podium from tower. **So it cannot be detected from the tiles at
+  all** — a short levels tag on a resort is indistinguishable from a genuinely
+  short building.
+
+This is the same failure as the "nearest building" bug that gave ARIA 20 m off
+its podium — except baked into the source data rather than our query, so the
+tallest-within-130m fix that saved the room table cannot save the map.
+
+It also weakens the headline: **"24% have a usable height" silently includes
+some that are usable AND WRONG.**
+
+### Checking the output cannot catch an error whose output is plausible
+
+Only checking the **method** can. This is the general case that most of this
+build's real defects turn out to be instances of:
+
+| defect | why output-checking missed it |
+|---|---|
+| RLS policies inert without GRANTs | schema looked flawless — 15/15 RLS, 12 policies, no errors |
+| Westgate cited the wrong page | the FK was valid and nothing was orphaned |
+| `winner={null}` hardcoded | every test passed; the zero state was correct |
+| Mandalay Bay's height off the wrong tower | **148 m instead of 146 m — the number looks right** |
+
+Mandalay Bay is the clearest: "W Las Vegas" 148 m sits beside "Mandalay Bay
+Resort & Casino" 146 m, so tallest-within-130m picked the neighbouring tower and
+produced a figure nobody would ever query. **It would have survived forever.**
+It was not found by noticing something wrong — it was found by *changing how the
+question was asked*, from "which building is nearest" to "which building is
+named this property".
+
+So when a result looks right, that is not evidence. Ask what the method cannot
+distinguish: proximity cannot express "belongs to"; a valid FK cannot express
+"supports this claim"; a passing test cannot express "the branch was reachable".
+
+### A claim that was never tested reads exactly like one that was
+
+Staleness at least has a timestamp you can interrogate. **An untested claim has
+nothing** — once written down it is indistinguishable from a measured one, which
+makes it the more dangerous case.
+
+**When a limitation justifies an architectural choice, test it before building
+around it — and record HOW it was tested, not just that it holds.**
+
+The most expensive instance in this build: *"Overpass footprints unreachable
+from this environment"* was written in the design brief, inherited into these
+limitations, repeated in commit messages, and quoted back and forth as
+established. **Nobody ever tested it.** Overpass answers fine — it returns 406
+to a request with no `User-Agent`, which is most likely what the original
+attempt hit. That one line is the entire justification for hand-modelling
+eighteen buildings: `massing-layer.ts`, `lib/massing.ts`, `makeProjector()`, the
+pin-vs-building misalignment class and `map-tilt.mjs` all descend from a
+constraint that did not exist.
+
+Constraints now carry their test:
+
+| Constraint | How it was tested | Result |
+|---|---|---|
+| Overpass unreachable | `POST` with a `User-Agent`, 2026-08-04 | **FALSE** — 200, 220KB of buildings |
+| Five hosts block automated fetching | `curl -sL -w %{http_code}`, browser UA, re-run 2026-08-04 | **TRUE** — MGM `000`, Golden Nugget `403`; Boyd and Westgate `200` on the same run |
+| `next-env.d.ts` must be committed | fresh clone, file deleted, `npm ci`, `tsc --noEmit` + `next build` | **FALSE** — typechecks without it and Next regenerates it |
+| Dress code / drinks 0/17 | absence across 17 fetched pages | **WEAK** — an inference from not finding it, not a test that it is unpublishable |
+| OSM heights are either right or absent | counted `height=` vs `building:levels=` across 1,283 corridor buildings, then read the named short ones | **FALSE** — 72% of tagged buildings are levels-only, and 40 named buildings ≤3 storeys include *"Hotel MGM Grand Las Vegas"* at **2**. **0 buildings carry `building:part`**, so podium-vs-tower is undetectable from the tiles |
+
+That last row is deliberately marked weak rather than quietly promoted. It is
+the same shape as the Overpass claim and has not earned "will stay there".
+
 This is why `verified_at` exists in the first place. A fact needs a date because
 the world moves underneath it. We built that discipline into the product while
 repeatedly failing to apply it to our own work; the fix is not more care, it is
