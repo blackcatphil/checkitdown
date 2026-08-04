@@ -45,3 +45,21 @@ coverage/
 
 # Claude Code local state
 .claude/
+
+# next-env.d.ts — deliberately IGNORED, against Next's own guidance.
+#
+# Next writes a different import path depending on which command ran last:
+#   next build -> import "./.next/types/routes.d.ts"
+#   next dev   -> import "./.next/dev/types/routes.d.ts"
+# So it CANNOT be stably correct in git. Whichever variant is committed, the
+# other mode leaves a permanently dirty tree — and a generated file that is
+# always dirty is what trains people to skim diffs.
+#
+# Next's docs say to commit it. That guidance predates the dev/build path split.
+# Do not "fix" this back without re-checking that.
+#
+# Verified before ignoring (fresh clone, file absent, no .next):
+#   - `tsc --noEmit` passes, and genuinely checks (an injected type error fails it)
+#   - Next/JSX types resolve without it
+#   - `next build` succeeds and REGENERATES the file
+next-env.d.ts

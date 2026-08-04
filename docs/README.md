@@ -44,6 +44,35 @@ columns and 2 checks — stale from before `small_bet`/`big_bet`, the three
 `rake_*` provenance columns, `closed_on` and `closure_is_dated`. Re-count rather
 than copy; a baseline nobody re-derives is a claim, not a measurement.
 
+### An observation carries when it was made
+
+**Anything that changed underneath an observation since makes it unverified
+again — the same rule this product applies to rooms, applied to us.**
+
+"A number copied forward is a claim, not a measurement" is one instance of this.
+The general case is the dominant failure mode of this build, and every example
+is the same shape — a claim asserted without checking whether its subject had
+moved since it was observed:
+
+- git state read once and reported a turn later, while commits landed in between
+- a scheduled wake-up that fired after the work it was waiting for was done
+- the schema baseline (219 columns) carried forward past four migrations
+- "map re-skinning — done" while the gradients were still felt green
+- `is_seasonal` "off the roster by default" with no read path enforcing it
+- a visual comparison of two zoom levels, made against a rendering that had
+  since been replaced
+- geometry reported as measured, correct, and **never actually looked at**
+
+That last one is the rule applied *correctly*: stating the limit of the evidence
+instead of asserting past it. That is the standard — not never being stale, but
+knowing when your evidence has a timestamp and saying so.
+
+This is why `verified_at` exists in the first place. A fact needs a date because
+the world moves underneath it. We built that discipline into the product while
+repeatedly failing to apply it to our own work; the fix is not more care, it is
+**re-deriving instead of recalling** — re-read the git state, re-run the count,
+re-look at the render.
+
 **Environment: resolved.** OrbStack is installed and `supabase start` runs the
 full local stack — PostgREST, Studio, Auth, and the real `anon` /
 `authenticated` / `service_role` roles. `supabase db reset` applies the
