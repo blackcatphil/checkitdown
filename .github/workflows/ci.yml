@@ -102,18 +102,29 @@ jobs:
       - name: next build
         run: npm run build
 
-      - name: next start
+      # test:mixed reads RENDERED OUTPUT after mutating the database, so it
+      # requires a server that re-renders per request. /rooms/[slug] is
+      # prerendered with revalidate=300, so `next start` serves a build-time
+      # snapshot and the mutations are invisible for five minutes — every
+      # room-page assertion failed here while every /facts one passed.
+      #
+      # The suite was correct locally only because `npm run dev` re-renders
+      # every request: true by accident of environment, not by construction.
+      # `next build` above still gates the production build; the suite runs
+      # against dev, which is the mode its premise actually holds in.
+      - name: next dev
         run: |
           set -euo pipefail
-          npm run start &
-          for i in $(seq 1 60); do
+          npm run dev &
+          for i in $(seq 1 90); do
             curl -sf -o /dev/null http://127.0.0.1:3000/facts && break
             sleep 1
           done
           curl -sf -o /dev/null http://127.0.0.1:3000/facts \
             || { echo "::error::the app never became reachable — test:mixed reads rendered output and would otherwise pass vacuously"; exit 1; }
+          curl -sf -o /dev/null http://127.0.0.1:3000/rooms/horseshoe \
+            || { echo "::error::room pages unreachable — the suite's room-page scenarios would fail for the wrong reason"; exit 1; }
 
-      # --- GATE 3: rendered output against a seeded database. ---
       - name: "test:mixed (63 assertions, 15 scenarios)"
         env:
           PSQL: psql

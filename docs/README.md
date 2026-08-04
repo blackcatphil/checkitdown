@@ -180,7 +180,32 @@ commit after that behaviour was removed. Code has a compiler, a linter and a
 test suite arguing with it; a comment has nothing, so it is the part of a
 codebase most exposed to going stale and the least likely to announce it.
 
-*Corollary 3 — a 200 checks the TRANSPORT, not the CONTENT.* Removing
+*Corollary 3 — a check must show WHAT IT SAW, not only its verdict.* The first
+CI run captured each suite's output into a variable and never echoed it, so when
+the assertion failed the log showed the complaint and not the evidence. **A
+failing check without evidence costs more than no check**, because it consumes
+the time it was meant to save. Same lesson as the spike's inventory panel,
+arriving in CI.
+
+*Corollary 4 — test the GUARD, not just the thing guarded.* That same step was
+written to catch "a suite that ran nothing", and it could never pass: it grepped
+for `# pass` where Node prints `ℹ pass`. The suite had been tested; the assertion
+about the suite never had. One level above "a test that has never failed has not
+been tested".
+
+*Corollary 5 — two runs that can disagree are a flake generator, not redundancy.*
+The first version ran each suite twice, once for the exit code and once to grep.
+Each gate now runs once, tees to a log, and asserts against that.
+
+*Corollary 6 — a suite can be correct by accident of its ENVIRONMENT.*
+`test:mixed` mutates the database then reads rendered output. That premise holds
+under `next dev`, which re-renders every request, and fails under `next start`,
+which serves a build-time snapshot for `revalidate = 300`. Locally it passed for
+five months' worth of reasons that were never about the code. **Note the product
+consequence, separate from CI: a verified room keeps showing UNVERIFIED for up to
+five minutes after the fact changes.**
+
+*Corollary 7 — a 200 checks the TRANSPORT, not the CONTENT.* Removing
 `setHover()` left orphaned statements outside any function; the JS was broken
 and the page still served **200**. Checking the parse rather than the status code
 is the same move as checking whether a source *supports* a claim rather than
