@@ -341,7 +341,7 @@ export default async function JustTheFacts({
           label="LOWEST RAKE"
           metric="rake"
           total={total}
-          winner={rakeLeader ? { name: rakeLeader.name, value: bySlug.get(rakeLeader.slug)!.rake.label! } : null}
+          winner={null}
           caption={rake.caption}
           exclusion={sharedExclusion ? null : exRake}
         />
