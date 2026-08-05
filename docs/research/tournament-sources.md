@@ -61,8 +61,11 @@ extracted PDF links, not the PDF.
 
 1. Four of seventeen rooms have a publisher-served schedule we can fetch:
    **Orleans (PDF), Wynn (PDF), Westgate (HTML), Venetian (series HTML)**.
-2. Nine rooms publish nothing fetchable: four MGM + Golden Nugget (blocked),
-   four Station rooms (nothing published), Skyline (no site).
+2. Thirteen rooms have nothing fetchable: four MGM + Golden Nugget (blocked),
+   four Station rooms (nothing published), Skyline (no site), and three whose
+   pages serve but carry no schedule (South Point, Caesars Palace, Horseshoe).
+   (Corrected 2026-08-05 — the original said "nine" while its own list held
+   ten, and omitted the three serve-but-empty pages.)
 3. `sources` should store the **linking page** for PDF publishers, with the
    discovered PDF URL as a derived value — not the PDF URL as the source.
 4. `content_hash` on the source row should hash **the extracted link set**, not
