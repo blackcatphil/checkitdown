@@ -97,6 +97,15 @@
      work with a hard 4.5:1 floor per surface, and halving the shared scale
      would have taken the eyebrows and links below it. */
   --cid-map-building-lit: #8A6D1F;
+  /* HOVER, AND IT IS DELIBERATELY NOT THE DECORATION GOLD.
+     Hover used --cid-value, the TEAL THAT MEANS VERIFIED — a decorative use of
+     the one hue in this product that carries a claim. That should never have
+     shipped; it is the same mistake as an ochre "unverified", caught late.
+     It cannot simply become the map gold either: that gold is now dim and
+     covers ~16% of the frame, so a hover drawn in it would not read as a hover
+     at all. Separated by VALUE, exactly as brand teal was separated from
+     decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
+  --cid-map-hover: #E3C567;
   /* GOLD, at the one geometry where it cannot become a surface: the minor grid
      is the densest thing on the map, so it is held BELOW the casing in
      luminance. The chain is the weight limit — if a gold minor breaks it, the
@@ -156,6 +165,15 @@
   --cid-map-building: #DAD4E2;
   --cid-map-building-edge: #C6BDD3;
   --cid-map-building-lit: #8A6D1F;
+  /* HOVER, AND IT IS DELIBERATELY NOT THE DECORATION GOLD.
+     Hover used --cid-value, the TEAL THAT MEANS VERIFIED — a decorative use of
+     the one hue in this product that carries a claim. That should never have
+     shipped; it is the same mistake as an ochre "unverified", caught late.
+     It cannot simply become the map gold either: that gold is now dim and
+     covers ~16% of the frame, so a hover drawn in it would not read as a hover
+     at all. Separated by VALUE, exactly as brand teal was separated from
+     decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
+  --cid-map-hover: #E3C567;
   --cid-map-road-minor: #E0D6BA;
   --cid-map-road-casing: #C9B98C;
   --cid-map-road-major: #F2EDF8;

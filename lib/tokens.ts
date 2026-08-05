@@ -65,6 +65,7 @@ export const MAP_TOKENS = {
   building: '--cid-map-building',
   buildingEdge: '--cid-map-building-edge',
   buildingLit: '--cid-map-building-lit',
+  hover: '--cid-map-hover',
   roadMinor: '--cid-map-road-minor',
   roadCasing: '--cid-map-road-casing',
   roadMajor: '--cid-map-road-major',
@@ -75,5 +76,7 @@ export const MAP_TOKENS = {
   stripGold: '--cid-gold-700',
   dim: '--cid-dim',
   text: '--cid-text',
-  value: '--cid-value',
+  /* --cid-value is deliberately ABSENT. It was here only to paint the map's
+     hover, which spent the colour that means "verified" on decoration. Nothing
+     on the map states verification yet; when something does, it comes back. */
 } as const

@@ -729,6 +729,91 @@ That is worth knowing about the instrument itself: **a share metric with a
 threshold is not invariant to a brightness change.** Quoting only the 13.6%
 would have implied gold shrank when its coverage barely moved.
 
+## The roof was a slab, not an outline (2026-08-04)
+
+The gold "crown" extruded the whole footprint over the top 3 m, so its top face
+was the entire roof: every building wore a gold lid. The fix is the same
+technique made **hollow** — a donut whose outer edge is the real footprint and
+whose inner edge is pulled 3 m in, extruded over the top 2 m. The top face is
+then a ring and the roof reads as an outline.
+
+Narrow towers cannot take a 3 m inset without the ring closing on itself, so the
+band **thins before it gives up** (3 m → 1.5 m → 0.8 m). Forum Tower needs 1.5 m.
+Dropping it instead would have left one mass with a filled gold roof beside
+fifteen outlined ones, which reads as a rendering bug rather than a rule.
+
+Growing and shrinking a ring need **opposite** winding choices, and getting it
+wrong is silent both ways: a shell that shrank hides inside the mass, a roof ring
+that grew swallows the roof it was meant to outline. Both directions are built,
+the areas compared, and the one that moved the right way is kept.
+
+### What true vertical edges would cost — measured, not estimated
+
+Phil wants **all the edges, vertical and horizontal**. The roof ring plus the
+existing base line gives the horizontal ones. The verticals cannot be done with
+any built-in layer: **MapLibre line layers are ground-plane only**, so there is
+no supported way to draw an elevated 3D line.
+
+The real answer is `map.addLayer({ type: 'custom', render(gl, matrix) })` with a
+line-primitive wireframe. Before costing it, one thing was measured rather than
+assumed:
+
+```
+ALIASED_LINE_WIDTH_RANGE = [1, 1]
+```
+
+**WebGL will not draw a line thicker than one device pixel.** `gl.lineWidth()`
+is a no-op above 1 in ANGLE, which is what Chrome, Edge and Electron all use.
+That single number splits the work in two:
+
+- **Hairline wireframe — ~150 lines.** `gl.LINES` over a vertex buffer of the
+  977 footprint vertices, each as a vertical segment plus a top-ring segment
+  (~2,000 segments, nothing for the GPU). Needs Mercator conversion, a small
+  shader, and depth-testing against the extrusions so edges hide correctly
+  behind masses. The catch is that a 1-device-pixel line on a 2× display is a
+  half-CSS-pixel hairline — faint, and not adjustable.
+- **Adjustable-thickness wireframe — ~300+ lines.** Each edge expanded into two
+  triangles with the offset applied in screen space after projection, plus join
+  handling at corners. This is what you need if the hairline reads too faint,
+  which on a retina display it probably will.
+
+Both need depth handling tuned against `fill-extrusion` to avoid z-fighting, and
+neither is unit-testable — only the browser probe can confirm them. **Not built
+on spec.**
+
+## Hover was spending the colour that means verified — caught regression
+
+The map's hover was `--cid-value`: **the teal that means verified**, used as
+decoration. It is the same mistake as an ochre "unverified" — a hue that carries
+a claim, spent where nothing is being claimed — and it shipped because nothing
+asserted that the map's decorative colours stay clear of the semantic ones.
+
+Hover is now gold, and `--cid-value` is **gone from `MAP_TOKENS` entirely**:
+it was there only to paint the hover, which is itself the evidence that the teal
+was never doing semantic work on the map. When something on the map does state
+verification, it comes back.
+
+It could not simply become the map gold either. That gold is dim and covers
+~16% of the frame, so a hover drawn in it would vanish into the texture — **the
+same colour cannot be both the background and the thing that stands out of it.**
+So hover is separated by VALUE, exactly as brand teal was separated from
+decorative teal: **hover takes the bright end, decoration keeps the dim end.**
+Asserted three ways — hover is far from `--cid-value` in hue, is not the same
+token as the decoration gold, and is at least twice its luminance and no dimmer
+than an unhovered building. All verified red by injection.
+
+### Hue share, at both chroma floors
+
+| | chroma > 10 | chroma > 6 |
+|---|---|---|
+| before the roof ring | 13.6% | 16.4% |
+| after | **13.1%** | **15.9%** |
+
+Hollowing the roofs took gold coverage down slightly, as expected — a ring
+covers less than a slab. Both floors are reported because the metric's threshold
+is not invariant to brightness, which is a property of the instrument rather
+than of the map.
+
 ## Screenshots live in `screens/`, and are verified on disk
 
 Seven screenshots were reported as saved to a **session temp directory** that

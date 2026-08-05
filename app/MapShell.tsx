@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
 import { applyPalette, type MapStyle } from '@/lib/map-style'
-import { ROOM_FOOTPRINTS, ROOM_SHELLS } from '@/lib/room-footprints'
+import { ROOM_FOOTPRINTS, ROOM_ROOFS, ROOM_SHELLS } from '@/lib/room-footprints'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
 
@@ -68,8 +68,8 @@ const STRIP_NAME = 'South Las Vegas Boulevard'
 /* HOW THE 3D MASSES ARE OUTLINED. fill-extrusion has no stroke, so there are
    two techniques and they look different enough to be worth comparing rather
    than choosing:
-     cap   — a second extrusion occupying the top 3 m of the mass: a gold crown
-             at the roof. DEFAULT, and the one that works.
+     cap   — a HOLLOW ring over the top 2 m of the mass, so the roof reads as an
+             outline. A solid cap made the roofs gold slabs. DEFAULT.
      shell — the footprint buffered 2 m outward as a donut, extruded to the same
              height. MEASURED AND REJECTED, kept only so nobody proposes it
              again: at pitch the shell's outer wall stands IN FRONT of the mass
@@ -295,7 +295,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         source: 'fp',
         type: 'fill',
         paint: {
-          'fill-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.value, T.pin] as ExpressionSpecification,
+          /* GOLD, NOT TEAL. Teal is --cid-value and means verified; spending it
+             on a hover spends the only hue in the product that carries a claim. */
+          'fill-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.pin] as ExpressionSpecification,
           'fill-opacity': 0.45,
           'fill-outline-color': T.accent300,
         },
@@ -306,7 +308,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         type: 'fill-extrusion',
         filter: ['has', 'height'],
         paint: {
-          'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.value, T.pin] as ExpressionSpecification,
+          'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.pin] as ExpressionSpecification,
           'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
           'fill-extrusion-base': 0,
           /* CONSTANT, because `fill-extrusion-opacity` takes zoom expressions
@@ -330,7 +332,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         source: 'fp',
         type: 'line',
         paint: {
-          'line-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.accent300, T.buildingLit] as ExpressionSpecification,
+          'line-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.buildingLit] as ExpressionSpecification,
           'line-width': 1.4,
           'line-opacity': 0.9,
         },
@@ -351,16 +353,20 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         })
       }
       if (EDGE === 'cap' || EDGE === 'both') {
+        /* A RING, NOT A SLAB. The first version extruded the whole footprint
+           over the top 3 m, so its top face was the entire roof and every
+           building wore a gold lid. This source is a donut — outer edge the real
+           footprint, inner edge pulled in — so the top face is a ring and the
+           roof reads as an outline. */
+        map.addSource('roofs', { type: 'geojson', data: ROOM_ROOFS as never })
         map.addLayer({
           id: 'rooms-cap',
-          source: 'fp',
+          source: 'roofs',
           type: 'fill-extrusion',
-          filter: ['has', 'height'],
           paint: {
-            'fill-extrusion-color': T.buildingLit,
-            /* The top 3 m of the mass, so the roof edge reads. `max` keeps a
-               short component from inverting base above height. */
-            'fill-extrusion-base': ['max', ['-', ['get', 'height'], 3], 0] as ExpressionSpecification,
+            'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.buildingLit] as ExpressionSpecification,
+            /* `max` keeps a short component from inverting base above height. */
+            'fill-extrusion-base': ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification,
             'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
             'fill-extrusion-opacity': 0.95,
           },

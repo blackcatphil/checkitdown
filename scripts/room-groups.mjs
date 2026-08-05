@@ -124,7 +124,7 @@ const GROUPS = {
  * smaller. A shell that shrank would sit inside the mass and be invisible —
  * exactly the kind of silent nothing this project keeps shipping.
  */
-function bufferRing(ring, metres) {
+function bufferRing(ring, metres, { shrink = false } = {}) {
   const lat0 = ring.reduce((a, p) => a + p[1], 0) / ring.length
   const mPerLat = 111320
   const mPerLon = 111320 * Math.cos((lat0 * Math.PI) / 180)
@@ -152,10 +152,27 @@ function bufferRing(ring, metres) {
     const len = Math.min(d / (Math.abs(cos) < 0.25 ? 0.25 : Math.abs(cos)), d * 4)
     return [v[0] + b[0] * len, v[1] + b[1] * len]
   })
+  /* The ring's winding is unknown, so BOTH directions are built and the one
+     that moved the area the intended way is kept. Growing and shrinking need
+     opposite choices, and picking wrong is silent: a shell that shrank hides
+     inside the mass, a roof ring that grew swallows the roof it was meant to
+     outline. */
   const a0 = Math.abs(area(pts))
-  let out = build(metres)
-  if (Math.abs(area(out)) < a0) out = build(-metres)
-  if (Math.abs(area(out)) < a0) return null
+  const cands = [build(metres), build(-metres)]
+  const areas = cands.map((c) => Math.abs(area(c)))
+  let out
+  if (shrink) {
+    const i = areas[0] < areas[1] ? 0 : 1
+    /* A band wider than the building inverts the polygon. Below a fifth of the
+       original area the ring is a knot rather than an outline, so it is dropped
+       and reported rather than drawn wrong. */
+    if (areas[i] < a0 * 0.2 || areas[i] >= a0) return null
+    out = cands[i]
+  } else {
+    const i = areas[0] > areas[1] ? 0 : 1
+    if (areas[i] <= a0) return null
+    out = cands[i]
+  }
   const back = out.map(([x, y]) => [
     Number((x / mPerLon + lon0).toFixed(6)),
     Number((y / mPerLat + lat0).toFixed(6)),
@@ -166,6 +183,7 @@ function bufferRing(ring, metres) {
 
 const feats = []
 const shells = []
+const roofs = []
 const report = []
 
 for (const [slug, comps] of Object.entries(GROUPS)) {
@@ -204,6 +222,26 @@ for (const [slug, comps] of Object.entries(GROUPS)) {
        to outline, and a gold ring lying on the ground would read as a claim
        that we know its height. */
     if (c.height) {
+      /* THE ROOF RING — a donut whose OUTER edge is the real footprint and whose
+         inner edge is the footprint pulled 3 m in. Extruded over the top of the
+         mass it gives a hollow roof: the top reads as an outline instead of the
+         gold slab a solid cap produced. */
+      /* Narrow towers cannot take a 3 m inset without the ring closing on
+         itself, so the band THINS before it gives up — Forum Tower needs 1.5 m.
+         Dropping it instead would have left one mass with a filled gold roof
+         beside fifteen outlined ones, which looks like a rendering bug. */
+      const inner = [3, 1.5, 0.8].reduce((acc, d) => acc ?? bufferRing(ring, d, { shrink: true }), null)
+      if (inner) {
+        roofs.push({
+          type: 'Feature',
+          id: roofs.length + 1,
+          properties: { slug, component: c.name, height: c.height },
+          geometry: { type: 'Polygon', coordinates: [ring, [...inner].reverse()] },
+        })
+      } else {
+        report.push([slug, `ROOF RING TOO THIN ${c.name}`, 0, 0])
+      }
+
       const outer = bufferRing(ring, 2)
       if (outer) {
         shells.push({
@@ -249,6 +287,15 @@ export const ROOM_FOOTPRINTS = ${JSON.stringify({ type: 'FeatureCollection', fea
  * ${shells.length} shells for ${extruded} extruded components.
  */
 export const ROOM_SHELLS = ${JSON.stringify({ type: 'FeatureCollection', features: shells })} as const
+
+/**
+ * ROOF RINGS — outer ring is the real footprint, inner ring is it pulled 3 m in.
+ * Extruded over the top few metres of each mass, the top face is a RING, so the
+ * roof reads as an outline rather than as the gold slab a solid cap gave.
+ *
+ * ${roofs.length} rings for ${extruded} extruded components.
+ */
+export const ROOM_ROOFS = ${JSON.stringify({ type: 'FeatureCollection', features: roofs })} as const
 `)
 
 console.log('property            components  seeded')
