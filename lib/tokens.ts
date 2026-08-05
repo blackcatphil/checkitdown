@@ -68,6 +68,10 @@ export const MAP_TOKENS = {
   roadCasing: '--cid-map-road-casing',
   roadMajor: '--cid-map-road-major',
   boundary: '--cid-map-boundary',
+  /* Used ONLY by the NEXT_PUBLIC_MAP_STRIP_GOLD comparison flag, never by the
+     default basemap. gold-700 is the fill-only step, and it is darker than a
+     lit building, so even the option keeps brightness with the buildings. */
+  stripGold: '--cid-gold-700',
   dim: '--cid-dim',
   text: '--cid-text',
   value: '--cid-value',

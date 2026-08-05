@@ -954,8 +954,9 @@ meets the description. Noted at the time, proceeded anyway.
 
 - **Aubergine stays PRIMARY.** `#5E3A93` keeps the one filled action per screen,
   the mark, active nav. Unchanged.
-- **Gold is the ACCENT TIER.** Highlights, hairlines, hover, rules, emphasis,
-  the Strip corridor. It does the lifting **everywhere aubergine does nothing** —
+- **Gold is the ACCENT TIER, and it is NOT on the basemap.** Highlights,
+  hairlines, hover, rules, emphasis. It does the lifting **everywhere aubergine
+  does nothing** —
   which is why the section eyebrows went gold and the commitment controls did
   not. An eyebrow commits to nothing; aubergine was never going to take it.
 - **One filled accent per screen still holds, and still belongs to aubergine.**
@@ -978,8 +979,34 @@ meets the description. Noted at the time, proceeded anyway.
 
 ### The map's dark tier
 
-Aubergine land · **indigo** water · desaturated **moss** parks and golf · **gold**
-network, with the Strip as the corridor.
+Aubergine land · **muted-purple** network · **indigo** water · desaturated
+**moss** parks and golf. Four hues, and the second one (indigo) does the pop.
+
+**Gold had the whole road network for one pass, and that was the mistake.** Phil:
+*"with the main roads being gold its too much. maybe a different shade of purple.
+more muted? the way it is currently i feel like purple is the accent color."*
+
+That is a hierarchy problem, not a colour one. **A network is a SURFACE, and a
+surface cannot be an accent** — it covers too much of the frame to read as
+emphasis, so gold stopped being a highlight and aubergine ended up carrying the
+accent role by default. Gold earns the accent tier by being RARE, and it is only
+rare once it is off the basemap.
+
+The map now reads as **one family in lightness steps**: land (darkest) → roads
+(mid) → buildings (lightest). That is ordinary legible cartography, and the
+network stops competing for attention.
+
+**Every luminance assertion passed the whole time gold was on the roads.** The
+chain — minor < casing < major < building — is a claim about brightness, and it
+cannot see *how much of the screen* a colour occupies. Area was the variable
+nothing measured, and it was the one that broke the hierarchy.
+
+**`NEXT_PUBLIC_MAP_STRIP_GOLD=1`** renders the Strip alone in `--cid-gold-700`,
+as a comparison. Off by default: Phil said main roads in gold is too much, and
+the Strip is a main road. The filter matches `South Las Vegas Boulevard`
+(highway=primary), **verified against OSM rather than guessed** — "Las Vegas
+Blvd" matches nothing, and a filter that matches nothing renders an empty layer
+that photographs exactly like a working one. Confirmed rendering 7 features.
 
 **Water moved off teal entirely.** It had been a desaturated teal-slate, safe
 only by carrying very little chroma — one nudge from competing with the colour

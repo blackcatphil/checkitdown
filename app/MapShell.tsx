@@ -56,6 +56,15 @@ export type MapRoom = {
 type Diag = { requested: number; loaded: number; errored: number; lastFrame: number | null; since: number }
 /** Flag-gated: the overlay and the `window.__cid_map` handle never ship. */
 const MAP_DEBUG = process.env.NEXT_PUBLIC_MAP_DEBUG === '1'
+/* AN OPTION TO COMPARE, NOT A DEFAULT. Gold on the whole road network read as a
+   surface rather than an accent; the open question is whether the Strip ALONE
+   still wants a restrained gold so the spine reads. Off unless asked for. */
+const STRIP_GOLD = process.env.NEXT_PUBLIC_MAP_STRIP_GOLD === '1'
+/* Verified against OSM rather than guessed: the Strip is tagged
+   `South Las Vegas Boulevard`, highway=primary. "Las Vegas Blvd" matches
+   nothing, and a filter that matches nothing renders an EMPTY layer that
+   photographs exactly like a working one. */
+const STRIP_NAME = 'South Las Vegas Boulevard'
 
 const VALLEY: [number, number] = [-115.1709, 36.1309]
 const VALLEY_Z = 10
@@ -243,6 +252,21 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
          would inherit missing ids, per-tile splitting and podium ambiguity. */
       /* No promoteId: components share a slug, so the generated numeric ids are
          the only unique handle. Hover then lights the whole GROUP by slug. */
+      if (STRIP_GOLD) {
+        map.addLayer({
+          id: 'strip-gold',
+          source: 'openmaptiles',
+          'source-layer': 'transportation_name',
+          type: 'line',
+          filter: ['==', ['get', 'name'], STRIP_NAME],
+          paint: {
+            'line-color': T.stripGold,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 8] as ExpressionSpecification,
+            'line-opacity': 0.9,
+          },
+        })
+      }
+
       map.addSource('fp', { type: 'geojson', data: ROOM_FOOTPRINTS as never })
       /* THE FLAT-FOOTPRINT RULE IS LIVE AGAIN. It was marked moot only because
          the tiles offered no tagged/untagged distinction; with our own data it

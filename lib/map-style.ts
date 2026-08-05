@@ -21,10 +21,17 @@
  *    parks are a desaturated moss whose chroma is far too low to be read as
  *    anything. Where a map layer and a data signal could sit adjacent, the data
  *    signal keeps the saturated value.
- * 2. **Brightness belongs to the buildings.** The buildings are the figure; the
- *    ground map is the ground. The GOLD road network is the brightest thing on
- *    the ground and still sits below a lit building — minor, casing, major,
- *    building, in that order, asserted as a chain.
+ * 2. **Brightness belongs to the buildings, and the map is ONE FAMILY in
+ *    lightness steps** — land (darkest), roads (mid), buildings (lightest).
+ *    Asserted as a chain: minor < casing < major < building.
+ *
+ *    The road network was briefly GOLD, and that is the instructive failure: a
+ *    network is a SURFACE, and a surface cannot be an accent. Covering that much
+ *    of the frame, gold stopped reading as emphasis and purple ended up carrying
+ *    the accent role by default — the hierarchy inverted itself while every
+ *    luminance assertion still passed, because "is it brighter than a building"
+ *    cannot see "how much of the screen is it". Gold is now nowhere on the
+ *    basemap; it is rare, and rare is what makes it an accent.
  *
  * Pure on purpose: a transform that takes a style and returns a style can be
  * unit-tested without a browser, which is the only kind of map code that can be.
@@ -175,9 +182,9 @@ export function applyPalette(style: MapStyle, t: PaletteTokens): MapStyle {
         break
 
       case 'road-major':
-        /* THE STRIP CORRIDOR, IN GOLD. Gold is the accent tier and carries no
-           meaning, so it can take the whole network without claiming anything
-           about any road. */
+        /* The mid step of the aubergine family: clearly above the land, clearly
+           below a lit building, so the network reads as structure rather than
+           as emphasis. */
         paint['line-color'] = t.roadMajor
         break
       case 'road-casing':
