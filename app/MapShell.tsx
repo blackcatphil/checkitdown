@@ -467,6 +467,13 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           }))
         const wire = createWireframeLayer('rooms-wire', feats, {
           width: 2.4,
+          /* 1.2 m OUT, plus a small depth bias in the shader. Measured: neither
+             alone is enough. Offset alone needs ~5 m before the flicker stops,
+             and at 5 m the cage visibly floats off the building; bias alone
+             needs so much that it punches through the mass and becomes the
+             x-ray box. Together, at values where each is small, the jitter
+             lands on the no-wireframe baseline. */
+          offsetMetres: Number(process.env.NEXT_PUBLIC_MAP_WIRE_OFFSET ?? '1.2'),
           color: glColor(T.buildingLit, 0.95),
         })
         /* Starts at 0, not 1: the layer is added while the masses are still

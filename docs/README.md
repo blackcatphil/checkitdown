@@ -1094,6 +1094,89 @@ it; 32s idle brings it back.
 is not running" has two causes that look identical from outside, and one of them
 is an OS accessibility setting on a machine I cannot see.
 
+## An experiment against a broken subject answers nothing (2026-08-04)
+
+The wireframe flickered as the camera moved. Depth-fighting was the obvious
+suspect — and this file already contained an experiment ruling it out:
+
+> Depth-test coincidence — tested first by drawing with `DEPTH_TEST` disabled.
+> **0.01% of pixels changed: not the cause.**
+
+**That experiment was void.** It ran while the layer was still projecting
+off-screen. Nothing was on the canvas, so nothing could be occluded, and
+"disabling occlusion changes nothing" was guaranteed before it was measured. A
+real number, correctly obtained, answering a question it could not reach.
+
+It is the buffer-count mistake one level up: there the count was true and about
+the wrong thing; here the control was true and **incapable of detecting the
+effect it was testing for**. When a subject is later found broken, every
+measurement taken against it goes back on the list — a result is only as valid
+as the thing it was measured on.
+
+Re-run against a layer that draws:
+
+| | mean gold count | CV | mean frame-to-frame step |
+|---|---|---|---|
+| wireframe on | 31,835 | **15.6%** | 5,017 |
+| depth test off | 50,951 | 2.3% | 1,441 |
+| wireframe removed | 24,701 | 5.6% | 1,815 |
+
+Disabling depth removes the flicker **and** draws every hidden edge — the x-ray
+box, visible in the mean climbing to nearly double.
+
+### Ruling out the render loop, which needed its own control
+
+A custom layer misaligned with MapLibre's render loop can present partial frames,
+which also reads as flashing. The discriminator is a **static camera that keeps
+repainting**: depth precision is deterministic for a fixed matrix, so z-fighting
+cannot show up there, while a render-loop fault would.
+
+```
+STATIC camera, forced repaints: sd 0.0 · cv 0.00%
+samples: 39492 ×10 — byte-identical
+```
+
+Ruled out. The effect is matrix-dependent, which is z-fighting.
+
+### The flicker metric had to get sharper too
+
+At 0.06° rotation steps the count swung 15.6%, but that mixes flicker with edges
+*legitimately* becoming occluded as the building turns. Dropping to **0.002°** —
+a rotation too small to change the scene — the wireframe still moved 3,621
+pixels a step against a control of 1,112. Nothing legitimate changes 3,621
+pixels for two thousandths of a degree.
+
+### The fix needed both levers, and each alone was wrong
+
+- **`gl.polygonOffset` did nothing.** Tested at −2/−4, −4/−8, −8/−16 and against
+  a 0/0 control: CV stayed ~15% throughout. It is the textbook fix for decals
+  and it did not apply here — which is exactly why it was measured rather than
+  assumed.
+- **Outward offset alone** needs ~5 m before the jitter settles, and at 5 m the
+  cage visibly floats off the building (`screens/70-offset3.png` shows it at 3 m).
+- **Depth bias alone** needs so much that the gold count climbs toward the
+  depth-disabled value — it stops flickering by punching through the mass.
+
+Together at small values, **1.2 m outward plus 0.0009 of NDC depth bias**, the
+jitter lands on the no-wireframe baseline: **CV 2.82% against a control of
+3.3–4.3%**, while the mean stays at 42k against 51k for depth-off, so edges are
+still being occluded properly.
+
+### `npm run test:flicker` — the check a screenshot can never be
+
+A still frame cannot show a flicker. The gate rotates the camera in steps too
+small to change the scene and asserts the gold-pixel count does not swing:
+**CV ≤ 5%**. Verified both ways — 2.82% as shipped, 7.83% with the bias removed,
+exit code 1.
+
+**Two harness bugs nearly invalidated this gate, both the same shape.** It forced
+`depthBias = 0` before measuring, so it tested a configuration that does not
+ship — twice, once while I was measuring the combination it was overriding. And
+its first assertion was a *ratio* against the control, whose own step count
+swung 646 → 1,740 between runs; the same broken build scored 2.1x and 5.7x, and
+the regression passed once. It now asserts the wireframe's own CV, which
+separates cleanly.
+
 ## Screenshots live in `screens/`, and are verified on disk
 
 Seven screenshots were reported as saved to a **session temp directory** that
