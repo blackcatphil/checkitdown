@@ -16,7 +16,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
 import { applyPalette, type MapStyle } from '@/lib/map-style'
-import { ROOM_FOOTPRINTS } from '@/lib/room-footprints'
+import { ROOM_FOOTPRINTS, ROOM_ROOFS, ROOM_SHELLS } from '@/lib/room-footprints'
+import { createWireframeLayer, WIRE_STAGGER, type WireframeLayer } from '@/lib/wireframe'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
 
@@ -56,6 +57,36 @@ export type MapRoom = {
 type Diag = { requested: number; loaded: number; errored: number; lastFrame: number | null; since: number }
 /** Flag-gated: the overlay and the `window.__cid_map` handle never ship. */
 const MAP_DEBUG = process.env.NEXT_PUBLIC_MAP_DEBUG === '1'
+/* AN OPTION TO COMPARE, NOT A DEFAULT. Gold on the whole road network read as a
+   surface rather than an accent; the open question is whether the Strip ALONE
+   still wants a restrained gold so the spine reads. Off unless asked for. */
+const STRIP_GOLD = process.env.NEXT_PUBLIC_MAP_STRIP_GOLD === '1'
+/* Verified against OSM rather than guessed: the Strip is tagged
+   `South Las Vegas Boulevard`, highway=primary. "Las Vegas Blvd" matches
+   nothing, and a filter that matches nothing renders an EMPTY layer that
+   photographs exactly like a working one. */
+const STRIP_NAME = 'South Las Vegas Boulevard'
+/* HOW THE 3D MASSES ARE OUTLINED. fill-extrusion has no stroke, so there are
+   two techniques and they look different enough to be worth comparing rather
+   than choosing:
+     cap   — a HOLLOW ring over the top 2 m of the mass, so the roof reads as an
+             outline. A solid cap made the roofs gold slabs. DEFAULT.
+     shell — the footprint buffered 2 m outward as a donut, extruded to the same
+             height. MEASURED AND REJECTED, kept only so nobody proposes it
+             again: at pitch the shell's outer wall stands IN FRONT of the mass
+             at equal height, so it occludes rather than rims it. The buildings
+             render solid gold with purple slivers on the far faces. The donut
+             hole only helps looking straight down, and the map is pitched 52°.
+     base  — footprint line only, the state before this pass.
+   The footprint line at the base is drawn in every mode, so `cap` gives the
+   volume a top edge and a bottom edge. */
+const EDGE = process.env.NEXT_PUBLIC_MAP_EDGE ?? 'cap'
+/* The vertical wireframe. On by default — it is the thing that makes the masses
+   read as volumes rather than as blocks. */
+const WIRE = process.env.NEXT_PUBLIC_MAP_WIRE !== '0'
+/* How long the map must be genuinely still before the orbit resumes. */
+const IDLE_MS = 30000
+const DEG_PER_SEC = 0.9
 
 const VALLEY: [number, number] = [-115.1709, 36.1309]
 const VALLEY_Z = 10
@@ -68,8 +99,72 @@ const PITCH = 52
 const MIN_3D_ZOOM = 13.5
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
 
+/** '#rrggbb' -> normalised rgba, because a GL uniform cannot take a CSS hex and
+ *  the palette is the only place a colour is allowed to come from. */
+function glColor(hex: string, alpha = 1): [number, number, number, number] {
+  const h = hex.replace('#', '')
+  const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  return [
+    parseInt(f.slice(0, 2), 16) / 255,
+    parseInt(f.slice(2, 4), 16) / 255,
+    parseInt(f.slice(4, 6), 16) / 255,
+    alpha,
+  ]
+}
+
+/** One query, three behaviours. Read at call time, not module load, so a user
+ *  who changes the OS setting does not have to reload. */
+const reduced = () => typeof window !== 'undefined'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * THE KNOCK RING, thrown from a selected pin.
+ *
+ * The logo mark is a knuckle rap that throws rings and a map ping is the same
+ * shape, so this reuses `knockR1`/`knockR2` from the design system rather than
+ * inventing a second motion vocabulary — brand and map share one.
+ */
+function ping(map: InstanceType<typeof MLMap>, lngLat: [number, number]) {
+  if (reduced()) return
+  const parent = map.getCanvasContainer()
+  const at = map.project(lngLat)
+  const els = ['r1', 'r2'].map((r) => {
+    const el = document.createElement('div')
+    el.className = `cid-ping ${r}`
+    el.style.left = `${at.x}px`
+    el.style.top = `${at.y}px`
+    parent.appendChild(el)
+    return el
+  })
+  /* The ring is screen-positioned, so it would slide off its pin the moment the
+     map moves. It is short-lived and follows the camera until it is done. */
+  const follow = () => {
+    const p = map.project(lngLat)
+    for (const el of els) { el.style.left = `${p.x}px`; el.style.top = `${p.y}px` }
+  }
+  map.on('move', follow)
+  window.setTimeout(() => {
+    map.off('move', follow)
+    for (const el of els) el.remove()
+  }, 1700)
+}
+
+/* The rise is STAGGERED, so 16 masses do not stand up as one slab. Each
+   feature's start is offset by its id, and every factor still reaches 1. */
+const STAGGER = WIRE_STAGGER
+const riseFactor = (p: number) => ['max', 0, ['min', 1,
+  ['/', ['-', p, ['*', STAGGER, ['/', ['%', ['id'], 8], 8]]], 1 - STAGGER]]] as ExpressionSpecification
+const riseHeight = (p: number) => ['*', ['get', 'height'], riseFactor(p)] as ExpressionSpecification
+const riseBase = (p: number) => ['max', 0, ['-', ['*', ['get', 'height'], riseFactor(p)], 2]] as ExpressionSpecification
+
+const FULL_HEIGHT = ['get', 'height'] as ExpressionSpecification
+const FULL_BASE = ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification
+
 export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const holder = useRef<HTMLDivElement>(null)
+  const roseRef = useRef(false)
+  const lastActivity = useRef(0)
+  const wireRef = useRef<WireframeLayer | null>(null)
   const mapRef = useRef<InstanceType<typeof MLMap> | null>(null)
   const hovered = useRef<string | null>(null)
   const rosterRef = useRef<MapRoom[]>([])
@@ -78,6 +173,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(STRIP_Z)
   const [ready, setReady] = useState(false)
+  const [rose, setRose] = useState(false)
   const [tilesIn, setTilesIn] = useState(false)
   const [paletteOk, setPaletteOk] = useState(true)
   const [inView, setInView] = useState<number | null>(null)
@@ -243,6 +339,21 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
          would inherit missing ids, per-tile splitting and podium ambiguity. */
       /* No promoteId: components share a slug, so the generated numeric ids are
          the only unique handle. Hover then lights the whole GROUP by slug. */
+      if (STRIP_GOLD) {
+        map.addLayer({
+          id: 'strip-gold',
+          source: 'openmaptiles',
+          'source-layer': 'transportation_name',
+          type: 'line',
+          filter: ['==', ['get', 'name'], STRIP_NAME],
+          paint: {
+            'line-color': T.stripGold,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 8] as ExpressionSpecification,
+            'line-opacity': 0.9,
+          },
+        })
+      }
+
       map.addSource('fp', { type: 'geojson', data: ROOM_FOOTPRINTS as never })
       /* THE FLAT-FOOTPRINT RULE IS LIVE AGAIN. It was marked moot only because
          the tiles offered no tagged/untagged distinction; with our own data it
@@ -256,7 +367,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         source: 'fp',
         type: 'fill',
         paint: {
-          'fill-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.value, T.pin] as ExpressionSpecification,
+          /* GOLD, NOT TEAL. Teal is --cid-value and means verified; spending it
+             on a hover spends the only hue in the product that carries a claim. */
+          'fill-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.pin] as ExpressionSpecification,
           'fill-opacity': 0.45,
           'fill-outline-color': T.accent300,
         },
@@ -267,7 +380,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         type: 'fill-extrusion',
         filter: ['has', 'height'],
         paint: {
-          'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.value, T.pin] as ExpressionSpecification,
+          'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.pin] as ExpressionSpecification,
           'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
           'fill-extrusion-base': 0,
           /* CONSTANT, because `fill-extrusion-opacity` takes zoom expressions
@@ -280,6 +393,96 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           'fill-extrusion-opacity': 0.8,
         },
       })
+
+      /* THE GOLD EDGE. fill-extrusion has no outline property, so the footprint
+         geometry is drawn again as a thin line. At pitch it traces the base of
+         each mass, which is where the silhouette meets the ground and where the
+         eye reads the footprint. Thin and on a line, so gold cannot spread into
+         a field the way it did across the road network. */
+      map.addLayer({
+        id: 'rooms-edge',
+        source: 'fp',
+        type: 'line',
+        paint: {
+          'line-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.buildingLit] as ExpressionSpecification,
+          'line-width': 1.4,
+          'line-opacity': 0.9,
+        },
+      })
+
+      if (EDGE === 'shell' || EDGE === 'both') {
+        map.addSource('shells', { type: 'geojson', data: ROOM_SHELLS as never })
+        map.addLayer({
+          id: 'rooms-shell',
+          source: 'shells',
+          type: 'fill-extrusion',
+          paint: {
+            'fill-extrusion-color': T.buildingLit,
+            'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
+            'fill-extrusion-base': 0,
+            'fill-extrusion-opacity': 0.9,
+          },
+        })
+      }
+      if (EDGE === 'cap' || EDGE === 'both') {
+        /* A RING, NOT A SLAB. The first version extruded the whole footprint
+           over the top 3 m, so its top face was the entire roof and every
+           building wore a gold lid. This source is a donut — outer edge the real
+           footprint, inner edge pulled in — so the top face is a ring and the
+           roof reads as an outline. */
+        map.addSource('roofs', { type: 'geojson', data: ROOM_ROOFS as never })
+        map.addLayer({
+          id: 'rooms-cap',
+          source: 'roofs',
+          type: 'fill-extrusion',
+          paint: {
+            'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.buildingLit] as ExpressionSpecification,
+            /* `max` keeps a short component from inverting base above height. */
+            'fill-extrusion-base': ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification,
+            'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
+            'fill-extrusion-opacity': 0.95,
+          },
+        })
+      }
+
+      /* THE VERTICAL EDGES. No built-in layer can draw an elevated line, so this
+         is the custom-layer wireframe — triangle-expanded, because WebGL caps
+         gl.lineWidth at 1 device pixel and a half-CSS-pixel hairline is not the
+         gold outline anyone asked for. Added AFTER the extrusions so the depth
+         buffer already holds the masses and edges behind them are discarded. */
+      if (WIRE) {
+        const feats = (ROOM_FOOTPRINTS.features as unknown as Array<{
+          geometry: { coordinates: [number, number][][] }
+          properties: { height?: number }
+          id: number
+        }>)
+          .filter((f) => f.properties.height)
+          .map((f) => ({
+            ring: f.geometry.coordinates[0],
+            height: f.properties.height as number,
+            /* THE SAME STAGGER THE MASSES GET, from the same constant and the
+               same id arithmetic. Two copies of this number is precisely how
+               edges end up floating above buildings that have not risen yet. */
+            stagger: STAGGER * ((f.id % 8) / 8),
+          }))
+        const wire = createWireframeLayer('rooms-wire', feats, {
+          width: 2.4,
+          /* 1.2 m OUT, plus a small depth bias in the shader. Measured: neither
+             alone is enough. Offset alone needs ~5 m before the flicker stops,
+             and at 5 m the cage visibly floats off the building; bias alone
+             needs so much that it punches through the mass and becomes the
+             x-ray box. Together, at values where each is small, the jitter
+             lands on the no-wireframe baseline. */
+          offsetMetres: Number(process.env.NEXT_PUBLIC_MAP_WIRE_OFFSET ?? '1.2'),
+          color: glColor(T.buildingLit, 0.95),
+        })
+        /* Starts at 0, not 1: the layer is added while the masses are still
+           flat, and an edge cage standing at full height around nothing is the
+           exact artefact this is meant to avoid. */
+        wire.setProgress(0)
+        wireRef.current = wire
+        map.addLayer(wire as never)
+      }
 
       map.addSource('rooms', {
         type: 'geojson',
@@ -375,11 +578,33 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       map.on('click', 'pin', (e) => {
         const f = e.features?.[0]
         if (!f) return
+        ping(map, (f.geometry as GeoJSON.Point).coordinates as [number, number])
         new Popup({ className: 'cid-popup', closeButton: false, offset: 12 })
           .setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number])
           .setHTML(popupHtml(f.properties as Record<string, string | number>))
           .addTo(map)
       })
+
+      /* DUSK SKY + A LOW SUN. `setSky` paints the horizon behind the towers and
+         `setLight` rakes the extrusion faces, which is what turns a flat dark
+         plane into a place at night. The horizon colour is held below building
+         luminance by token, and the luminance chain now asserts it — a sky is
+         the one surface big enough to break "the brightest thing is a building"
+         without anything noticing. */
+      map.setSky({
+        'sky-color': T.sky,
+        'horizon-color': T.horizon,
+        'fog-color': T.fog,
+        'sky-horizon-blend': 0.55,
+        'horizon-fog-blend': 0.6,
+        'fog-ground-blend': 0.08,
+        'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 15, 0.3] as ExpressionSpecification,
+      })
+      /* INTENSITY 0.22, NOT 0.4. At 0.4 the warm light lifted every extrusion
+         face toward the light's own hue and the aubergine masses came out dusty
+         pink — the buildings stopped being the accent colour. Low enough to
+         rake, not to repaint. */
+      map.setLight({ anchor: 'map', color: T.light, intensity: 0.22, position: [1.6, 205, 32] })
 
       setReady(true)
     })
@@ -413,6 +638,152 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
        code that nothing checks. */
   }, [])
 
+  /* THE BUILDINGS RISE — but only once the GROUND HAS ARRIVED.
+     Playing it on mount would run the animation into an empty frame: the whole
+     point is the towers standing up out of a map, and with no map underneath it
+     reads as jank rather than as arrival. `tilesIn` already tracks exactly this,
+     because the loading state needed the same distinction.
+     MapLibre does not ease paint properties, so this is a rAF loop over an
+     expression. 16 masses is nothing. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready || !tilesIn || roseRef.current) return
+    roseRef.current = true
+
+    const settle = () => {
+      wireRef.current?.setProgress(1)
+      map.setPaintProperty('rooms-fp', 'fill-extrusion-height', FULL_HEIGHT)
+      if (map.getLayer('rooms-cap')) {
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', FULL_HEIGHT)
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', FULL_BASE)
+      }
+    }
+    if (reduced()) {
+      /* Settle immediately, but hand the state change to the next frame:
+         setting state synchronously inside an effect cascades renders, and the
+         linter is right that it is a real hazard rather than a style note. */
+      settle()
+      const id = requestAnimationFrame(() => setRose(true))
+      return () => cancelAnimationFrame(id)
+    }
+
+    const DUR = 950
+    const t0 = performance.now()
+    let raf = 0
+    let done = false
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - t0) / DUR)
+      const p = 1 - (1 - t) ** 3
+      map.setPaintProperty('rooms-fp', 'fill-extrusion-height', riseHeight(p))
+      if (map.getLayer('rooms-cap')) {
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', riseHeight(p))
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', riseBase(p))
+      }
+      /* ONE progress value drives both. The shader recomputes the same stagger
+         curve, so an edge is never drawn at a height its mass has not reached. */
+      wireRef.current?.setProgress(p)
+      if (t < 1) { raf = requestAnimationFrame(frame); return }
+      done = true
+      settle()
+      setRose(true)
+    }
+    raf = requestAnimationFrame(frame)
+    /* THE CLEANUP MUST LAND THE BUILDINGS, not just stop the loop.
+       This effect depends on `tilesIn`, and `tilesIn` FLIPS BACK TO FALSE the
+       moment the camera drift rotates far enough to need new tiles. That
+       cancelled the rise at p=0.17 and the `roseRef` guard then refused to
+       restart it, so 16 towers sat permanently at a sixth of their height with
+       nothing reporting a problem. Cancelling an animation is not the same as
+       finishing it. */
+    return () => {
+      cancelAnimationFrame(raf)
+      if (!done) { settle(); setRose(true) }
+    }
+  }, [ready, tilesIn])
+
+  /* AMBIENT DRIFT — runs on arrival, stops on a real interaction, returns when
+     the map is genuinely idle.
+     THE ARRIVAL DRIFT IS UNCONDITIONAL. The previous version ran one loop for
+     both jobs, so the same `busy()` test that (correctly) blocks a RESTART also
+     gated the very first start — and merely moving the mouse onto the map
+     stamped activity. In a browser nobody is holding still: the map loads, the
+     pointer arrives, and the welcome drift never happens. Locally it always
+     looked fine, because a headless mouse does not move.
+     So arrival is separate, and only a real interaction — pointerdown, wheel,
+     touch, key — stops it. Pointer MOVEMENT is activity for the restart clock
+     only; it does not stop a drift already running, because moving the mouse
+     across a map is not asking the map to stop. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !rose || reduced()) return
+
+    const el = map.getCanvasContainer()
+    let raf: number | null = null
+    let startedAt = 0
+    let last = 0
+    let stopped = false
+
+    const running = () => raf !== null
+    const blocked = () => Boolean(
+      document.querySelector('.maplibregl-popup')      // reading a room
+      || Date.now() - lastActivity.current < IDLE_MS,  // something just happened
+    )
+
+    const frame = (now: number) => {
+      /* Eased in over a second: snapping into motion after stillness reads as a
+         glitch rather than as drift. */
+      const ramp = Math.min(1, (now - startedAt) / 1000)
+      map.setBearing(map.getBearing() + (DEG_PER_SEC * ramp * (now - last)) / 1000)
+      last = now
+      raf = requestAnimationFrame(frame)
+    }
+    const start = () => {
+      if (running()) return
+      startedAt = performance.now()
+      last = startedAt
+      raf = requestAnimationFrame(frame)
+    }
+    const halt = () => {
+      if (raf !== null) cancelAnimationFrame(raf)
+      raf = null
+    }
+
+    start()                       // the welcome, unconditionally
+
+    const interact = () => { stopped = true; lastActivity.current = Date.now(); halt() }
+    const moved = () => { lastActivity.current = Date.now() }
+    for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
+      el.addEventListener(ev, interact, { passive: true })
+    }
+    el.addEventListener('pointermove', moved, { passive: true })
+
+    const tick = window.setInterval(() => {
+      if (!stopped || running() || blocked()) return
+      start()
+    }, 1000)
+
+    return () => {
+      window.clearInterval(tick)
+      halt()
+      for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
+        el.removeEventListener(ev, interact)
+      }
+      el.removeEventListener('pointermove', moved)
+    }
+  }, [rose])
+
+  /* A filter change is activity even though it happens in the panel, where the
+     canvas listeners never see it.
+     THE FIRST RUN IS NOT A CHANGE. Stamping on mount made the map count as
+     just-used for the first 30 seconds, so the arrival drift — the part Phil
+     actually liked — silently stopped happening. An effect that fires on mount
+     as well as on change is the ordinary shape of this bug. */
+  const filtersMounted = useRef(false)
+  useEffect(() => {
+    if (!filtersMounted.current) { filtersMounted.current = true; return }
+    lastActivity.current = Date.now()
+  }, [checked])
+
   /* Cluster properties are computed at LOAD time, so `hits` cannot be
      repainted when the filter changes — the data has to be re-set. */
   useEffect(() => {
@@ -430,12 +801,19 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     if (Math.abs(map.getPitch() - want) > 1) map.easeTo({ pitch: want, duration: 400 })
   }, [zoom, ready])
 
+  /* THE STRIP / WHOLE VALLEY ARE USER INTENT, so they kill the drift outright.
+     The pointer listener on the canvas never sees these — they are panel
+     buttons — and an ambient orbit that keeps turning the camera after somebody
+     asked for a specific view is the map arguing with them. */
+  const stopDrift = useCallback(() => { lastActivity.current = Date.now() }, [])
   const goStrip = useCallback(() => {
+    stopDrift()
     mapRef.current?.easeTo({ center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18 })
-  }, [])
+  }, [stopDrift])
   const goValley = useCallback(() => {
+    stopDrift()
     mapRef.current?.easeTo({ center: VALLEY, zoom: VALLEY_Z, pitch: 0, bearing: 0 })
-  }, [])
+  }, [stopDrift])
 
   const toggle = (k: string) =>
     setChecked((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]))
@@ -523,6 +901,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
 
       <div style={{ position: 'relative' }}>
         <div ref={holder} style={{ position: 'absolute', inset: 0 }} />
+        {/* Above the canvas, below the panel and popups; pointer-events none so
+            it cannot swallow a click on a pin. */}
+        {in3d && <div className="cid-mapfog" aria-hidden />}
 
         {/* "No buildings" and "buildings not downloaded yet" look identical on
             screen and mean opposite things. The instrument cannot tell them
@@ -546,6 +927,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           {MAP_DEBUG
             ? ` · tiles ${diag.requested}/${diag.loaded}${diag.errored ? ` err ${diag.errored}` : ''}`
               + ` · frame ${diag.since < 0 ? 'NEVER' : `${diag.since}ms ago`}`
+              /* "The drift is not running" has two causes that look identical:
+                 reduced motion, and a stopped drift. The badge says which. */
+              + ` · motion ${reduced() ? 'REDUCED' : 'full'}`
             : ''}
         </div>
       </div>

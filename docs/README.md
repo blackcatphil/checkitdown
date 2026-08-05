@@ -531,6 +531,665 @@ style URL directly: a correctly-rendered map in the **wrong colours**, with
 `PALETTE FAILED` in the badge. A blank map tells you nothing; a
 Positron-coloured one tells you exactly which step failed.
 
+## The ground map carries the palette (2026-08-04)
+
+The ground was neutral dark while only the buildings were aubergine. It now
+carries the palette, under **two rules that are about meaning, not taste** —
+both of which are what stop it reading muddy.
+
+**1. Saturation carries meaning, so decoration gets the desaturated end.**
+`--cid-value` (#4FBFAE) means *verified*: good rake, confirmed figures, the live
+dot. A decorative saturated teal on the same screen would blunt it exactly as a
+brand-red that cannot mean warning. Water is the same family at a fraction of
+the **chroma**, so it never competes. Where a map layer and a data signal could
+sit adjacent, **the data signal wins the saturated value.**
+
+**2. Aubergine goes in the shadows, not the highlights.** The buildings are the
+figure and the ground map is the ground. The dark end (land, parks, water) is
+tinted toward the accent; the light end (road bodies, labels) stays near-neutral
+paper. If the streets went aubergine at the buildings' weight, the towers would
+stop reading — and the towers are what the whole 3D arc was for.
+
+Parks, woodland and golf are **aubergine-tinted, never green**. The palette bans
+green-as-good, and the Wynn golf course rendering green beside a teal "verified"
+marker would contradict that on the front page.
+
+All of it lives in `applyPalette` (pure, testable) and every colour is a
+`--cid-map-*` token in both themes. `classifyLayer` sorts the style's **real 55
+layers** into ten classes; `other` is a real answer and those layers keep their
+upstream paint rather than being coloured on a guess.
+
+### Six rules, each proven to go red
+
+`lib/map-style.test.mjs` asserts against the **real palette parsed out of
+colors.css**, not a mock — a mock satisfies whatever invariant you write for it
+while the shipped colours quietly break the same rule. Each was verified by
+injecting a violation: a green park, a road brighter than a building, a
+saturated decorative teal, a land colour too light for label contrast.
+
+**Two measures, because "saturated" means two things.** *Chroma* (absolute
+colourfulness) answers "does this compete with the teal that means verified?".
+HSL *saturation* answers "is the tint in the shadows?". Using saturation for
+both called a near-black teal-slate (0.34) a rival to vivid #4FBFAE (0.47) — it
+divides by lightness, so it cannot tell a faint lean from a real colour.
+
+### A colour you never chose cannot be caught by checking the colours you chose
+
+Positron ships `fill-outline-color: rgb(219,219,218)` on its building layer —
+the only one in the style. Setting `fill-color` and leaving it painted a
+**near-white mesh over every block in the valley**: the brightest thing on the
+map, on a layer meant to be quiet texture, straight through a figure/ground rule
+that only ever inspected our own tokens.
+
+The fix is a guard that does not depend on having imagined the failure: **no
+`*-color` on a layer we claim to have recoloured may still hold its upstream
+value.** Positron is a light theme, so every colour it ships is wrong for us —
+survival is the defect, whatever the property is called.
+
+The same audit found route shields, which are **sprite images**: `icon-color`
+does nothing to them, and at full strength they measured as pure white
+(L=1.00) against buildings at L=0.19. Muted to 0.5 rather than hidden, because
+I-15 and Las Vegas Blvd are real wayfinding.
+
+### The rendered pixels, not just the tokens
+
+The token tests pass on values we control; they cannot see what actually
+reaches the screen. Sampling the rendered canvas found **0 green-dominant
+pixels** and cut the brightest pixel from **L=1.00 to L=0.44**.
+
+One honest exception: **label text is brighter than a building** (0.31% of
+pixels) and stays that way. It has to hold 4.5:1 or it is not legible. The
+figure/ground rule governs the map's **masses** — fills and lines — not the
+information layer on top of them.
+
+### Contrast is now measured rather than asserted in prose
+
+The ≥4.5:1 floor existed only as a comment beside `--cid-dim`. It is a test now,
+measured **against the halo** rather than the land: a label crosses water, park
+and road within one pan, so there is no single background to measure, and the
+halo is the background the text actually sits on.
+
+## Hue share — the number that should have existed first (2026-08-04)
+
+Phil called the map monochrome **twice**, across two palette passes that both
+passed every test. The cause was measurable and nobody had measured it:
+
+| | before | after |
+|---|---|---|
+| aubergine | **69.5%** | 48.1% |
+| neutral | 26.6% | 34.7% |
+| gold | **0%** | 14.9% |
+| indigo (water) | 4.0% | 1.7% |
+| moss (parks) | **0.02%** | 0.03% |
+
+**The hue variety was outside the frame.** Indigo water and moss parks are real
+choices, but at the Strip landing there is almost no water and virtually no
+park — so the view resolved to aubergine land, aubergine roads, aubergine
+buildings. We had coloured features that are not on screen.
+
+**Token tests cannot see this.** Every rule in `map-style.test.mjs` asks what a
+colour *is* — its hue, its chroma, its luminance against a building. None can
+ask **how much of the frame it occupies**, and area is the variable that decides
+whether something reads as an accent or a surface. `scripts/map-probe.mjs` now
+samples the rendered canvas and reports the share of every hue, so the next
+palette argument starts from a number.
+
+It is the same shape as the dead worker: the failure was invisible to every
+check we had because no check looked at the rendered output.
+
+### Gold on the buildings, gold on the fine grid
+
+- **Gold outlines the 16 masses.** `fill-extrusion` has no outline property, so
+  the footprint geometry is redrawn as a thin line. **An outline is a LINE, not
+  a SURFACE** — gold stays an accent by geometry rather than by discipline — and
+  edge definition is what makes massing read, so it reinforces the buildings
+  being the brightest thing rather than threatening it.
+- **The minor grid is gold; the arterials stay purple.** The boundary is which
+  roads: casing and major are continuous arterials that form a shape across the
+  frame, which is what a surface is made of. The fine grid is texture. The
+  hierarchy is deliberately inverted — **fine grid glints, arterials recede,
+  buildings dominate.**
+- **Weight is the lever, never the hue.** At Positron's shipped 0.9 opacity the
+  gold grid measured 19.8% of the frame and the dense blocks read as a field.
+  Dropping to 0.55 kept the glint and lost the haze: 14.9%. Reverting the colour
+  is what produced "too monochrome" twice, so the opacity is now asserted.
+- The luminance chain still holds — `--cid-map-road-minor` is a **dark** gold,
+  held below the casing. The chain is the weight limit: a gold minor that breaks
+  it is too heavy.
+
+**Still open, and now quantified:** moss and indigo are 1.7% of the frame
+between them. If more hue variety is wanted, the lever is a hue on something
+that IS in view — land, buildings, the grid — not more colour on water and parks.
+
+## Outlining a 3D volume: one technique measured and rejected
+
+`fill-extrusion` has no stroke, so "outline the whole building" is a change of
+technique, not a parameter. Two were built and both were rendered before either
+was believed.
+
+**SHELL — rejected, and kept in the code so nobody proposes it again.** The
+footprint buffered 2 m outward as a donut (outer ring buffered, inner ring the
+original) and extruded to the same height. In plan it is exactly an outline: the
+hole is the building. **At pitch it is not.** The shell's outer wall stands *in
+front of* the mass at equal height, so it occludes rather than rims — the
+buildings render solid gold with purple slivers on the far faces only. The donut
+hole helps looking straight down, and the map is pitched 52°. `screens/10-shell.png`
+is what that looks like; the reasoning was sound in plan view and wrong in the
+view we actually ship.
+
+**CAP — the default.** A second extrusion occupying the top 3 m of the mass: a
+gold crown at the roof. With the footprint line still drawn at the base, the
+volume gets a top edge and a bottom edge, which is the readable part of an
+outline at this camera.
+
+`NEXT_PUBLIC_MAP_EDGE=cap|shell|base` switches between them.
+
+The buffer is a miter offset computed in **local metres**, not degrees — a degree
+of longitude at latitude 36 is 0.81 of a degree of latitude, and treating them as
+equal would buffer more east-west than north-south. The winding of an arbitrary
+OSM ring is not assumed either: the offset is applied, the area compared, and the
+direction flipped if the polygon came out smaller. A shell that shrank would sit
+inside the mass and be invisible — a silent nothing, which is the failure mode
+this project keeps finding.
+
+### Gold outlines the arterials; it does not become them
+
+The casing is drawn **wider than the body** (Positron: 3 vs 2 at z10), so a gold
+casing beneath a purple body shows as an edge down each side. Gold stays a line.
+That boundary has now moved twice — first "which roads" (grid yes, arterials no),
+now "which part of a road" (outline yes, body no) — and each time the rule was
+narrowed rather than dropped, because the thing being protected never changed:
+**gold may not become a surface.**
+
+### Halving the gold, without halving the text
+
+Phil asked for the map gold at about half brightness. **The UI gold does text
+work with a hard 4.5:1 floor**, so the dimming is scoped to `--cid-map-*`
+(`#C9A227` → `#8A6D1F`, luminance 0.385 → 0.164). Verified the guard actually
+guards: halving the shared scale fails both the per-surface contrast rule and
+the scoping rule.
+
+### Hue share after: gold did NOT climb
+
+| | before | after |
+|---|---|---|
+| aubergine | 48.1% | 44.4% |
+| neutral | 34.7% | 39.1% |
+| gold | 14.9% | **13.6%** |
+| indigo / moss | 1.7% | 1.4% |
+
+**Read that with the caveat, because the metric moved under it.** The probe
+counts a pixel as `neutral` below a chroma of 10, and halving the gold pushed
+dim gold pixels under that floor. At a chroma floor of 6 the comparison is
+**17.0% → 16.4%** — so the added geometry (volume caps, arterial casings) was
+almost exactly cancelled by the halving. Gold covers about as much as before and
+is half as loud.
+
+That is worth knowing about the instrument itself: **a share metric with a
+threshold is not invariant to a brightness change.** Quoting only the 13.6%
+would have implied gold shrank when its coverage barely moved.
+
+## The roof was a slab, not an outline (2026-08-04)
+
+The gold "crown" extruded the whole footprint over the top 3 m, so its top face
+was the entire roof: every building wore a gold lid. The fix is the same
+technique made **hollow** — a donut whose outer edge is the real footprint and
+whose inner edge is pulled 3 m in, extruded over the top 2 m. The top face is
+then a ring and the roof reads as an outline.
+
+Narrow towers cannot take a 3 m inset without the ring closing on itself, so the
+band **thins before it gives up** (3 m → 1.5 m → 0.8 m). Forum Tower needs 1.5 m.
+Dropping it instead would have left one mass with a filled gold roof beside
+fifteen outlined ones, which reads as a rendering bug rather than a rule.
+
+Growing and shrinking a ring need **opposite** winding choices, and getting it
+wrong is silent both ways: a shell that shrank hides inside the mass, a roof ring
+that grew swallows the roof it was meant to outline. Both directions are built,
+the areas compared, and the one that moved the right way is kept.
+
+### What true vertical edges would cost — measured, not estimated
+
+Phil wants **all the edges, vertical and horizontal**. The roof ring plus the
+existing base line gives the horizontal ones. The verticals cannot be done with
+any built-in layer: **MapLibre line layers are ground-plane only**, so there is
+no supported way to draw an elevated 3D line.
+
+The real answer is `map.addLayer({ type: 'custom', render(gl, matrix) })` with a
+line-primitive wireframe. Before costing it, one thing was measured rather than
+assumed:
+
+```
+ALIASED_LINE_WIDTH_RANGE = [1, 1]
+```
+
+**WebGL will not draw a line thicker than one device pixel.** `gl.lineWidth()`
+is a no-op above 1 in ANGLE, which is what Chrome, Edge and Electron all use.
+That single number splits the work in two:
+
+- **Hairline wireframe — ~150 lines.** `gl.LINES` over a vertex buffer of the
+  977 footprint vertices, each as a vertical segment plus a top-ring segment
+  (~2,000 segments, nothing for the GPU). Needs Mercator conversion, a small
+  shader, and depth-testing against the extrusions so edges hide correctly
+  behind masses. The catch is that a 1-device-pixel line on a 2× display is a
+  half-CSS-pixel hairline — faint, and not adjustable.
+- **Adjustable-thickness wireframe — ~300+ lines.** Each edge expanded into two
+  triangles with the offset applied in screen space after projection, plus join
+  handling at corners. This is what you need if the hairline reads too faint,
+  which on a retina display it probably will.
+
+Both need depth handling tuned against `fill-extrusion` to avoid z-fighting, and
+neither is unit-testable — only the browser probe can confirm them. **Not built
+on spec.**
+
+## Hover was spending the colour that means verified — caught regression
+
+The map's hover was `--cid-value`: **the teal that means verified**, used as
+decoration. It is the same mistake as an ochre "unverified" — a hue that carries
+a claim, spent where nothing is being claimed — and it shipped because nothing
+asserted that the map's decorative colours stay clear of the semantic ones.
+
+Hover is now gold, and `--cid-value` is **gone from `MAP_TOKENS` entirely**:
+it was there only to paint the hover, which is itself the evidence that the teal
+was never doing semantic work on the map. When something on the map does state
+verification, it comes back.
+
+It could not simply become the map gold either. That gold is dim and covers
+~16% of the frame, so a hover drawn in it would vanish into the texture — **the
+same colour cannot be both the background and the thing that stands out of it.**
+So hover is separated by VALUE, exactly as brand teal was separated from
+decorative teal: **hover takes the bright end, decoration keeps the dim end.**
+Asserted three ways — hover is far from `--cid-value` in hue, is not the same
+token as the decoration gold, and is at least twice its luminance and no dimmer
+than an unhovered building. All verified red by injection.
+
+### Hue share, at both chroma floors
+
+| | chroma > 10 | chroma > 6 |
+|---|---|---|
+| before the roof ring | 13.6% | 16.4% |
+| after | **13.1%** | **15.9%** |
+
+Hollowing the roofs took gold coverage down slightly, as expected — a ring
+covers less than a slab. Both floors are reported because the metric's threshold
+is not invariant to brightness, which is a property of the instrument rather
+than of the map.
+
+## Dynamism: dusk, rise, drift, ping (2026-08-04)
+
+Four behaviours, each screenshotted, and **every one of them is disabled under
+`prefers-reduced-motion: reduce`** — verified in a browser with the media
+feature emulated, not by reading the CSS. An ambient orbit nobody can stop is
+hostile, not delightful.
+
+### The dusk sky is set, and does not show at our camera
+
+`setSky` + `setLight` cost almost nothing and the horizon is held below building
+luminance by token, with the **sky now joined to the luminance chain** —
+sky < horizon < roads < building. A sky is the one surface big enough to break
+"the brightest thing is a building" silently: it is enormous, it sits behind
+everything, and every previous assertion looked only at ground colours. Labels
+are also checked against the **horizon** rather than the land, because a label on
+the glowing band is the failure case and the land-coloured halo does not help
+there.
+
+**But it is not visible at the landing camera, and that is measured:**
+
+| pitch | horizon in frame | tiles requested |
+|---|---|---|
+| 52 (ours) | **no** | 12 |
+| 60 (MapLibre's default max) | **no** | 14 |
+| 72 | yes | **29** |
+
+Seeing the dusk band needs pitch above 60 — which means raising `maxPitch` past
+the default *and* roughly doubling tile requests. Raising the landing pitch is a
+change to a constant that was measured in a spike, so it is **Phil's call, with
+the cost attached**: `screens/32-pitch72.png` is what it buys.
+
+**The light was turned down from 0.4 to 0.22.** At 0.4 the warm sun lifted every
+extrusion face toward its own hue and the aubergine masses came out dusty pink —
+the buildings stopped being the accent colour. Low enough to rake, not to
+repaint.
+
+### The rise, and the bug the drift caused
+
+Buildings animate 0 → full height over 950 ms, staggered by feature id so 16
+masses do not stand up as one slab. It starts on `tilesIn`, not on mount: playing
+the rise into an empty frame wastes it and reads as jank.
+
+**The camera drift silently killed the rise.** The effect depends on `tilesIn`,
+and `tilesIn` flips back to *false* the moment the drift rotates far enough to
+need new tiles — so the effect cleaned up, cancelled the rAF at **p = 0.17**, and
+the `roseRef` guard then refused to restart it. Sixteen towers sat permanently at
+a sixth of their height and nothing reported a problem; `queryRenderedFeatures`
+still counted 13 masses, because they existed, they were just short.
+
+Two fixes, and the second is the general one:
+
+- The drift now waits for the rise instead of racing it.
+- **Cleanup lands the animation instead of merely stopping it.** Cancelling an
+  animation is not the same as finishing it — if the effect tears down mid-rise,
+  it settles to full height on the way out. Any interrupted animation should
+  leave the correct final state, not the frame it died on.
+
+### Drift: measured, and it stops rather than pauses
+
+118 frames per 4 s while drifting (~30 fps), **0 frames per 4 s after the first
+interaction** — it stops permanently, with no path back. It also expires on its
+own after 20 s, and THE STRIP / WHOLE VALLEY kill it explicitly, because those
+are panel buttons the canvas listener never sees and an orbit that keeps turning
+after somebody asked for a view is the map arguing with them.
+
+### The ping reuses the brand's knock
+
+Selection throws `knockR1`/`knockR2` from the design system rather than inventing
+a second motion vocabulary — the mark is a knuckle rap throwing rings and a map
+ping is the same shape. Verified: 2 rings on click, popup opens, both cleaned up
+after 1.7 s, 0 rings under reduced motion.
+
+**Two of my own test bugs were worth more than the feature.** The first click
+test ran while the drift was still turning the map, so the pin moved between
+projecting it and clicking it. The second failed because **`map.project()` is
+canvas-relative and `mouse.click` is page-relative** — the canvas sits below the
+header and right of the panel. Both looked exactly like a broken ping.
+
+### Hue share, both floors
+
+| | chroma > 10 | chroma > 6 |
+|---|---|---|
+| before | 13.1% | 15.9% |
+| after | **13.2%** | **16.1%** |
+
+Essentially unmoved. The sky would have moved it — it is not on screen.
+
+## MapLibre v6 has NO fog primitive — verified, not remembered (2026-08-04)
+
+`setFog` is a **Mapbox** API. In `maplibre-gl@6.1.0` it does not exist: zero
+occurrences in the shipped types and zero in the bundle. What MapLibre has is
+fog *inside* `setSky` — `fog-color`, `fog-ground-blend`, `horizon-fog-blend` —
+and that fog blends the ground into the **horizon**.
+
+With the horizon off-screen at pitch 52, it does nothing, and "nothing" is
+measured rather than asserted: sweeping `fog-ground-blend` from 0.08 to 0.95
+with `atmosphere-blend` 0.4 → 1.0 changed **0.01% of pixels, mean difference
+0.00/255**. For scale, turning the light down changed 70% of pixels.
+
+### The nearest real thing: valley haze, and it is not called fog
+
+A screen-space scrim in the fog colour. Named `.cid-mapfog` but described as
+haze everywhere it is explained, because calling an overlay "fog" is how an
+approximation gets mistaken for the API it is standing in for.
+
+**It is distance-weighted, not a vignette.** Real haze fades what is FAR, and
+under pitch the far ground is the top of the frame — so it is a top-weighted
+gradient rather than a ring around the edges. Both were built and measured:
+
+| | pixels changed | gold lost |
+|---|---|---|
+| radial vignette | 5.2% | 1.6 pp |
+| **top-weighted (shipped)** | **28.8%** | **2.8 pp** |
+
+Roughly three times the visible depth per unit of accent washed out, because it
+puts the haze where the buildings are not. The first attempt — a heavy radial
+vignette — cut gold from 13.2% to 7.4%, halving the accent three rounds of work
+had just tuned.
+
+The haze is a large-area surface, so it joins the luminance chain on the same
+terms as the sky, and the label floor is now checked **through** it: the scrim
+composited over the halo, then the text against that.
+
+## The vertical gold wireframe
+
+`lib/wireframe.ts`. The triangle-expanded custom layer, not the hairline —
+`ALIASED_LINE_WIDTH_RANGE` was measured at **[1, 1]**, so width has to be built
+rather than requested. Each edge becomes a quad expanded in the **vertex shader,
+in screen space after projection**, which is what keeps a constant pixel width
+while the ambient drift changes the matrix every frame.
+
+**848 segments drawn** — a real count read out of the buffer, not a check that
+the layer exists. A custom layer that renders nothing looks exactly like one
+that was never added.
+
+Three things it had to get right:
+
+- **It animates with the rise.** The shader recomputes the same stagger curve
+  from the same progress value, and `MapShell` now *imports* `WIRE_STAGGER`
+  rather than declaring its own `0.35`. The test changed accordingly: it used to
+  compare two numbers, and now asserts they are **one** number, which is the
+  stronger guarantee.
+- **Depth test on, depth write off.** Testing hides an edge behind a mass —
+  without it this is an x-ray box. Not writing stops the ribbons occluding each
+  other where two quads meet at the same depth.
+- **It survives the drift.** 28.3 fps with wireframe + drift against 29.5 fps
+  with drift alone: about 1 fps for the first per-frame custom work in the app.
+
+The GL cannot be unit-tested, but the arithmetic can, and that is where the bugs
+live: segment counts, altitudes in mercator units, whether the closing vertex of
+a ring produces a phantom zero-length segment. `lib/wireframe.test.mjs` covers
+those with no browser.
+
+## The drift comes back, but only when the map is genuinely idle
+
+"No click in 30 seconds" is not idle. The restart is blocked while a popup is
+open, while the pointer is over the map, or within 30s of a filter change — and
+each of those **resets the clock** rather than queueing a restart for the moment
+it ends. Eased in over a second, because snapping into motion after stillness
+reads as a glitch.
+
+Verified in a browser, all four states:
+
+| | |
+|---|---|
+| drifts on arrival | bearing −9.2 → −6.1 |
+| interaction stops it | −18 → −18 over 6s |
+| **held while a popup is open** | −18 → −18 over 34s |
+| restarts once idle | −18 → +11.8 over 34s |
+
+**The first of those was broken by my own fix and the test caught it.** The
+filter-change effect stamped `lastActivity` on mount as well as on change, so
+the map counted as just-used for its first 30 seconds and the arrival drift —
+the part Phil actually liked — silently stopped happening. An effect that fires
+on mount as well as on change is the ordinary shape of that bug.
+
+`prefers-reduced-motion` still disables everything, wireframe included: height
+settles to `["get","height"]` immediately, bearing never moves, 848 segments
+still drawn at full height, no ping.
+
+### Hue share, both floors
+
+| | chroma > 10 | chroma > 6 |
+|---|---|---|
+| before haze + wireframe | 13.2% | 16.1% |
+| after | **10.4%** | **11.9%** |
+
+The haze accounts for essentially all of that: it is a translucent scrim over
+the top half of the frame, so it dims gold pixels below both thresholds. Gold
+coverage did not shrink; gold contrast did, which is what a haze is.
+
+## The wireframe drew nothing for a whole session (2026-08-04)
+
+It was reported working on the strength of **848 segments** in the vertex
+buffer. Every number was true and none of them was about pixels:
+
+```
+segments 848 · rendered frames 274 · GL error 0 · layer present true
+```
+
+The layer was added, its `render` ran 274 times, it issued a draw call, and
+nothing reached the screen. **A count of what you wrote into a buffer is not a
+count of what was drawn** — which is the exact failure this file already
+described, then verified around instead of through.
+
+### The cause: the wrong matrix, ported from memory
+
+MapLibre v6 hands `render(gl, args)` several matrices. I used
+`args.modelViewProjectionMatrix`, which is the **v2/v3 custom-layer convention**
+and belongs to a different space in v6: its translation row is ~1e7 while a
+normalised mercator coordinate is ~0.18. Every vertex projected to **NDC
+y = 2.34** — just off the top of the screen, silently, with no error anywhere.
+
+The right one is `args.defaultProjectionData.mainMatrix`, which takes normalised
+mercator. Same sample vertex, same frame: **NDC (0.42, 0.70)**.
+
+This is the second time in this project that a MapLibre API was carried across
+from an older version and failed quietly — the first was `setFog`, which does
+not exist at all. Read the shipped types, then confirm against a computed value.
+
+### Diagnosis order, and what each step ruled out
+
+1. **Depth-test coincidence** — the leading hypothesis, tested first by drawing
+   with `DEPTH_TEST` disabled. **0.01% of pixels changed: not the cause.**
+   Keeping that answer mattered, because "turn depth off" would otherwise have
+   looked like a fix and shipped an x-ray box.
+2. **Draw order** — the wireframe sits after the extrusions. Fine. Worth noting
+   `getStyle().layers` **does not list custom layers**, so its absence there is
+   not evidence of anything.
+3. **Program, uniforms, GL errors** — linked, set, zero.
+4. **Where a vertex actually lands** — the step that found it. Multiply the
+   matrix by a known vertex and look at the NDC.
+
+### The check that should have existed first
+
+`scripts/map-probe.mjs` now removes the layer and re-measures the canvas. The
+only evidence that counts is that the picture **changes** when the wireframe
+goes away:
+
+```
+wireframe   848 segments · gold 12.661% with, 11.966% without   (+0.695pp)
+```
+
+At 1.6 px the same delta was **0.014pp** — drawing, but invisible at the landing
+zoom. Width is now 2.4. The wireframe is unmistakable close in
+(`screens/64-close.png`) and subtle at z14.5, which is the honest description of
+edge detail on 40-pixel-tall buildings.
+
+**A bug in the check itself nearly hid this:** the block computed the `wire`
+result and the return statement never included it, so the whole section silently
+did not run. Checking the output rather than the exit code caught it.
+
+## The arrival drift, and why the test kept saying it worked
+
+Phil twice reported no drift on load while the headless check reported drift on
+load. Both were true, and the difference was the mouse.
+
+The old loop used ONE `busy()` test for two jobs: blocking a restart, and gating
+the very first start. Pointer movement stamped activity. **In a browser nobody
+holds still** — the map loads, the pointer arrives, activity is stamped, and the
+welcome drift never happens. In headless the mouse sits at (0, 0) and never
+moves, so the arrival drift always fired.
+
+Now:
+
+- **Arrival is unconditional.** It starts when the buildings finish rising and
+  nothing gates it.
+- **Only a real interaction stops it** — pointerdown, wheel, touch, key. Moving
+  the mouse across a map is not asking the map to stop.
+- **Pointer movement is activity for the RESTART clock only**, alongside an open
+  popup and recent filter changes.
+
+Verified against the real-world path — twelve mouse moves across the map after
+load — rather than a still cursor: `-7.01 -> -3.40`, still drifting. Click stops
+it; 32s idle brings it back.
+
+**The instrument now says `motion full` or `motion REDUCED`**, because "the drift
+is not running" has two causes that look identical from outside, and one of them
+is an OS accessibility setting on a machine I cannot see.
+
+## An experiment against a broken subject answers nothing (2026-08-04)
+
+The wireframe flickered as the camera moved. Depth-fighting was the obvious
+suspect — and this file already contained an experiment ruling it out:
+
+> Depth-test coincidence — tested first by drawing with `DEPTH_TEST` disabled.
+> **0.01% of pixels changed: not the cause.**
+
+**That experiment was void.** It ran while the layer was still projecting
+off-screen. Nothing was on the canvas, so nothing could be occluded, and
+"disabling occlusion changes nothing" was guaranteed before it was measured. A
+real number, correctly obtained, answering a question it could not reach.
+
+It is the buffer-count mistake one level up: there the count was true and about
+the wrong thing; here the control was true and **incapable of detecting the
+effect it was testing for**. When a subject is later found broken, every
+measurement taken against it goes back on the list — a result is only as valid
+as the thing it was measured on.
+
+Re-run against a layer that draws:
+
+| | mean gold count | CV | mean frame-to-frame step |
+|---|---|---|---|
+| wireframe on | 31,835 | **15.6%** | 5,017 |
+| depth test off | 50,951 | 2.3% | 1,441 |
+| wireframe removed | 24,701 | 5.6% | 1,815 |
+
+Disabling depth removes the flicker **and** draws every hidden edge — the x-ray
+box, visible in the mean climbing to nearly double.
+
+### Ruling out the render loop, which needed its own control
+
+A custom layer misaligned with MapLibre's render loop can present partial frames,
+which also reads as flashing. The discriminator is a **static camera that keeps
+repainting**: depth precision is deterministic for a fixed matrix, so z-fighting
+cannot show up there, while a render-loop fault would.
+
+```
+STATIC camera, forced repaints: sd 0.0 · cv 0.00%
+samples: 39492 ×10 — byte-identical
+```
+
+Ruled out. The effect is matrix-dependent, which is z-fighting.
+
+### The flicker metric had to get sharper too
+
+At 0.06° rotation steps the count swung 15.6%, but that mixes flicker with edges
+*legitimately* becoming occluded as the building turns. Dropping to **0.002°** —
+a rotation too small to change the scene — the wireframe still moved 3,621
+pixels a step against a control of 1,112. Nothing legitimate changes 3,621
+pixels for two thousandths of a degree.
+
+### The fix needed both levers, and each alone was wrong
+
+- **`gl.polygonOffset` did nothing.** Tested at −2/−4, −4/−8, −8/−16 and against
+  a 0/0 control: CV stayed ~15% throughout. It is the textbook fix for decals
+  and it did not apply here — which is exactly why it was measured rather than
+  assumed.
+- **Outward offset alone** needs ~5 m before the jitter settles, and at 5 m the
+  cage visibly floats off the building (`screens/70-offset3.png` shows it at 3 m).
+- **Depth bias alone** needs so much that the gold count climbs toward the
+  depth-disabled value — it stops flickering by punching through the mass.
+
+Together at small values, **1.2 m outward plus 0.0009 of NDC depth bias**, the
+jitter lands on the no-wireframe baseline: **CV 2.82% against a control of
+3.3–4.3%**, while the mean stays at 42k against 51k for depth-off, so edges are
+still being occluded properly.
+
+### `npm run test:flicker` — the check a screenshot can never be
+
+A still frame cannot show a flicker. The gate rotates the camera in steps too
+small to change the scene and asserts the gold-pixel count does not swing:
+**CV ≤ 5%**. Verified both ways — 2.82% as shipped, 7.83% with the bias removed,
+exit code 1.
+
+**Two harness bugs nearly invalidated this gate, both the same shape.** It forced
+`depthBias = 0` before measuring, so it tested a configuration that does not
+ship — twice, once while I was measuring the combination it was overriding. And
+its first assertion was a *ratio* against the control, whose own step count
+swung 646 → 1,740 between runs; the same broken build scored 2.1x and 5.7x, and
+the regression passed once. It now asserts the wireframe's own CV, which
+separates cleanly.
+
+## Screenshots live in `screens/`, and are verified on disk
+
+Seven screenshots were reported as saved to a **session temp directory** that
+nobody else could open. The files existed; the path did not help anyone. Phil
+looked in the repo, found nothing, and reasonably concluded they had never been
+written.
+
+They now go to `screens/` in the repo (gitignored), and the probe **stats the
+file after writing it** and fails if it is under 1 KB. Same class as the push
+that pushed nothing and still printed "pushed": **an artefact reported as
+produced, with no check that it landed.** Report the path someone else can open,
+and verify it is there.
+
 ## The map instrument (`NEXT_PUBLIC_MAP_DEBUG=1`)
 
 Three numbers in the badge: **tiles requested / loaded**, **errors**, and **time
@@ -855,12 +1514,115 @@ before the landing map rather than after, because the map is the surface most
 likely to acquire ad-hoc colour, and a rule added afterwards is a cleanup while a
 rule added first means the drift never gets written.
 
+## Gold is in, as the ACCENT TIER (reversed 2026-08-04)
+
+The ban is lifted, by Phil, with the reasoning intact:
+
+> "use gold highlights throughout the website. i just didnt want to use gold and
+> another color from our competitors or the poker rooms."
+
+**The concern was never gold — it was the COMBINATION.** Gold plus a second
+colour lifted from a competitor or a poker room is what makes a brand read as a
+casino. Aubergine + gold is ours, and nobody else's.
+
+**One fact on record, because it technically qualifies:** the Orleans uses
+purple + gold. It is one off-Strip locals room in a Mardi Gras register rather
+than a luxe one, so aubergine + gold will not read as Orleans — but Phil asked
+to avoid gold plus a competitor colour, and that is the single pairing that
+meets the description. Noted at the time, proceeded anyway.
+
+### The hierarchy is the load-bearing part
+
+- **Aubergine stays PRIMARY.** `#5E3A93` keeps the one filled action per screen,
+  the mark, active nav. Unchanged.
+- **Gold is the ACCENT TIER, and it is NOT on the basemap.** Highlights,
+  hairlines, hover, rules, emphasis. It does the lifting **everywhere aubergine
+  does nothing** —
+  which is why the section eyebrows went gold and the commitment controls did
+  not. An eyebrow commits to nothing; aubergine was never going to take it.
+- **One filled accent per screen still holds, and still belongs to aubergine.**
+  Gold may repeat. It is not the commitment colour.
+- `#A98CE8` was the resting link colour *and* the value reserved for hover,
+  which cannot both be true. Links moved to gold, so the reservation is now real
+  and a test asserts it.
+
+### GOLD IS NEVER SEMANTIC — the rule that keeps the rest working
+
+- Teal `#4FBFAE` still and **only** means verified.
+- **Unverified stays NEUTRAL GREY.** Do not revisit this to ochre now that gold
+  is permitted. It is grey because "not yet confirmed" must read as neither a
+  warning nor a decoration — and gold entering the palette makes an ochre flag
+  **more** confusable, not less. A test asserts `--cid-unverified` stays neutral.
+- Gold carries no state, no rank, no provenance. Decoration and identity only.
+- `--cid-gold-700` is 3.9:1 on the page: **fills and hairlines only, never
+  text.** A test reads the stylesheets and fails if it is used as a `color:` —
+  the comment beside the token is not the enforcement.
+
+### The map's dark tier
+
+Aubergine land · **muted-purple** network · **indigo** water · desaturated
+**moss** parks and golf. Four hues, and the second one (indigo) does the pop.
+
+**Gold had the whole road network for one pass, and that was the mistake.** Phil:
+*"with the main roads being gold its too much. maybe a different shade of purple.
+more muted? the way it is currently i feel like purple is the accent color."*
+
+That is a hierarchy problem, not a colour one. **A network is a SURFACE, and a
+surface cannot be an accent** — it covers too much of the frame to read as
+emphasis, so gold stopped being a highlight and aubergine ended up carrying the
+accent role by default. Gold earns the accent tier by being RARE, and it is only
+rare once it is off the basemap.
+
+The map now reads as **one family in lightness steps**: land (darkest) → roads
+(mid) → buildings (lightest). That is ordinary legible cartography, and the
+network stops competing for attention.
+
+**Every luminance assertion passed the whole time gold was on the roads.** The
+chain — minor < casing < major < building — is a claim about brightness, and it
+cannot see *how much of the screen* a colour occupies. Area was the variable
+nothing measured, and it was the one that broke the hierarchy.
+
+**`NEXT_PUBLIC_MAP_STRIP_GOLD=1`** renders the Strip alone in `--cid-gold-700`,
+as a comparison. Off by default: Phil said main roads in gold is too much, and
+the Strip is a main road. The filter matches `South Las Vegas Boulevard`
+(highway=primary), **verified against OSM rather than guessed** — "Las Vegas
+Blvd" matches nothing, and a filter that matches nothing renders an empty layer
+that photographs exactly like a working one. Confirmed rendering 7 features.
+
+**Water moved off teal entirely.** It had been a desaturated teal-slate, safe
+only by carrying very little chroma — one nudge from competing with the colour
+that means verified. Indigo removes the question instead of managing it: hue
+does the work, so water can carry real colour and never read as a signal.
+
+**"Nothing on the map may be green" was over-read and is now stated properly.**
+What the palette bans is green meaning *good*. A park is not a claim about
+anything. The test now asserts what was actually being protected — no ground
+colour may be close to `--cid-value` in **both** hue and chroma — which permits
+the briefed moss and would still catch a green that could pass for a signal.
+
+**"Aubergine in the shadows, not the highlights" is superseded for roads.** Gold
+is deliberately the brightest thing on the ground now. What survives is the
+constraint that actually protects the view — brightness belongs to the buildings
+— asserted as an ordered chain: minor < casing < major < building.
+
+### Gold is a light hue on a dark palette, so contrast is what breaks
+
+It breaks **per surface**, not globally, so the test walks every gold that
+carries text against every surface it can land on (`ink-800/700/600/500`). Six
+gold and map rules, each verified red by injection: fill-only gold used as text,
+unverified drifting to ochre, the resting link taking the hover-reserved value,
+gold taking a filled action, gold text too dark for a surface.
+
 ## Locked decisions worth not relitigating
 
-- **Palette:** aubergine on ink. Accent `#5E3A93` (+1px `#A98CE8` lit top edge),
-  accent type `#A98CE8`, mark `#8A66C9`, value teal `#4FBFAE`, base `#0C0E11`,
-  surface `#14171B`, paper `#F2F4F6`. **No gold or bronze anywhere** — gold is
-  what makes a brand read as a casino, and we are the independent tool.
+- **Palette:** aubergine on ink. Accent `#5E3A93`, mark `#8A66C9`, value teal
+  `#4FBFAE`, base `#0C0E11`, surface `#14171B`, paper `#F2F4F6`.
+  ~~**No gold or bronze anywhere** — gold is what makes a brand read as a
+  casino, and we are the independent tool.~~ **REVERSED 2026-08-04 — see
+  "Gold is in" below.** The original wording is kept struck through rather than
+  deleted, because the reason it was written is still the reason it is narrow
+  now, and a decision that quietly disappears reads as drift the next time
+  someone asks why there is gold on an audit tool.
 - **Logo:** two knuckles, double knock. Checking is a knuckle rap on the table;
   a knock makes rings, which is also a map ping.
 - **Type:** Instrument Serif (identity) / Archivo (UI) / IBM Plex Mono (every

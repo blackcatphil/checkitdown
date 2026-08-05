@@ -53,9 +53,34 @@ export const MAP_TOKENS = {
   base: '--cid-ink-800',
   surface: '--cid-ink-700',
   raised: '--cid-ink-600',
-  water: '--cid-ink-900',
   line: '--cid-line-2',
+  /* GROUND MAP. Separate from the ink scale on purpose: these are tinted
+     toward the accent, and reusing --cid-ink-* would have quietly changed the
+     panels and popups too. */
+  land: '--cid-map-land',
+  land2: '--cid-map-land-2',
+  natural: '--cid-map-natural',
+  water: '--cid-map-water',
+  waterLine: '--cid-map-water-line',
+  building: '--cid-map-building',
+  buildingEdge: '--cid-map-building-edge',
+  buildingLit: '--cid-map-building-lit',
+  hover: '--cid-map-hover',
+  sky: '--cid-map-sky',
+  horizon: '--cid-map-horizon',
+  fog: '--cid-map-fog',
+  light: '--cid-map-light',
+  roadMinor: '--cid-map-road-minor',
+  roadCasing: '--cid-map-road-casing',
+  roadMajor: '--cid-map-road-major',
+  boundary: '--cid-map-boundary',
+  /* Used ONLY by the NEXT_PUBLIC_MAP_STRIP_GOLD comparison flag, never by the
+     default basemap. gold-700 is the fill-only step, and it is darker than a
+     lit building, so even the option keeps brightness with the buildings. */
+  stripGold: '--cid-gold-700',
   dim: '--cid-dim',
   text: '--cid-text',
-  value: '--cid-value',
+  /* --cid-value is deliberately ABSENT. It was here only to paint the map's
+     hover, which spent the colour that means "verified" on decoration. Nothing
+     on the map states verification yet; when something does, it comes back. */
 } as const

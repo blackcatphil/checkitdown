@@ -10,6 +10,6 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; background: var(--cid-ink-800); color: var(--cid-text); }
 body { font-family: var(--cid-font-ui); -webkit-font-smoothing: antialiased; }
-a { color: var(--cid-accent-300); text-decoration: none; border-bottom: 1px solid var(--cid-accent-line); }
+a { color: var(--cid-gold-300); text-decoration: none; border-bottom: 1px solid var(--cid-gold-line); }
 a:hover { color: var(--cid-accent-200); }
 [data-num], .num { font-family: var(--cid-font-mono); font-variant-numeric: tabular-nums; }

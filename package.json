@@ -13,7 +13,8 @@
     "sync:worker": "node scripts/sync-map-worker.mjs",
     "check:worker": "node scripts/sync-map-worker.mjs --check",
     "prebuild": "node scripts/sync-map-worker.mjs",
-    "test:map": "node scripts/map-probe.mjs"
+    "test:map": "node scripts/map-probe.mjs",
+    "test:flicker": "STEP=0.002 N=10 node scripts/flicker.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

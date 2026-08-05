@@ -19,8 +19,25 @@
 .knock.knocking .kr2 { animation: knockR2 var(--cid-knock) var(--cid-ease-knock) 1 both }
 .knock.knocking .kt  { animation: knockTap var(--cid-knock) ease-in-out 1 both }
 
-/* At rest the mark still reads: one static ring holds, never a bare dot. */
+/* THE KNOCK RING, ON THE MAP. The mark is a knuckle rap throwing rings and a
+   map ping is the same shape, so selection reuses the brand's keyframes rather
+   than inventing a second motion vocabulary. Faster than the logo knock: the
+   logo introduces, this one answers a click. */
+.cid-ping {
+  position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+  border: 1.5px solid var(--cid-map-hover); border-radius: 50%;
+  pointer-events: none; opacity: 0; z-index: 3;
+}
+.cid-ping.r1 { animation: knockR1 1.6s var(--cid-ease-knock) 1 both }
+.cid-ping.r2 { animation: knockR2 1.6s var(--cid-ease-knock) 1 both }
+
+/* At rest the mark still reads: one static ring holds, never a bare dot.
+   THE MAP'S MOTION IS COVERED BY THE SAME RULE — the building rise, the ambient
+   camera drift and the ping are all disabled in JS under this query, and the
+   map is left in its correct final state rather than mid-animation. An ambient
+   orbit nobody can stop is hostile, not delightful. */
 @media (prefers-reduced-motion: reduce) {
   .kr, .kt { animation: none !important }
   .kr1 { opacity: .62 !important }
+  .cid-ping { animation: none !important; opacity: 0 !important }
 }
