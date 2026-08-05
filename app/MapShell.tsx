@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
 import { applyPalette, type MapStyle } from '@/lib/map-style'
-import { ROOM_FOOTPRINTS } from '@/lib/room-footprints'
+import { ROOM_FOOTPRINTS, ROOM_SHELLS } from '@/lib/room-footprints'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
 
@@ -65,6 +65,21 @@ const STRIP_GOLD = process.env.NEXT_PUBLIC_MAP_STRIP_GOLD === '1'
    nothing, and a filter that matches nothing renders an EMPTY layer that
    photographs exactly like a working one. */
 const STRIP_NAME = 'South Las Vegas Boulevard'
+/* HOW THE 3D MASSES ARE OUTLINED. fill-extrusion has no stroke, so there are
+   two techniques and they look different enough to be worth comparing rather
+   than choosing:
+     cap   — a second extrusion occupying the top 3 m of the mass: a gold crown
+             at the roof. DEFAULT, and the one that works.
+     shell — the footprint buffered 2 m outward as a donut, extruded to the same
+             height. MEASURED AND REJECTED, kept only so nobody proposes it
+             again: at pitch the shell's outer wall stands IN FRONT of the mass
+             at equal height, so it occludes rather than rims it. The buildings
+             render solid gold with purple slivers on the far faces. The donut
+             hole only helps looking straight down, and the map is pitched 52°.
+     base  — footprint line only, the state before this pass.
+   The footprint line at the base is drawn in every mode, so `cap` gives the
+   volume a top edge and a bottom edge. */
+const EDGE = process.env.NEXT_PUBLIC_MAP_EDGE ?? 'cap'
 
 const VALLEY: [number, number] = [-115.1709, 36.1309]
 const VALLEY_Z = 10
@@ -320,6 +335,37 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           'line-opacity': 0.9,
         },
       })
+
+      if (EDGE === 'shell' || EDGE === 'both') {
+        map.addSource('shells', { type: 'geojson', data: ROOM_SHELLS as never })
+        map.addLayer({
+          id: 'rooms-shell',
+          source: 'shells',
+          type: 'fill-extrusion',
+          paint: {
+            'fill-extrusion-color': T.buildingLit,
+            'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
+            'fill-extrusion-base': 0,
+            'fill-extrusion-opacity': 0.9,
+          },
+        })
+      }
+      if (EDGE === 'cap' || EDGE === 'both') {
+        map.addLayer({
+          id: 'rooms-cap',
+          source: 'fp',
+          type: 'fill-extrusion',
+          filter: ['has', 'height'],
+          paint: {
+            'fill-extrusion-color': T.buildingLit,
+            /* The top 3 m of the mass, so the roof edge reads. `max` keeps a
+               short component from inverting base above height. */
+            'fill-extrusion-base': ['max', ['-', ['get', 'height'], 3], 0] as ExpressionSpecification,
+            'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
+            'fill-extrusion-opacity': 0.95,
+          },
+        })
+      }
 
       map.addSource('rooms', {
         type: 'geojson',

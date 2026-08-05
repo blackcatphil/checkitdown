@@ -91,14 +91,22 @@
   --cid-map-building-edge: #251C34; /* their hairline; Positron ships it near-WHITE */
   /* THE GOLD EDGE ON OUR OWN 16 MASSES. An outline is a LINE, NOT A SURFACE —
      gold stays an accent by geometry rather than by discipline — and edge
-     definition is exactly what makes massing read. */
-  --cid-map-building-lit: #C9A227;
+     definition is exactly what makes massing read.
+     HALVED FOR THE MAP ONLY (#C9A227 -> #8A6D1F, luminance 0.385 -> 0.164).
+     The dimming is scoped to --cid-map-* on purpose: the UI gold does TEXT
+     work with a hard 4.5:1 floor per surface, and halving the shared scale
+     would have taken the eyebrows and links below it. */
+  --cid-map-building-lit: #8A6D1F;
   /* GOLD, at the one geometry where it cannot become a surface: the minor grid
      is the densest thing on the map, so it is held BELOW the casing in
      luminance. The chain is the weight limit — if a gold minor breaks it, the
      weight is too high, and the answer is weight, never reverting the hue. */
-  --cid-map-road-minor: #3A2F12;
-  --cid-map-road-casing: #3B3150;   /* frames the major roads */
+  --cid-map-road-minor: #241C0A;   /* halved with the rest of the map gold */
+  /* GOLD, AS A CASING — the arterial outline. Positron draws the casing WIDER
+     than the body (3 vs 2 at z10), so gold beneath purple shows as an edge on
+     each side rather than as the road itself. Gold stays a line, which is the
+     rule that broke when the whole network went gold. */
+  --cid-map-road-casing: #5C4915;
   --cid-map-road-major: #574B70;    /* the mid step: land -> ROADS -> buildings */
   --cid-map-boundary: rgba(169, 140, 232, 0.22);
 
@@ -149,7 +157,7 @@
   --cid-map-building-edge: #C6BDD3;
   --cid-map-building-lit: #8A6D1F;
   --cid-map-road-minor: #E0D6BA;
-  --cid-map-road-casing: #CCC3DA;
+  --cid-map-road-casing: #C9B98C;
   --cid-map-road-major: #F2EDF8;
   --cid-map-boundary: rgba(94, 58, 147, 0.28);
 

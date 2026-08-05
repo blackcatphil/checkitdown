@@ -109,7 +109,63 @@ const GROUPS = {
   ],
 }
 
+/**
+ * OUTWARD OFFSET, in metres, for the gold silhouette shell.
+ *
+ * fill-extrusion has no stroke, so "outline the whole volume" is built as a
+ * DONUT: outer ring buffered outward, inner ring the original footprint. The
+ * hole is what makes it an outline rather than a gold building — extruded, its
+ * roof is a ring around the real roof and its walls are a rim around the mass.
+ *
+ * Miter offset along each vertex's angle bisector, computed in local metres so
+ * a degree of longitude at latitude 36 is not treated as a degree of latitude.
+ * The winding of an arbitrary OSM ring is not assumed: the offset is applied,
+ * the area is compared, and the direction is FLIPPED if the polygon came out
+ * smaller. A shell that shrank would sit inside the mass and be invisible —
+ * exactly the kind of silent nothing this project keeps shipping.
+ */
+function bufferRing(ring, metres) {
+  const lat0 = ring.reduce((a, p) => a + p[1], 0) / ring.length
+  const mPerLat = 111320
+  const mPerLon = 111320 * Math.cos((lat0 * Math.PI) / 180)
+  const lon0 = ring.reduce((a, p) => a + p[0], 0) / ring.length
+  const pts = ring.slice(0, -1).map(([lon, lat]) => [(lon - lon0) * mPerLon, (lat - lat0) * mPerLat])
+  const area = (ps) => {
+    let a = 0
+    for (let i = 0; i < ps.length; i++) {
+      const [x1, y1] = ps[i]
+      const [x2, y2] = ps[(i + 1) % ps.length]
+      a += x1 * y2 - x2 * y1
+    }
+    return a / 2
+  }
+  const build = (d) => pts.map((v, i) => {
+    const p = pts[(i - 1 + pts.length) % pts.length]
+    const n = pts[(i + 1) % pts.length]
+    const norm = ([x, y]) => { const L = Math.hypot(x, y) || 1; return [x / L, y / L] }
+    const e1 = norm([v[0] - p[0], v[1] - p[1]])
+    const e2 = norm([n[0] - v[0], n[1] - v[1]])
+    const n1 = [e1[1], -e1[0]]
+    const n2 = [e2[1], -e2[0]]
+    const b = norm([n1[0] + n2[0], n1[1] + n2[1]])
+    const cos = b[0] * n1[0] + b[1] * n1[1]
+    const len = Math.min(d / (Math.abs(cos) < 0.25 ? 0.25 : Math.abs(cos)), d * 4)
+    return [v[0] + b[0] * len, v[1] + b[1] * len]
+  })
+  const a0 = Math.abs(area(pts))
+  let out = build(metres)
+  if (Math.abs(area(out)) < a0) out = build(-metres)
+  if (Math.abs(area(out)) < a0) return null
+  const back = out.map(([x, y]) => [
+    Number((x / mPerLon + lon0).toFixed(6)),
+    Number((y / mPerLat + lat0).toFixed(6)),
+  ])
+  back.push(back[0])
+  return back
+}
+
 const feats = []
+const shells = []
 const report = []
 
 for (const [slug, comps] of Object.entries(GROUPS)) {
@@ -143,6 +199,23 @@ for (const [slug, comps] of Object.entries(GROUPS)) {
       },
       geometry: { type: 'Polygon', coordinates: [ring] },
     })
+
+    /* Only a mass that is EXTRUDED gets a shell. A flat component has no volume
+       to outline, and a gold ring lying on the ground would read as a claim
+       that we know its height. */
+    if (c.height) {
+      const outer = bufferRing(ring, 2)
+      if (outer) {
+        shells.push({
+          type: 'Feature',
+          id: shells.length + 1,
+          properties: { slug, component: c.name, height: c.height },
+          geometry: { type: 'Polygon', coordinates: [outer, [...ring].reverse()] },
+        })
+      } else {
+        report.push([slug, `SHELL FAILED ${c.name}`, 0, 0])
+      }
+    }
   }
   report.push([slug, 'ok', comps.length, seeded])
 }
@@ -167,6 +240,15 @@ writeFileSync('lib/room-footprints.ts',
  * database alongside every other sourced fact.
  */
 export const ROOM_FOOTPRINTS = ${JSON.stringify({ type: 'FeatureCollection', features: feats })} as const
+
+/**
+ * SILHOUETTE SHELLS — each extruded mass buffered 2 m outward, as a DONUT
+ * (outer = buffered, inner = the footprint). Extruded, it is a gold rim around
+ * the whole volume rather than a gold building: the hole is the outline.
+ *
+ * ${shells.length} shells for ${extruded} extruded components.
+ */
+export const ROOM_SHELLS = ${JSON.stringify({ type: 'FeatureCollection', features: shells })} as const
 `)
 
 console.log('property            components  seeded')

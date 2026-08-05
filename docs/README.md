@@ -661,6 +661,74 @@ check we had because no check looked at the rendered output.
 between them. If more hue variety is wanted, the lever is a hue on something
 that IS in view — land, buildings, the grid — not more colour on water and parks.
 
+## Outlining a 3D volume: one technique measured and rejected
+
+`fill-extrusion` has no stroke, so "outline the whole building" is a change of
+technique, not a parameter. Two were built and both were rendered before either
+was believed.
+
+**SHELL — rejected, and kept in the code so nobody proposes it again.** The
+footprint buffered 2 m outward as a donut (outer ring buffered, inner ring the
+original) and extruded to the same height. In plan it is exactly an outline: the
+hole is the building. **At pitch it is not.** The shell's outer wall stands *in
+front of* the mass at equal height, so it occludes rather than rims — the
+buildings render solid gold with purple slivers on the far faces only. The donut
+hole helps looking straight down, and the map is pitched 52°. `screens/10-shell.png`
+is what that looks like; the reasoning was sound in plan view and wrong in the
+view we actually ship.
+
+**CAP — the default.** A second extrusion occupying the top 3 m of the mass: a
+gold crown at the roof. With the footprint line still drawn at the base, the
+volume gets a top edge and a bottom edge, which is the readable part of an
+outline at this camera.
+
+`NEXT_PUBLIC_MAP_EDGE=cap|shell|base` switches between them.
+
+The buffer is a miter offset computed in **local metres**, not degrees — a degree
+of longitude at latitude 36 is 0.81 of a degree of latitude, and treating them as
+equal would buffer more east-west than north-south. The winding of an arbitrary
+OSM ring is not assumed either: the offset is applied, the area compared, and the
+direction flipped if the polygon came out smaller. A shell that shrank would sit
+inside the mass and be invisible — a silent nothing, which is the failure mode
+this project keeps finding.
+
+### Gold outlines the arterials; it does not become them
+
+The casing is drawn **wider than the body** (Positron: 3 vs 2 at z10), so a gold
+casing beneath a purple body shows as an edge down each side. Gold stays a line.
+That boundary has now moved twice — first "which roads" (grid yes, arterials no),
+now "which part of a road" (outline yes, body no) — and each time the rule was
+narrowed rather than dropped, because the thing being protected never changed:
+**gold may not become a surface.**
+
+### Halving the gold, without halving the text
+
+Phil asked for the map gold at about half brightness. **The UI gold does text
+work with a hard 4.5:1 floor**, so the dimming is scoped to `--cid-map-*`
+(`#C9A227` → `#8A6D1F`, luminance 0.385 → 0.164). Verified the guard actually
+guards: halving the shared scale fails both the per-surface contrast rule and
+the scoping rule.
+
+### Hue share after: gold did NOT climb
+
+| | before | after |
+|---|---|---|
+| aubergine | 48.1% | 44.4% |
+| neutral | 34.7% | 39.1% |
+| gold | 14.9% | **13.6%** |
+| indigo / moss | 1.7% | 1.4% |
+
+**Read that with the caveat, because the metric moved under it.** The probe
+counts a pixel as `neutral` below a chroma of 10, and halving the gold pushed
+dim gold pixels under that floor. At a chroma floor of 6 the comparison is
+**17.0% → 16.4%** — so the added geometry (volume caps, arterial casings) was
+almost exactly cancelled by the halving. Gold covers about as much as before and
+is half as loud.
+
+That is worth knowing about the instrument itself: **a share metric with a
+threshold is not invariant to a brightness change.** Quoting only the 13.6%
+would have implied gold shrank when its coverage barely moved.
+
 ## Screenshots live in `screens/`, and are verified on disk
 
 Seven screenshots were reported as saved to a **session temp directory** that
