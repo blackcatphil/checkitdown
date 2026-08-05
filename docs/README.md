@@ -901,6 +901,110 @@ header and right of the panel. Both looked exactly like a broken ping.
 
 Essentially unmoved. The sky would have moved it — it is not on screen.
 
+## MapLibre v6 has NO fog primitive — verified, not remembered (2026-08-04)
+
+`setFog` is a **Mapbox** API. In `maplibre-gl@6.1.0` it does not exist: zero
+occurrences in the shipped types and zero in the bundle. What MapLibre has is
+fog *inside* `setSky` — `fog-color`, `fog-ground-blend`, `horizon-fog-blend` —
+and that fog blends the ground into the **horizon**.
+
+With the horizon off-screen at pitch 52, it does nothing, and "nothing" is
+measured rather than asserted: sweeping `fog-ground-blend` from 0.08 to 0.95
+with `atmosphere-blend` 0.4 → 1.0 changed **0.01% of pixels, mean difference
+0.00/255**. For scale, turning the light down changed 70% of pixels.
+
+### The nearest real thing: valley haze, and it is not called fog
+
+A screen-space scrim in the fog colour. Named `.cid-mapfog` but described as
+haze everywhere it is explained, because calling an overlay "fog" is how an
+approximation gets mistaken for the API it is standing in for.
+
+**It is distance-weighted, not a vignette.** Real haze fades what is FAR, and
+under pitch the far ground is the top of the frame — so it is a top-weighted
+gradient rather than a ring around the edges. Both were built and measured:
+
+| | pixels changed | gold lost |
+|---|---|---|
+| radial vignette | 5.2% | 1.6 pp |
+| **top-weighted (shipped)** | **28.8%** | **2.8 pp** |
+
+Roughly three times the visible depth per unit of accent washed out, because it
+puts the haze where the buildings are not. The first attempt — a heavy radial
+vignette — cut gold from 13.2% to 7.4%, halving the accent three rounds of work
+had just tuned.
+
+The haze is a large-area surface, so it joins the luminance chain on the same
+terms as the sky, and the label floor is now checked **through** it: the scrim
+composited over the halo, then the text against that.
+
+## The vertical gold wireframe
+
+`lib/wireframe.ts`. The triangle-expanded custom layer, not the hairline —
+`ALIASED_LINE_WIDTH_RANGE` was measured at **[1, 1]**, so width has to be built
+rather than requested. Each edge becomes a quad expanded in the **vertex shader,
+in screen space after projection**, which is what keeps a constant pixel width
+while the ambient drift changes the matrix every frame.
+
+**848 segments drawn** — a real count read out of the buffer, not a check that
+the layer exists. A custom layer that renders nothing looks exactly like one
+that was never added.
+
+Three things it had to get right:
+
+- **It animates with the rise.** The shader recomputes the same stagger curve
+  from the same progress value, and `MapShell` now *imports* `WIRE_STAGGER`
+  rather than declaring its own `0.35`. The test changed accordingly: it used to
+  compare two numbers, and now asserts they are **one** number, which is the
+  stronger guarantee.
+- **Depth test on, depth write off.** Testing hides an edge behind a mass —
+  without it this is an x-ray box. Not writing stops the ribbons occluding each
+  other where two quads meet at the same depth.
+- **It survives the drift.** 28.3 fps with wireframe + drift against 29.5 fps
+  with drift alone: about 1 fps for the first per-frame custom work in the app.
+
+The GL cannot be unit-tested, but the arithmetic can, and that is where the bugs
+live: segment counts, altitudes in mercator units, whether the closing vertex of
+a ring produces a phantom zero-length segment. `lib/wireframe.test.mjs` covers
+those with no browser.
+
+## The drift comes back, but only when the map is genuinely idle
+
+"No click in 30 seconds" is not idle. The restart is blocked while a popup is
+open, while the pointer is over the map, or within 30s of a filter change — and
+each of those **resets the clock** rather than queueing a restart for the moment
+it ends. Eased in over a second, because snapping into motion after stillness
+reads as a glitch.
+
+Verified in a browser, all four states:
+
+| | |
+|---|---|
+| drifts on arrival | bearing −9.2 → −6.1 |
+| interaction stops it | −18 → −18 over 6s |
+| **held while a popup is open** | −18 → −18 over 34s |
+| restarts once idle | −18 → +11.8 over 34s |
+
+**The first of those was broken by my own fix and the test caught it.** The
+filter-change effect stamped `lastActivity` on mount as well as on change, so
+the map counted as just-used for its first 30 seconds and the arrival drift —
+the part Phil actually liked — silently stopped happening. An effect that fires
+on mount as well as on change is the ordinary shape of that bug.
+
+`prefers-reduced-motion` still disables everything, wireframe included: height
+settles to `["get","height"]` immediately, bearing never moves, 848 segments
+still drawn at full height, no ping.
+
+### Hue share, both floors
+
+| | chroma > 10 | chroma > 6 |
+|---|---|---|
+| before haze + wireframe | 13.2% | 16.1% |
+| after | **10.4%** | **11.9%** |
+
+The haze accounts for essentially all of that: it is a translucent scrim over
+the top half of the frame, so it dims gold pixels below both thresholds. Gold
+coverage did not shrink; gold contrast did, which is what a haze is.
+
 ## Screenshots live in `screens/`, and are verified on disk
 
 Seven screenshots were reported as saved to a **session temp directory** that

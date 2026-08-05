@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
 import { applyPalette, type MapStyle } from '@/lib/map-style'
 import { ROOM_FOOTPRINTS, ROOM_ROOFS, ROOM_SHELLS } from '@/lib/room-footprints'
+import { createWireframeLayer, WIRE_STAGGER, type WireframeLayer } from '@/lib/wireframe'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { MAP_TOKENS, readTokens } from '@/lib/tokens'
 
@@ -80,6 +81,12 @@ const STRIP_NAME = 'South Las Vegas Boulevard'
    The footprint line at the base is drawn in every mode, so `cap` gives the
    volume a top edge and a bottom edge. */
 const EDGE = process.env.NEXT_PUBLIC_MAP_EDGE ?? 'cap'
+/* The vertical wireframe. On by default — it is the thing that makes the masses
+   read as volumes rather than as blocks. */
+const WIRE = process.env.NEXT_PUBLIC_MAP_WIRE !== '0'
+/* How long the map must be genuinely still before the orbit resumes. */
+const IDLE_MS = 30000
+const DEG_PER_SEC = 0.9
 
 const VALLEY: [number, number] = [-115.1709, 36.1309]
 const VALLEY_Z = 10
@@ -91,6 +98,19 @@ const PITCH = 52
  *  lower, so a pitched empty view would be all cost and no skyline. */
 const MIN_3D_ZOOM = 13.5
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
+
+/** '#rrggbb' -> normalised rgba, because a GL uniform cannot take a CSS hex and
+ *  the palette is the only place a colour is allowed to come from. */
+function glColor(hex: string, alpha = 1): [number, number, number, number] {
+  const h = hex.replace('#', '')
+  const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  return [
+    parseInt(f.slice(0, 2), 16) / 255,
+    parseInt(f.slice(2, 4), 16) / 255,
+    parseInt(f.slice(4, 6), 16) / 255,
+    alpha,
+  ]
+}
 
 /** One query, three behaviours. Read at call time, not module load, so a user
  *  who changes the OS setting does not have to reload. */
@@ -131,7 +151,7 @@ function ping(map: InstanceType<typeof MLMap>, lngLat: [number, number]) {
 
 /* The rise is STAGGERED, so 16 masses do not stand up as one slab. Each
    feature's start is offset by its id, and every factor still reaches 1. */
-const STAGGER = 0.35
+const STAGGER = WIRE_STAGGER
 const riseFactor = (p: number) => ['max', 0, ['min', 1,
   ['/', ['-', p, ['*', STAGGER, ['/', ['%', ['id'], 8], 8]]], 1 - STAGGER]]] as ExpressionSpecification
 const riseHeight = (p: number) => ['*', ['get', 'height'], riseFactor(p)] as ExpressionSpecification
@@ -143,8 +163,9 @@ const FULL_BASE = ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecifica
 export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const holder = useRef<HTMLDivElement>(null)
   const roseRef = useRef(false)
-  const driftRef = useRef<number | null>(null)
-  const driftDead = useRef(false)
+  const lastActivity = useRef(0)
+  const pointerOver = useRef(false)
+  const wireRef = useRef<WireframeLayer | null>(null)
   const mapRef = useRef<InstanceType<typeof MLMap> | null>(null)
   const hovered = useRef<string | null>(null)
   const rosterRef = useRef<MapRoom[]>([])
@@ -425,6 +446,38 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         })
       }
 
+      /* THE VERTICAL EDGES. No built-in layer can draw an elevated line, so this
+         is the custom-layer wireframe — triangle-expanded, because WebGL caps
+         gl.lineWidth at 1 device pixel and a half-CSS-pixel hairline is not the
+         gold outline anyone asked for. Added AFTER the extrusions so the depth
+         buffer already holds the masses and edges behind them are discarded. */
+      if (WIRE) {
+        const feats = (ROOM_FOOTPRINTS.features as unknown as Array<{
+          geometry: { coordinates: [number, number][][] }
+          properties: { height?: number }
+          id: number
+        }>)
+          .filter((f) => f.properties.height)
+          .map((f) => ({
+            ring: f.geometry.coordinates[0],
+            height: f.properties.height as number,
+            /* THE SAME STAGGER THE MASSES GET, from the same constant and the
+               same id arithmetic. Two copies of this number is precisely how
+               edges end up floating above buildings that have not risen yet. */
+            stagger: STAGGER * ((f.id % 8) / 8),
+          }))
+        const wire = createWireframeLayer('rooms-wire', feats, {
+          width: 1.6,
+          color: glColor(T.buildingLit, 0.95),
+        })
+        /* Starts at 0, not 1: the layer is added while the masses are still
+           flat, and an edge cage standing at full height around nothing is the
+           exact artefact this is meant to avoid. */
+        wire.setProgress(0)
+        wireRef.current = wire
+        map.addLayer(wire as never)
+      }
+
       map.addSource('rooms', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -592,6 +645,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     roseRef.current = true
 
     const settle = () => {
+      wireRef.current?.setProgress(1)
       map.setPaintProperty('rooms-fp', 'fill-extrusion-height', FULL_HEIGHT)
       if (map.getLayer('rooms-cap')) {
         map.setPaintProperty('rooms-cap', 'fill-extrusion-height', FULL_HEIGHT)
@@ -619,6 +673,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         map.setPaintProperty('rooms-cap', 'fill-extrusion-height', riseHeight(p))
         map.setPaintProperty('rooms-cap', 'fill-extrusion-base', riseBase(p))
       }
+      /* ONE progress value drives both. The shader recomputes the same stagger
+         curve, so an edge is never drawn at a height its mass has not reached. */
+      wireRef.current?.setProgress(p)
       if (t < 1) { raf = requestAnimationFrame(frame); return }
       done = true
       settle()
@@ -638,47 +695,83 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     }
   }, [ready, tilesIn])
 
-  /* AMBIENT DRIFT — and it STOPS, it does not pause.
-     Anything that resumes while somebody is reading a popup is infuriating, so
-     the first interaction kills it permanently and there is no path back. It
-     also expires on its own after 20s: a slow orbit is a welcome, not a screen
-     saver, and a continuous bearing change re-renders every frame. */
+  /* AMBIENT DRIFT — stops on interaction, and comes back only when the map is
+     genuinely IDLE.
+     "No click in 30 seconds" is not idle. Resuming an orbit while somebody is
+     reading a popup is the exact thing the original stop-permanently rule
+     existed to prevent, so the restart is CONDITIONAL: a popup open, the
+     pointer over the map, or a filter touched inside the window all mean
+     something is happening, and each of them RESETS the clock rather than
+     queueing a restart for the moment it ends. */
   useEffect(() => {
     const map = mapRef.current
-    /* Waits for the RISE, not for the tiles: starting the orbit while the towers
-       are still standing up makes both motions read as one confused one, and it
-       was also what interrupted the rise. */
-    if (!map || !rose || reduced() || driftDead.current) return
+    if (!map || !rose || reduced()) return
+
+    const el = map.getCanvasContainer()
+    let raf: number | null = null
+    let startedAt = 0
+    let last = 0
+
+    const busy = () => Boolean(
+      document.querySelector('.maplibregl-popup')      // reading a room
+      || pointerOver.current                            // hovering the map
+      || Date.now() - lastActivity.current < IDLE_MS,   // just did something
+    )
 
     const stop = () => {
-      driftDead.current = true
-      if (driftRef.current !== null) cancelAnimationFrame(driftRef.current)
-      driftRef.current = null
-    }
-    const el = map.getCanvasContainer()
-    for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
-      el.addEventListener(ev, stop, { once: true, passive: true })
+      if (raf !== null) cancelAnimationFrame(raf)
+      raf = null
+      lastActivity.current = Date.now()
     }
 
-    const t0 = performance.now()
-    const DEG_PER_SEC = 0.9
-    const LIFE = 20000
-    let last = t0
     const frame = (now: number) => {
-      if (driftDead.current) return
-      if (now - t0 > LIFE) { stop(); return }
-      map.setBearing(map.getBearing() + (DEG_PER_SEC * (now - last)) / 1000)
+      if (busy()) { stop(); return }
+      /* EASED IN over the first second. Snapping into motion after stillness
+         reads as a glitch rather than as drift. */
+      const ramp = Math.min(1, (now - startedAt) / 1000)
+      map.setBearing(map.getBearing() + (DEG_PER_SEC * ramp * (now - last)) / 1000)
       last = now
-      driftRef.current = requestAnimationFrame(frame)
+      raf = requestAnimationFrame(frame)
     }
-    driftRef.current = requestAnimationFrame(frame)
+
+    const tick = window.setInterval(() => {
+      if (raf !== null || busy()) return
+      startedAt = performance.now()
+      last = startedAt
+      raf = requestAnimationFrame(frame)
+    }, 1000)
+
+    const note = () => { lastActivity.current = Date.now(); stop() }
+    const enter = () => { pointerOver.current = true; note() }
+    const leave = () => { pointerOver.current = false; lastActivity.current = Date.now() }
+    for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
+      el.addEventListener(ev, note, { passive: true })
+    }
+    el.addEventListener('pointerenter', enter)
+    el.addEventListener('pointerleave', leave)
+
     return () => {
+      window.clearInterval(tick)
+      if (raf !== null) cancelAnimationFrame(raf)
       for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
-        el.removeEventListener(ev, stop)
+        el.removeEventListener(ev, note)
       }
-      if (driftRef.current !== null) cancelAnimationFrame(driftRef.current)
+      el.removeEventListener('pointerenter', enter)
+      el.removeEventListener('pointerleave', leave)
     }
   }, [rose])
+
+  /* A filter change is activity even though it happens in the panel, where the
+     canvas listeners never see it.
+     THE FIRST RUN IS NOT A CHANGE. Stamping on mount made the map count as
+     just-used for the first 30 seconds, so the arrival drift — the part Phil
+     actually liked — silently stopped happening. An effect that fires on mount
+     as well as on change is the ordinary shape of this bug. */
+  const filtersMounted = useRef(false)
+  useEffect(() => {
+    if (!filtersMounted.current) { filtersMounted.current = true; return }
+    lastActivity.current = Date.now()
+  }, [checked])
 
   /* Cluster properties are computed at LOAD time, so `hits` cannot be
      repainted when the filter changes — the data has to be re-set. */
@@ -701,7 +794,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
      The pointer listener on the canvas never sees these — they are panel
      buttons — and an ambient orbit that keeps turning the camera after somebody
      asked for a specific view is the map arguing with them. */
-  const stopDrift = useCallback(() => { driftDead.current = true }, [])
+  const stopDrift = useCallback(() => { lastActivity.current = Date.now() }, [])
   const goStrip = useCallback(() => {
     stopDrift()
     mapRef.current?.easeTo({ center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18 })
@@ -797,6 +890,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
 
       <div style={{ position: 'relative' }}>
         <div ref={holder} style={{ position: 'absolute', inset: 0 }} />
+        {/* Above the canvas, below the panel and popups; pointer-events none so
+            it cannot swallow a click on a pin. */}
+        {in3d && <div className="cid-mapfog" aria-hidden />}
 
         {/* "No buildings" and "buildings not downloaded yet" look identical on
             screen and mean opposite things. The instrument cannot tell them
