@@ -191,7 +191,15 @@ export function applyPalette(style: MapStyle, t: PaletteTokens): MapStyle {
         paint['line-color'] = t.roadCasing
         break
       case 'road-minor':
+        /* GOLD, HELD AT TEXTURE WEIGHT. The minor grid is the densest geometry
+           on the map — parking aisles and side streets — so it is the one place
+           a thin line still adds up to a surface. Positron ships these at 0.9
+           opacity, which turned the dense blocks into a gold field; dropping the
+           opacity keeps the glint and loses the haze.
+           The lever is WEIGHT, never the hue: reverting the colour is what
+           produced "too monochrome" twice. */
         paint['line-color'] = t.roadMinor
+        paint['line-opacity'] = 0.55
         break
       case 'boundary':
         paint['line-color'] = t.boundary

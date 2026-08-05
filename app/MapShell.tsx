@@ -305,6 +305,22 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         },
       })
 
+      /* THE GOLD EDGE. fill-extrusion has no outline property, so the footprint
+         geometry is drawn again as a thin line. At pitch it traces the base of
+         each mass, which is where the silhouette meets the ground and where the
+         eye reads the footprint. Thin and on a line, so gold cannot spread into
+         a field the way it did across the road network. */
+      map.addLayer({
+        id: 'rooms-edge',
+        source: 'fp',
+        type: 'line',
+        paint: {
+          'line-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.accent300, T.buildingLit] as ExpressionSpecification,
+          'line-width': 1.4,
+          'line-opacity': 0.9,
+        },
+      })
+
       map.addSource('rooms', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },

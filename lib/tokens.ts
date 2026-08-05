@@ -64,6 +64,7 @@ export const MAP_TOKENS = {
   waterLine: '--cid-map-water-line',
   building: '--cid-map-building',
   buildingEdge: '--cid-map-building-edge',
+  buildingLit: '--cid-map-building-lit',
   roadMinor: '--cid-map-road-minor',
   roadCasing: '--cid-map-road-casing',
   roadMajor: '--cid-map-road-major',

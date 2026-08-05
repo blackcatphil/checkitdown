@@ -17,9 +17,83 @@
  *   node scripts/map-probe.mjs [url]        # default http://127.0.0.1:3100
  *   MAP_PROBE_RUNS=3 node scripts/map-probe.mjs   # cold/warm timing, n>1
  */
-import { writeFileSync } from 'node:fs'
+import { inflateSync } from 'node:zlib'
+import { statSync, writeFileSync } from 'node:fs'
 
 import { chromium } from 'playwright'
+
+/* A minimal PNG reader, so the probe can measure WHAT IS ACTUALLY ON SCREEN
+   rather than what the tokens say. A WebGL canvas cannot be read back without
+   preserveDrawingBuffer, but a screenshot can. */
+function decodePng(buf) {
+  let pos = 8, idat = [], w = 0, h = 0, ct = 0
+  while (pos < buf.length) {
+    const len = buf.readUInt32BE(pos)
+    const type = buf.toString('ascii', pos + 4, pos + 8)
+    const body = buf.subarray(pos + 8, pos + 8 + len)
+    if (type === 'IHDR') { w = body.readUInt32BE(0); h = body.readUInt32BE(4); ct = body[9] }
+    else if (type === 'IDAT') idat.push(body)
+    else if (type === 'IEND') break
+    pos += 12 + len
+  }
+  const nc = { 0: 1, 2: 3, 4: 2, 6: 4 }[ct]
+  const raw = inflateSync(Buffer.concat(idat))
+  const stride = w * nc
+  const out = Buffer.alloc(stride * h)
+  let prev = Buffer.alloc(stride), i = 0
+  for (let y = 0; y < h; y++) {
+    const f = raw[i++]
+    const line = Buffer.from(raw.subarray(i, i + stride)); i += stride
+    for (let x = 0; x < stride; x++) {
+      const a = x >= nc ? line[x - nc] : 0, b = prev[x], c = x >= nc ? prev[x - nc] : 0
+      if (f === 1) line[x] = (line[x] + a) & 255
+      else if (f === 2) line[x] = (line[x] + b) & 255
+      else if (f === 3) line[x] = (line[x] + ((a + b) >> 1)) & 255
+      else if (f === 4) {
+        const p = a + b - c
+        const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c)
+        line[x] = (line[x] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 255
+      }
+    }
+    line.copy(out, y * stride); prev = line
+  }
+  return { w, h, nc, px: out }
+}
+
+/**
+ * WHAT FRACTION OF THE FRAME IS EACH HUE — the number that should have existed
+ * before either palette pass.
+ *
+ * Two rounds of "too monochrome" came from colouring features that are not in
+ * the view: indigo water and moss parks are real, but at the Strip landing
+ * there is almost no water and very little park, so the frame resolved to
+ * aubergine on aubergine on aubergine. Token-level tests cannot see this at
+ * all — they check what a colour IS, never how much of the screen it covers.
+ */
+function hueShare(shot) {
+  const { w, h, nc, px } = decodePng(shot)
+  const bucket = { neutral: 0, gold: 0, moss: 0, teal: 0, indigo: 0, aubergine: 0, other: 0 }
+  let n = 0
+  for (let y = 0; y < h; y += 2) {
+    for (let x = 0; x < w; x += 2) {
+      const o = (y * w + x) * nc
+      const r = px[o], g = px[o + 1], b = px[o + 2]
+      const max = Math.max(r, g, b), min = Math.min(r, g, b)
+      n++
+      if (max - min < 10) { bucket.neutral++; continue }
+      const d = max - min
+      let hh = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+      hh = (hh * 60 + 360) % 360
+      if (hh >= 20 && hh < 70) bucket.gold++
+      else if (hh >= 70 && hh < 160) bucket.moss++
+      else if (hh >= 160 && hh < 200) bucket.teal++
+      else if (hh >= 200 && hh < 258) bucket.indigo++
+      else if (hh >= 258 && hh < 330) bucket.aubergine++
+      else bucket.other++
+    }
+  }
+  return Object.fromEntries(Object.entries(bucket).map(([k, v]) => [k, +(v / n * 100).toFixed(2)]))
+}
 
 const BASE = process.argv[2] ?? process.env.BASE_URL ?? 'http://127.0.0.1:3100'
 const RUNS = Number(process.env.MAP_PROBE_RUNS ?? 1)
@@ -166,7 +240,7 @@ async function probe(browser, { cold }) {
   for (let i = 0; i < shot.length - 3; i += 997) colours.add(shot.readUInt32BE(i))
 
   await ctx.close()
-  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot }
+  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot) }
 }
 
 const browser = await chromium.launch()
@@ -189,6 +263,7 @@ for (const [i, r] of results.entries()) {
   console.log(`  tiles       requested ${r.tiles.requested} · loaded ${r.tiles.loaded} · errored ${r.tiles.errored}`)
   console.log(`  first tile  ${r.firstTileAt === null ? 'NEVER' : `${r.firstTileAt}ms`}`)
   console.log(`  console     ${r.errors.length} error(s)${r.errors.length ? `: ${r.errors[0].slice(0, 90)}` : ''}`)
+  console.log(`  HUE SHARE   ${Object.entries(r.hues).filter(([, v]) => v > 0.01).map(([k, v]) => `${k} ${v}%`).join(' · ')}`)
 
   ok(r.geom.canvas && r.geom.canvas.w > 0 && r.geom.canvas.h > 0, 'the map has a viewport (canvas is not 0x0)')
   ok(r.styleStatus === 200, 'the style loaded')
@@ -224,8 +299,19 @@ if (RUNS > 1) {
 }
 
 if (process.env.MAP_PROBE_SHOT) {
-  writeFileSync(process.env.MAP_PROBE_SHOT, results[0].shot)
-  console.log(`\n  screenshot -> ${process.env.MAP_PROBE_SHOT}`)
+  /* VERIFY THE FILE LANDED. A screenshot was reported as saved seven times
+     without once checking, and the path being cited was a session temp
+     directory nobody else could reach — the same shape as a push that pushed
+     nothing and still printed "pushed". */
+  const path = process.env.MAP_PROBE_SHOT
+  writeFileSync(path, results[0].shot)
+  const size = statSync(path).size
+  if (size < 1000) {
+    console.log(`\n  SCREENSHOT FAILED — ${path} is ${size} bytes`)
+    failed++
+  } else {
+    console.log(`\n  screenshot -> ${path} (${(size / 1024).toFixed(0)} KB, verified on disk)`)
+  }
 }
 
 console.log(failed ? `\n${failed} FAILURES` : '\nMap probe passed — observed, not inferred.')

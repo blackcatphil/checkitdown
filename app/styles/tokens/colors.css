@@ -89,7 +89,15 @@
   --cid-map-water-line: #1E2149;    /* waterways */
   --cid-map-building: #191322;      /* the tiles' own buildings, kept quiet */
   --cid-map-building-edge: #251C34; /* their hairline; Positron ships it near-WHITE */
-  --cid-map-road-minor: #2A2338;    /* stays out of the way */
+  /* THE GOLD EDGE ON OUR OWN 16 MASSES. An outline is a LINE, NOT A SURFACE —
+     gold stays an accent by geometry rather than by discipline — and edge
+     definition is exactly what makes massing read. */
+  --cid-map-building-lit: #C9A227;
+  /* GOLD, at the one geometry where it cannot become a surface: the minor grid
+     is the densest thing on the map, so it is held BELOW the casing in
+     luminance. The chain is the weight limit — if a gold minor breaks it, the
+     weight is too high, and the answer is weight, never reverting the hue. */
+  --cid-map-road-minor: #3A2F12;
   --cid-map-road-casing: #3B3150;   /* frames the major roads */
   --cid-map-road-major: #574B70;    /* the mid step: land -> ROADS -> buildings */
   --cid-map-boundary: rgba(169, 140, 232, 0.22);
@@ -139,7 +147,8 @@
   --cid-map-water-line: #AFBAD6;
   --cid-map-building: #DAD4E2;
   --cid-map-building-edge: #C6BDD3;
-  --cid-map-road-minor: #DED8E6;
+  --cid-map-building-lit: #8A6D1F;
+  --cid-map-road-minor: #E0D6BA;
   --cid-map-road-casing: #CCC3DA;
   --cid-map-road-major: #F2EDF8;
   --cid-map-boundary: rgba(94, 58, 147, 0.28);

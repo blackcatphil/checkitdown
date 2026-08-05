@@ -609,6 +609,71 @@ measured **against the halo** rather than the land: a label crosses water, park
 and road within one pan, so there is no single background to measure, and the
 halo is the background the text actually sits on.
 
+## Hue share — the number that should have existed first (2026-08-04)
+
+Phil called the map monochrome **twice**, across two palette passes that both
+passed every test. The cause was measurable and nobody had measured it:
+
+| | before | after |
+|---|---|---|
+| aubergine | **69.5%** | 48.1% |
+| neutral | 26.6% | 34.7% |
+| gold | **0%** | 14.9% |
+| indigo (water) | 4.0% | 1.7% |
+| moss (parks) | **0.02%** | 0.03% |
+
+**The hue variety was outside the frame.** Indigo water and moss parks are real
+choices, but at the Strip landing there is almost no water and virtually no
+park — so the view resolved to aubergine land, aubergine roads, aubergine
+buildings. We had coloured features that are not on screen.
+
+**Token tests cannot see this.** Every rule in `map-style.test.mjs` asks what a
+colour *is* — its hue, its chroma, its luminance against a building. None can
+ask **how much of the frame it occupies**, and area is the variable that decides
+whether something reads as an accent or a surface. `scripts/map-probe.mjs` now
+samples the rendered canvas and reports the share of every hue, so the next
+palette argument starts from a number.
+
+It is the same shape as the dead worker: the failure was invisible to every
+check we had because no check looked at the rendered output.
+
+### Gold on the buildings, gold on the fine grid
+
+- **Gold outlines the 16 masses.** `fill-extrusion` has no outline property, so
+  the footprint geometry is redrawn as a thin line. **An outline is a LINE, not
+  a SURFACE** — gold stays an accent by geometry rather than by discipline — and
+  edge definition is what makes massing read, so it reinforces the buildings
+  being the brightest thing rather than threatening it.
+- **The minor grid is gold; the arterials stay purple.** The boundary is which
+  roads: casing and major are continuous arterials that form a shape across the
+  frame, which is what a surface is made of. The fine grid is texture. The
+  hierarchy is deliberately inverted — **fine grid glints, arterials recede,
+  buildings dominate.**
+- **Weight is the lever, never the hue.** At Positron's shipped 0.9 opacity the
+  gold grid measured 19.8% of the frame and the dense blocks read as a field.
+  Dropping to 0.55 kept the glint and lost the haze: 14.9%. Reverting the colour
+  is what produced "too monochrome" twice, so the opacity is now asserted.
+- The luminance chain still holds — `--cid-map-road-minor` is a **dark** gold,
+  held below the casing. The chain is the weight limit: a gold minor that breaks
+  it is too heavy.
+
+**Still open, and now quantified:** moss and indigo are 1.7% of the frame
+between them. If more hue variety is wanted, the lever is a hue on something
+that IS in view — land, buildings, the grid — not more colour on water and parks.
+
+## Screenshots live in `screens/`, and are verified on disk
+
+Seven screenshots were reported as saved to a **session temp directory** that
+nobody else could open. The files existed; the path did not help anyone. Phil
+looked in the repo, found nothing, and reasonably concluded they had never been
+written.
+
+They now go to `screens/` in the repo (gitignored), and the probe **stats the
+file after writing it** and fails if it is under 1 KB. Same class as the push
+that pushed nothing and still printed "pushed": **an artefact reported as
+produced, with no check that it landed.** Report the path someone else can open,
+and verify it is there.
+
 ## The map instrument (`NEXT_PUBLIC_MAP_DEBUG=1`)
 
 Three numbers in the badge: **tiles requested / loaded**, **errors**, and **time

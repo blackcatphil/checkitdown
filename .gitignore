@@ -75,3 +75,6 @@ scripts/.fetch-rooms.sh
 # script and the emitted GeoJSON are the artifacts worth keeping.
 scripts/.footprints/
 spike/.bak.html
+
+# Probe screenshots — build artefacts, reachable in the repo for review.
+screens/
