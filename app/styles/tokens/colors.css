@@ -106,6 +106,16 @@
      at all. Separated by VALUE, exactly as brand teal was separated from
      decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
   --cid-map-hover: #E3C567;
+
+  /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
+     glow rather than a black plane. A sky is the one surface that can break the
+     "brightest thing is a building" rule SILENTLY — it is enormous, it sits
+     behind everything, and no existing assertion looked at it. The horizon is
+     therefore held below building luminance and joined to the same chain. */
+  --cid-map-sky: #08070F;           /* zenith */
+  --cid-map-horizon: #2E1B3C;       /* the glow — below a lit building */
+  --cid-map-fog: #1B1226;
+  --cid-map-light: #F0D8B0;         /* the low sun raking the masses */
   /* GOLD, at the one geometry where it cannot become a surface: the minor grid
      is the densest thing on the map, so it is held BELOW the casing in
      luminance. The chain is the weight limit — if a gold minor breaks it, the
@@ -174,6 +184,16 @@
      at all. Separated by VALUE, exactly as brand teal was separated from
      decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
   --cid-map-hover: #E3C567;
+
+  /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
+     glow rather than a black plane. A sky is the one surface that can break the
+     "brightest thing is a building" rule SILENTLY — it is enormous, it sits
+     behind everything, and no existing assertion looked at it. The horizon is
+     therefore held below building luminance and joined to the same chain. */
+  --cid-map-sky: #08070F;           /* zenith */
+  --cid-map-horizon: #2E1B3C;       /* the glow — below a lit building */
+  --cid-map-fog: #1B1226;
+  --cid-map-light: #F0D8B0;         /* the low sun raking the masses */
   --cid-map-road-minor: #E0D6BA;
   --cid-map-road-casing: #C9B98C;
   --cid-map-road-major: #F2EDF8;

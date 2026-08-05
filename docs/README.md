@@ -814,6 +814,93 @@ covers less than a slab. Both floors are reported because the metric's threshold
 is not invariant to brightness, which is a property of the instrument rather
 than of the map.
 
+## Dynamism: dusk, rise, drift, ping (2026-08-04)
+
+Four behaviours, each screenshotted, and **every one of them is disabled under
+`prefers-reduced-motion: reduce`** — verified in a browser with the media
+feature emulated, not by reading the CSS. An ambient orbit nobody can stop is
+hostile, not delightful.
+
+### The dusk sky is set, and does not show at our camera
+
+`setSky` + `setLight` cost almost nothing and the horizon is held below building
+luminance by token, with the **sky now joined to the luminance chain** —
+sky < horizon < roads < building. A sky is the one surface big enough to break
+"the brightest thing is a building" silently: it is enormous, it sits behind
+everything, and every previous assertion looked only at ground colours. Labels
+are also checked against the **horizon** rather than the land, because a label on
+the glowing band is the failure case and the land-coloured halo does not help
+there.
+
+**But it is not visible at the landing camera, and that is measured:**
+
+| pitch | horizon in frame | tiles requested |
+|---|---|---|
+| 52 (ours) | **no** | 12 |
+| 60 (MapLibre's default max) | **no** | 14 |
+| 72 | yes | **29** |
+
+Seeing the dusk band needs pitch above 60 — which means raising `maxPitch` past
+the default *and* roughly doubling tile requests. Raising the landing pitch is a
+change to a constant that was measured in a spike, so it is **Phil's call, with
+the cost attached**: `screens/32-pitch72.png` is what it buys.
+
+**The light was turned down from 0.4 to 0.22.** At 0.4 the warm sun lifted every
+extrusion face toward its own hue and the aubergine masses came out dusty pink —
+the buildings stopped being the accent colour. Low enough to rake, not to
+repaint.
+
+### The rise, and the bug the drift caused
+
+Buildings animate 0 → full height over 950 ms, staggered by feature id so 16
+masses do not stand up as one slab. It starts on `tilesIn`, not on mount: playing
+the rise into an empty frame wastes it and reads as jank.
+
+**The camera drift silently killed the rise.** The effect depends on `tilesIn`,
+and `tilesIn` flips back to *false* the moment the drift rotates far enough to
+need new tiles — so the effect cleaned up, cancelled the rAF at **p = 0.17**, and
+the `roseRef` guard then refused to restart it. Sixteen towers sat permanently at
+a sixth of their height and nothing reported a problem; `queryRenderedFeatures`
+still counted 13 masses, because they existed, they were just short.
+
+Two fixes, and the second is the general one:
+
+- The drift now waits for the rise instead of racing it.
+- **Cleanup lands the animation instead of merely stopping it.** Cancelling an
+  animation is not the same as finishing it — if the effect tears down mid-rise,
+  it settles to full height on the way out. Any interrupted animation should
+  leave the correct final state, not the frame it died on.
+
+### Drift: measured, and it stops rather than pauses
+
+118 frames per 4 s while drifting (~30 fps), **0 frames per 4 s after the first
+interaction** — it stops permanently, with no path back. It also expires on its
+own after 20 s, and THE STRIP / WHOLE VALLEY kill it explicitly, because those
+are panel buttons the canvas listener never sees and an orbit that keeps turning
+after somebody asked for a view is the map arguing with them.
+
+### The ping reuses the brand's knock
+
+Selection throws `knockR1`/`knockR2` from the design system rather than inventing
+a second motion vocabulary — the mark is a knuckle rap throwing rings and a map
+ping is the same shape. Verified: 2 rings on click, popup opens, both cleaned up
+after 1.7 s, 0 rings under reduced motion.
+
+**Two of my own test bugs were worth more than the feature.** The first click
+test ran while the drift was still turning the map, so the pin moved between
+projecting it and clicking it. The second failed because **`map.project()` is
+canvas-relative and `mouse.click` is page-relative** — the canvas sits below the
+header and right of the panel. Both looked exactly like a broken ping.
+
+### Hue share, both floors
+
+| | chroma > 10 | chroma > 6 |
+|---|---|---|
+| before | 13.1% | 15.9% |
+| after | **13.2%** | **16.1%** |
+
+Essentially unmoved. The sky would have moved it — it is not on screen.
+
 ## Screenshots live in `screens/`, and are verified on disk
 
 Seven screenshots were reported as saved to a **session temp directory** that

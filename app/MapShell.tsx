@@ -92,8 +92,59 @@ const PITCH = 52
 const MIN_3D_ZOOM = 13.5
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
 
+/** One query, three behaviours. Read at call time, not module load, so a user
+ *  who changes the OS setting does not have to reload. */
+const reduced = () => typeof window !== 'undefined'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * THE KNOCK RING, thrown from a selected pin.
+ *
+ * The logo mark is a knuckle rap that throws rings and a map ping is the same
+ * shape, so this reuses `knockR1`/`knockR2` from the design system rather than
+ * inventing a second motion vocabulary — brand and map share one.
+ */
+function ping(map: InstanceType<typeof MLMap>, lngLat: [number, number]) {
+  if (reduced()) return
+  const parent = map.getCanvasContainer()
+  const at = map.project(lngLat)
+  const els = ['r1', 'r2'].map((r) => {
+    const el = document.createElement('div')
+    el.className = `cid-ping ${r}`
+    el.style.left = `${at.x}px`
+    el.style.top = `${at.y}px`
+    parent.appendChild(el)
+    return el
+  })
+  /* The ring is screen-positioned, so it would slide off its pin the moment the
+     map moves. It is short-lived and follows the camera until it is done. */
+  const follow = () => {
+    const p = map.project(lngLat)
+    for (const el of els) { el.style.left = `${p.x}px`; el.style.top = `${p.y}px` }
+  }
+  map.on('move', follow)
+  window.setTimeout(() => {
+    map.off('move', follow)
+    for (const el of els) el.remove()
+  }, 1700)
+}
+
+/* The rise is STAGGERED, so 16 masses do not stand up as one slab. Each
+   feature's start is offset by its id, and every factor still reaches 1. */
+const STAGGER = 0.35
+const riseFactor = (p: number) => ['max', 0, ['min', 1,
+  ['/', ['-', p, ['*', STAGGER, ['/', ['%', ['id'], 8], 8]]], 1 - STAGGER]]] as ExpressionSpecification
+const riseHeight = (p: number) => ['*', ['get', 'height'], riseFactor(p)] as ExpressionSpecification
+const riseBase = (p: number) => ['max', 0, ['-', ['*', ['get', 'height'], riseFactor(p)], 2]] as ExpressionSpecification
+
+const FULL_HEIGHT = ['get', 'height'] as ExpressionSpecification
+const FULL_BASE = ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification
+
 export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const holder = useRef<HTMLDivElement>(null)
+  const roseRef = useRef(false)
+  const driftRef = useRef<number | null>(null)
+  const driftDead = useRef(false)
   const mapRef = useRef<InstanceType<typeof MLMap> | null>(null)
   const hovered = useRef<string | null>(null)
   const rosterRef = useRef<MapRoom[]>([])
@@ -102,6 +153,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(STRIP_Z)
   const [ready, setReady] = useState(false)
+  const [rose, setRose] = useState(false)
   const [tilesIn, setTilesIn] = useState(false)
   const [paletteOk, setPaletteOk] = useState(true)
   const [inView, setInView] = useState<number | null>(null)
@@ -467,11 +519,33 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       map.on('click', 'pin', (e) => {
         const f = e.features?.[0]
         if (!f) return
+        ping(map, (f.geometry as GeoJSON.Point).coordinates as [number, number])
         new Popup({ className: 'cid-popup', closeButton: false, offset: 12 })
           .setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number])
           .setHTML(popupHtml(f.properties as Record<string, string | number>))
           .addTo(map)
       })
+
+      /* DUSK SKY + A LOW SUN. `setSky` paints the horizon behind the towers and
+         `setLight` rakes the extrusion faces, which is what turns a flat dark
+         plane into a place at night. The horizon colour is held below building
+         luminance by token, and the luminance chain now asserts it — a sky is
+         the one surface big enough to break "the brightest thing is a building"
+         without anything noticing. */
+      map.setSky({
+        'sky-color': T.sky,
+        'horizon-color': T.horizon,
+        'fog-color': T.fog,
+        'sky-horizon-blend': 0.55,
+        'horizon-fog-blend': 0.6,
+        'fog-ground-blend': 0.08,
+        'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 15, 0.3] as ExpressionSpecification,
+      })
+      /* INTENSITY 0.22, NOT 0.4. At 0.4 the warm light lifted every extrusion
+         face toward the light's own hue and the aubergine masses came out dusty
+         pink — the buildings stopped being the accent colour. Low enough to
+         rake, not to repaint. */
+      map.setLight({ anchor: 'map', color: T.light, intensity: 0.22, position: [1.6, 205, 32] })
 
       setReady(true)
     })
@@ -505,6 +579,107 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
        code that nothing checks. */
   }, [])
 
+  /* THE BUILDINGS RISE — but only once the GROUND HAS ARRIVED.
+     Playing it on mount would run the animation into an empty frame: the whole
+     point is the towers standing up out of a map, and with no map underneath it
+     reads as jank rather than as arrival. `tilesIn` already tracks exactly this,
+     because the loading state needed the same distinction.
+     MapLibre does not ease paint properties, so this is a rAF loop over an
+     expression. 16 masses is nothing. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready || !tilesIn || roseRef.current) return
+    roseRef.current = true
+
+    const settle = () => {
+      map.setPaintProperty('rooms-fp', 'fill-extrusion-height', FULL_HEIGHT)
+      if (map.getLayer('rooms-cap')) {
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', FULL_HEIGHT)
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', FULL_BASE)
+      }
+    }
+    if (reduced()) {
+      /* Settle immediately, but hand the state change to the next frame:
+         setting state synchronously inside an effect cascades renders, and the
+         linter is right that it is a real hazard rather than a style note. */
+      settle()
+      const id = requestAnimationFrame(() => setRose(true))
+      return () => cancelAnimationFrame(id)
+    }
+
+    const DUR = 950
+    const t0 = performance.now()
+    let raf = 0
+    let done = false
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - t0) / DUR)
+      const p = 1 - (1 - t) ** 3
+      map.setPaintProperty('rooms-fp', 'fill-extrusion-height', riseHeight(p))
+      if (map.getLayer('rooms-cap')) {
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', riseHeight(p))
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', riseBase(p))
+      }
+      if (t < 1) { raf = requestAnimationFrame(frame); return }
+      done = true
+      settle()
+      setRose(true)
+    }
+    raf = requestAnimationFrame(frame)
+    /* THE CLEANUP MUST LAND THE BUILDINGS, not just stop the loop.
+       This effect depends on `tilesIn`, and `tilesIn` FLIPS BACK TO FALSE the
+       moment the camera drift rotates far enough to need new tiles. That
+       cancelled the rise at p=0.17 and the `roseRef` guard then refused to
+       restart it, so 16 towers sat permanently at a sixth of their height with
+       nothing reporting a problem. Cancelling an animation is not the same as
+       finishing it. */
+    return () => {
+      cancelAnimationFrame(raf)
+      if (!done) { settle(); setRose(true) }
+    }
+  }, [ready, tilesIn])
+
+  /* AMBIENT DRIFT — and it STOPS, it does not pause.
+     Anything that resumes while somebody is reading a popup is infuriating, so
+     the first interaction kills it permanently and there is no path back. It
+     also expires on its own after 20s: a slow orbit is a welcome, not a screen
+     saver, and a continuous bearing change re-renders every frame. */
+  useEffect(() => {
+    const map = mapRef.current
+    /* Waits for the RISE, not for the tiles: starting the orbit while the towers
+       are still standing up makes both motions read as one confused one, and it
+       was also what interrupted the rise. */
+    if (!map || !rose || reduced() || driftDead.current) return
+
+    const stop = () => {
+      driftDead.current = true
+      if (driftRef.current !== null) cancelAnimationFrame(driftRef.current)
+      driftRef.current = null
+    }
+    const el = map.getCanvasContainer()
+    for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
+      el.addEventListener(ev, stop, { once: true, passive: true })
+    }
+
+    const t0 = performance.now()
+    const DEG_PER_SEC = 0.9
+    const LIFE = 20000
+    let last = t0
+    const frame = (now: number) => {
+      if (driftDead.current) return
+      if (now - t0 > LIFE) { stop(); return }
+      map.setBearing(map.getBearing() + (DEG_PER_SEC * (now - last)) / 1000)
+      last = now
+      driftRef.current = requestAnimationFrame(frame)
+    }
+    driftRef.current = requestAnimationFrame(frame)
+    return () => {
+      for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
+        el.removeEventListener(ev, stop)
+      }
+      if (driftRef.current !== null) cancelAnimationFrame(driftRef.current)
+    }
+  }, [rose])
+
   /* Cluster properties are computed at LOAD time, so `hits` cannot be
      repainted when the filter changes — the data has to be re-set. */
   useEffect(() => {
@@ -522,12 +697,19 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     if (Math.abs(map.getPitch() - want) > 1) map.easeTo({ pitch: want, duration: 400 })
   }, [zoom, ready])
 
+  /* THE STRIP / WHOLE VALLEY ARE USER INTENT, so they kill the drift outright.
+     The pointer listener on the canvas never sees these — they are panel
+     buttons — and an ambient orbit that keeps turning the camera after somebody
+     asked for a specific view is the map arguing with them. */
+  const stopDrift = useCallback(() => { driftDead.current = true }, [])
   const goStrip = useCallback(() => {
+    stopDrift()
     mapRef.current?.easeTo({ center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18 })
-  }, [])
+  }, [stopDrift])
   const goValley = useCallback(() => {
+    stopDrift()
     mapRef.current?.easeTo({ center: VALLEY, zoom: VALLEY_Z, pitch: 0, bearing: 0 })
-  }, [])
+  }, [stopDrift])
 
   const toggle = (k: string) =>
     setChecked((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]))
