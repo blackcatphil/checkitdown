@@ -70,6 +70,27 @@ function decodePng(buf) {
  * aubergine on aubergine on aubergine. Token-level tests cannot see this at
  * all — they check what a colour IS, never how much of the screen it covers.
  */
+/** Share of pixels reading as gold — the observable for "did the wireframe
+ *  paint", as opposed to "was it added". */
+function countGold(shot) {
+  const { w, h, nc, px } = decodePng(shot)
+  let gold = 0, n = 0
+  for (let y = 0; y < h; y += 2) {
+    for (let x = 0; x < w; x += 2) {
+      const o = (y * w + x) * nc
+      const r = px[o], g = px[o + 1], b = px[o + 2]
+      const max = Math.max(r, g, b), min = Math.min(r, g, b)
+      n++
+      if (max - min < 6) continue
+      const d = max - min
+      let hh = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+      hh = (hh * 60 + 360) % 360
+      if (hh >= 20 && hh < 70) gold++
+    }
+  }
+  return +(gold / n * 100).toFixed(3)
+}
+
 function hueShare(shot) {
   const { w, h, nc, px } = decodePng(shot)
   const bucket = { neutral: 0, gold: 0, moss: 0, teal: 0, indigo: 0, aubergine: 0, other: 0 }
@@ -236,11 +257,32 @@ async function probe(browser, { cold }) {
      the probe exists to describe, reported as a tooling error. */
   const canvasEl = await page.$('canvas.maplibregl-canvas')
   const shot = canvasEl ? await canvasEl.screenshot() : Buffer.alloc(4)
+
+  /* DOES THE WIREFRAME REACH THE SCREEN?
+     It once reported 848 segments, 274 rendered frames and GL error 0 while
+     drawing nothing at all — every number true, every one about the buffer and
+     none about the pixels. So this removes the layer and re-measures: the only
+     evidence that counts is that the canvas CHANGES when it goes away. */
+  let wire = null
+  if (canvasEl && await page.evaluate(() => !!window.__cid_map?.getLayer?.('rooms-wire'))) {
+    const before = countGold(shot)
+    const segments = await page.evaluate(() =>
+      window.__cid_map.style?._layers?.['rooms-wire']?.implementation?.segments ?? 0)
+    await page.evaluate(() => window.__cid_map.removeLayer('rooms-wire'))
+    await page.waitForTimeout(900)
+    const after = countGold(await canvasEl.screenshot())
+    wire = {
+      segments,
+      goldWith: before,
+      goldWithout: after,
+      delta: +(before - after).toFixed(3),
+    }
+  }
   const colours = new Set()
   for (let i = 0; i < shot.length - 3; i += 997) colours.add(shot.readUInt32BE(i))
 
   await ctx.close()
-  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot) }
+  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot), wire }
 }
 
 const browser = await chromium.launch()
@@ -280,6 +322,11 @@ for (const [i, r] of results.entries()) {
   ok(r.errors.length === 0, 'no console errors')
   ok(r.afterResize.canvas === r.afterResize.holder,
     `the canvas tracks a CONTAINER-ONLY resize (${r.afterResize.canvas} vs holder ${r.afterResize.holder})`)
+  if (r.wire) {
+    console.log(`  wireframe   ${r.wire.segments} segments · gold ${r.wire.goldWith}% with, ${r.wire.goldWithout}% without`)
+    ok(r.wire.delta > 0.02,
+      `THE WIREFRAME PAINTS PIXELS — removing it changes the canvas by ${r.wire.delta}pp of gold`)
+  }
   if (r.rendered) {
     console.log(`  extruded    ${r.rendered.extruded} masses on screen · tallest ${r.rendered.heights.join(', ')}m`)
     console.log(`  flat        ${r.rendered.flat} masses`)

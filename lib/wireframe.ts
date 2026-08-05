@@ -100,9 +100,23 @@ export type WireframeLayer = {
   readonly segments: number
   setProgress(p: number): void
   setColor(rgba: [number, number, number, number]): void
+  /** Frames this layer has actually been asked to render, and the last GL error
+   *  it saw. A segment count proves the BUFFER; these prove the DRAW. */
+  readonly frames: number
+  readonly glError: number
+  /** The last matrix handed to render(), so where a vertex actually lands can be
+   *  computed instead of assumed. */
+  readonly lastMatrix: number[] | null
+  readonly sampleVertex: [number, number, number] | null
+  /** Diagnostic only: turn depth testing off to find out whether the edges are
+   *  being drawn and then losing the depth comparison, versus never drawn. */
+  depthTest: boolean
   onAdd(map: unknown, gl: WebGL2RenderingContext): void
   onRemove(map: unknown, gl: WebGL2RenderingContext): void
-  render(gl: WebGL2RenderingContext, args: { modelViewProjectionMatrix: Float32Array | number[] }): void
+  render(this: WireframeLayer, gl: WebGL2RenderingContext, args: {
+    modelViewProjectionMatrix: Float32Array | number[]
+    defaultProjectionData?: { mainMatrix: Float32Array }
+  }): void
 }
 
 /**
@@ -179,12 +193,23 @@ export function createWireframeLayer(
   let uni: Record<string, WebGLUniformLocation | null> = {}
   let progress = 1
   let color = opts.color
+  let frames = 0
+  let glError = 0
+  let lastMatrix: number[] | null = null
 
   return {
     id,
+    depthTest: true,
     type: 'custom',
     renderingMode: '3d',
     get segments() { return geom.segments },
+    get frames() { return frames },
+    get glError() { return glError },
+    get lastMatrix() { return lastMatrix },
+    get sampleVertex() {
+      if (geom.vertices === 0) return null
+      return [geom.array[0], geom.array[1], geom.array[2]] as [number, number, number]
+    },
     setProgress(p) { progress = p },
     setColor(c) { color = c },
 
@@ -226,6 +251,7 @@ export function createWireframeLayer(
     },
 
     render(gl, args) {
+      frames++
       if (!program || !buffer || geom.vertices === 0) return
       gl.useProgram(program)
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
@@ -244,7 +270,20 @@ export function createWireframeLayer(
       attrib('a_side', 1, 24)
       attrib('a_stagger', 1, 28)
 
-      gl.uniformMatrix4fv(uni.u_matrix, false, args.modelViewProjectionMatrix as Float32Array)
+      /* THE MATRIX IS `defaultProjectionData.mainMatrix`, NOT
+         `modelViewProjectionMatrix`.
+         The first version used the latter, which is the MapLibre v2/v3 custom
+         layer convention carried over from memory. In v6 that matrix belongs to
+         a different space: its translation row is ~1e7 while a mercator
+         coordinate is ~0.18, so every vertex projected to NDC y = 2.34 — off
+         screen, silently. The layer reported 848 segments, 274 rendered frames
+         and GL error 0 the whole time, because all of those were true.
+         `mainMatrix` is the one that takes normalised mercator, and the same
+         sample vertex lands at NDC (0.42, 0.70). */
+      const projection = (args.defaultProjectionData as { mainMatrix: Float32Array } | undefined)
+      const matrix = projection?.mainMatrix ?? (args.modelViewProjectionMatrix as Float32Array)
+      lastMatrix = Array.from(matrix)
+      gl.uniformMatrix4fv(uni.u_matrix, false, matrix)
       gl.uniform1f(uni.u_p, progress)
       gl.uniform1f(uni.u_width, opts.width * (window.devicePixelRatio || 1))
       gl.uniform2f(uni.u_res, gl.drawingBufferWidth, gl.drawingBufferHeight)
@@ -254,12 +293,19 @@ export function createWireframeLayer(
          mass — without it this draws through the buildings and reads as an
          x-ray box. Not writing keeps the ribbons from occluding each other at
          the corners, where two quads meet at the same depth. */
-      gl.enable(gl.DEPTH_TEST)
-      gl.depthFunc(gl.LEQUAL)
+      if (this.depthTest) {
+        gl.enable(gl.DEPTH_TEST)
+        gl.depthFunc(gl.LEQUAL)
+      } else {
+        gl.disable(gl.DEPTH_TEST)
+      }
       gl.depthMask(false)
 
       gl.drawArrays(gl.TRIANGLES, 0, geom.vertices)
+      const err = gl.getError()
+      if (err !== 0) glError = err
       gl.depthMask(true)
+      gl.enable(gl.DEPTH_TEST)
     },
   }
 }

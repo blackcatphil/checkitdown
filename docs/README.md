@@ -1005,6 +1005,95 @@ The haze accounts for essentially all of that: it is a translucent scrim over
 the top half of the frame, so it dims gold pixels below both thresholds. Gold
 coverage did not shrink; gold contrast did, which is what a haze is.
 
+## The wireframe drew nothing for a whole session (2026-08-04)
+
+It was reported working on the strength of **848 segments** in the vertex
+buffer. Every number was true and none of them was about pixels:
+
+```
+segments 848 · rendered frames 274 · GL error 0 · layer present true
+```
+
+The layer was added, its `render` ran 274 times, it issued a draw call, and
+nothing reached the screen. **A count of what you wrote into a buffer is not a
+count of what was drawn** — which is the exact failure this file already
+described, then verified around instead of through.
+
+### The cause: the wrong matrix, ported from memory
+
+MapLibre v6 hands `render(gl, args)` several matrices. I used
+`args.modelViewProjectionMatrix`, which is the **v2/v3 custom-layer convention**
+and belongs to a different space in v6: its translation row is ~1e7 while a
+normalised mercator coordinate is ~0.18. Every vertex projected to **NDC
+y = 2.34** — just off the top of the screen, silently, with no error anywhere.
+
+The right one is `args.defaultProjectionData.mainMatrix`, which takes normalised
+mercator. Same sample vertex, same frame: **NDC (0.42, 0.70)**.
+
+This is the second time in this project that a MapLibre API was carried across
+from an older version and failed quietly — the first was `setFog`, which does
+not exist at all. Read the shipped types, then confirm against a computed value.
+
+### Diagnosis order, and what each step ruled out
+
+1. **Depth-test coincidence** — the leading hypothesis, tested first by drawing
+   with `DEPTH_TEST` disabled. **0.01% of pixels changed: not the cause.**
+   Keeping that answer mattered, because "turn depth off" would otherwise have
+   looked like a fix and shipped an x-ray box.
+2. **Draw order** — the wireframe sits after the extrusions. Fine. Worth noting
+   `getStyle().layers` **does not list custom layers**, so its absence there is
+   not evidence of anything.
+3. **Program, uniforms, GL errors** — linked, set, zero.
+4. **Where a vertex actually lands** — the step that found it. Multiply the
+   matrix by a known vertex and look at the NDC.
+
+### The check that should have existed first
+
+`scripts/map-probe.mjs` now removes the layer and re-measures the canvas. The
+only evidence that counts is that the picture **changes** when the wireframe
+goes away:
+
+```
+wireframe   848 segments · gold 12.661% with, 11.966% without   (+0.695pp)
+```
+
+At 1.6 px the same delta was **0.014pp** — drawing, but invisible at the landing
+zoom. Width is now 2.4. The wireframe is unmistakable close in
+(`screens/64-close.png`) and subtle at z14.5, which is the honest description of
+edge detail on 40-pixel-tall buildings.
+
+**A bug in the check itself nearly hid this:** the block computed the `wire`
+result and the return statement never included it, so the whole section silently
+did not run. Checking the output rather than the exit code caught it.
+
+## The arrival drift, and why the test kept saying it worked
+
+Phil twice reported no drift on load while the headless check reported drift on
+load. Both were true, and the difference was the mouse.
+
+The old loop used ONE `busy()` test for two jobs: blocking a restart, and gating
+the very first start. Pointer movement stamped activity. **In a browser nobody
+holds still** — the map loads, the pointer arrives, activity is stamped, and the
+welcome drift never happens. In headless the mouse sits at (0, 0) and never
+moves, so the arrival drift always fired.
+
+Now:
+
+- **Arrival is unconditional.** It starts when the buildings finish rising and
+  nothing gates it.
+- **Only a real interaction stops it** — pointerdown, wheel, touch, key. Moving
+  the mouse across a map is not asking the map to stop.
+- **Pointer movement is activity for the RESTART clock only**, alongside an open
+  popup and recent filter changes.
+
+Verified against the real-world path — twelve mouse moves across the map after
+load — rather than a still cursor: `-7.01 -> -3.40`, still drifting. Click stops
+it; 32s idle brings it back.
+
+**The instrument now says `motion full` or `motion REDUCED`**, because "the drift
+is not running" has two causes that look identical from outside, and one of them
+is an OS accessibility setting on a machine I cannot see.
+
 ## Screenshots live in `screens/`, and are verified on disk
 
 Seven screenshots were reported as saved to a **session temp directory** that

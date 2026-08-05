@@ -164,7 +164,6 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const holder = useRef<HTMLDivElement>(null)
   const roseRef = useRef(false)
   const lastActivity = useRef(0)
-  const pointerOver = useRef(false)
   const wireRef = useRef<WireframeLayer | null>(null)
   const mapRef = useRef<InstanceType<typeof MLMap> | null>(null)
   const hovered = useRef<string | null>(null)
@@ -467,7 +466,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
             stagger: STAGGER * ((f.id % 8) / 8),
           }))
         const wire = createWireframeLayer('rooms-wire', feats, {
-          width: 1.6,
+          width: 2.4,
           color: glColor(T.buildingLit, 0.95),
         })
         /* Starts at 0, not 1: the layer is added while the masses are still
@@ -695,14 +694,18 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     }
   }, [ready, tilesIn])
 
-  /* AMBIENT DRIFT — stops on interaction, and comes back only when the map is
-     genuinely IDLE.
-     "No click in 30 seconds" is not idle. Resuming an orbit while somebody is
-     reading a popup is the exact thing the original stop-permanently rule
-     existed to prevent, so the restart is CONDITIONAL: a popup open, the
-     pointer over the map, or a filter touched inside the window all mean
-     something is happening, and each of them RESETS the clock rather than
-     queueing a restart for the moment it ends. */
+  /* AMBIENT DRIFT — runs on arrival, stops on a real interaction, returns when
+     the map is genuinely idle.
+     THE ARRIVAL DRIFT IS UNCONDITIONAL. The previous version ran one loop for
+     both jobs, so the same `busy()` test that (correctly) blocks a RESTART also
+     gated the very first start — and merely moving the mouse onto the map
+     stamped activity. In a browser nobody is holding still: the map loads, the
+     pointer arrives, and the welcome drift never happens. Locally it always
+     looked fine, because a headless mouse does not move.
+     So arrival is separate, and only a real interaction — pointerdown, wheel,
+     touch, key — stops it. Pointer MOVEMENT is activity for the restart clock
+     only; it does not stop a drift already running, because moving the mouse
+     across a map is not asking the map to stop. */
   useEffect(() => {
     const map = mapRef.current
     if (!map || !rose || reduced()) return
@@ -711,53 +714,54 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     let raf: number | null = null
     let startedAt = 0
     let last = 0
+    let stopped = false
 
-    const busy = () => Boolean(
+    const running = () => raf !== null
+    const blocked = () => Boolean(
       document.querySelector('.maplibregl-popup')      // reading a room
-      || pointerOver.current                            // hovering the map
-      || Date.now() - lastActivity.current < IDLE_MS,   // just did something
+      || Date.now() - lastActivity.current < IDLE_MS,  // something just happened
     )
 
-    const stop = () => {
-      if (raf !== null) cancelAnimationFrame(raf)
-      raf = null
-      lastActivity.current = Date.now()
-    }
-
     const frame = (now: number) => {
-      if (busy()) { stop(); return }
-      /* EASED IN over the first second. Snapping into motion after stillness
-         reads as a glitch rather than as drift. */
+      /* Eased in over a second: snapping into motion after stillness reads as a
+         glitch rather than as drift. */
       const ramp = Math.min(1, (now - startedAt) / 1000)
       map.setBearing(map.getBearing() + (DEG_PER_SEC * ramp * (now - last)) / 1000)
       last = now
       raf = requestAnimationFrame(frame)
     }
-
-    const tick = window.setInterval(() => {
-      if (raf !== null || busy()) return
+    const start = () => {
+      if (running()) return
       startedAt = performance.now()
       last = startedAt
       raf = requestAnimationFrame(frame)
-    }, 1000)
-
-    const note = () => { lastActivity.current = Date.now(); stop() }
-    const enter = () => { pointerOver.current = true; note() }
-    const leave = () => { pointerOver.current = false; lastActivity.current = Date.now() }
-    for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
-      el.addEventListener(ev, note, { passive: true })
     }
-    el.addEventListener('pointerenter', enter)
-    el.addEventListener('pointerleave', leave)
+    const halt = () => {
+      if (raf !== null) cancelAnimationFrame(raf)
+      raf = null
+    }
+
+    start()                       // the welcome, unconditionally
+
+    const interact = () => { stopped = true; lastActivity.current = Date.now(); halt() }
+    const moved = () => { lastActivity.current = Date.now() }
+    for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
+      el.addEventListener(ev, interact, { passive: true })
+    }
+    el.addEventListener('pointermove', moved, { passive: true })
+
+    const tick = window.setInterval(() => {
+      if (!stopped || running() || blocked()) return
+      start()
+    }, 1000)
 
     return () => {
       window.clearInterval(tick)
-      if (raf !== null) cancelAnimationFrame(raf)
+      halt()
       for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
-        el.removeEventListener(ev, note)
+        el.removeEventListener(ev, interact)
       }
-      el.removeEventListener('pointerenter', enter)
-      el.removeEventListener('pointerleave', leave)
+      el.removeEventListener('pointermove', moved)
     }
   }, [rose])
 
@@ -916,6 +920,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           {MAP_DEBUG
             ? ` · tiles ${diag.requested}/${diag.loaded}${diag.errored ? ` err ${diag.errored}` : ''}`
               + ` · frame ${diag.since < 0 ? 'NEVER' : `${diag.since}ms ago`}`
+              /* "The drift is not running" has two causes that look identical:
+                 reduced motion, and a stopped drift. The badge says which. */
+              + ` · motion ${reduced() ? 'REDUCED' : 'full'}`
             : ''}
         </div>
       </div>
