@@ -15,14 +15,16 @@
  *
  * TWO RULES GOVERN THE COLOURS, and both are about meaning rather than taste:
  *
- * 1. **Saturation carries meaning, so decoration gets the desaturated end.**
- *    `--cid-value` (#4FBFAE) means verified. Water is the same family at a
- *    fraction of the saturation, so it never competes for that signal. Where a
- *    map layer and a data signal could sit adjacent, the data signal wins the
- *    saturated value.
- * 2. **Aubergine goes in the shadows, not the highlights.** The buildings are
- *    the figure; the ground map is the ground. Tint the dark end and leave the
- *    light end near-neutral, so nothing on the ground outshines a tower.
+ * 1. **Nothing on the ground may be mistaken for a signal.** `--cid-value`
+ *    (#4FBFAE) means verified and `--cid-gold-*` means nothing at all. Water is
+ *    INDIGO rather than teal-slate precisely so it cannot be read as the former;
+ *    parks are a desaturated moss whose chroma is far too low to be read as
+ *    anything. Where a map layer and a data signal could sit adjacent, the data
+ *    signal keeps the saturated value.
+ * 2. **Brightness belongs to the buildings.** The buildings are the figure; the
+ *    ground map is the ground. The GOLD road network is the brightest thing on
+ *    the ground and still sits below a lit building — minor, casing, major,
+ *    building, in that order, asserted as a chain.
  *
  * Pure on purpose: a transform that takes a style and returns a style can be
  * unit-tested without a browser, which is the only kind of map code that can be.
@@ -135,9 +137,12 @@ export function applyPalette(style: MapStyle, t: PaletteTokens): MapStyle {
         break
 
       case 'natural':
-        /* AUBERGINE, NOT GREEN. The palette bans green-as-good, and the Wynn
-           golf course rendering green beside a teal "verified" marker would be
-           a visible contradiction of that rule on the product's front page. */
+        /* DESATURATED MOSS. An earlier version forbade green here outright,
+           which over-read the rule: what the palette bans is green meaning
+           GOOD. A park is not a claim about anything. The protection that
+           actually matters is chroma — moss this faint cannot be mistaken for
+           the teal that means verified, and the test asserts that rather than
+           the colour's name. */
         if (l.type === 'line') paint['line-color'] = t.natural
         else {
           paint['fill-color'] = t.natural
@@ -155,8 +160,8 @@ export function applyPalette(style: MapStyle, t: PaletteTokens): MapStyle {
       case 'building':
         /* The tiles' own buildings stay as quiet texture. They are NOT the
            extrusions — those come from our own footprints — and if they
-           brightened toward the accent they would compete with the 16 masses
-           that are the point of the view. */
+           brightened toward the accent or the gold they would compete with the
+           16 masses that are the point of the view. */
         paint['fill-color'] = t.building
         /* THE HAIRLINE POSITRON SHIPS IS rgb(219,219,218) — near-white, and the
            only `fill-outline-color` in the whole style. Setting fill-color and
@@ -170,6 +175,9 @@ export function applyPalette(style: MapStyle, t: PaletteTokens): MapStyle {
         break
 
       case 'road-major':
+        /* THE STRIP CORRIDOR, IN GOLD. Gold is the accent tier and carries no
+           meaning, so it can take the whole network without claiming anything
+           about any road. */
         paint['line-color'] = t.roadMajor
         break
       case 'road-casing':

@@ -105,7 +105,7 @@ Probe the DOM and read the measured numbers back. Do not eyeball. Every invarian
 | Paper type | `#F2F4F6` | body copy on ink |
 | Type | Instrument Serif · Archivo · IBM Plex Mono | identity · UI · all numbers, tabular |
 
-No gold, no bronze, no green-as-good, no red-as-warning. Comp `#4a` on the board is the assembled result — the knuckles mark in the header of the aubergine shell — and `#2a`, `#1a`–`#1c`, `#3a`/`#3c` are kept only as the record of why.
+No green-as-good, no red-as-warning. (**Gold was banned when this comp was chosen and is now the accent tier — reversed 2026-08-04**; see §6. The comps below are kept as the record of the original decision, not as the current rule.) Comp `#4a` on the board is the assembled result — the knuckles mark in the header of the aubergine shell — and `#2a`, `#1a`–`#1c`, `#3a`/`#3c` are kept only as the record of why.
 
 ## 1. What this is
 
@@ -186,8 +186,8 @@ Every fact still carries a source and a verified date. With no crowd or vendor f
 
 - **Aubergine = identity only** — the mark, accent type, and the single primary action per screen. It is not a warning colour.
 - **Value / good = teal `#4FBFAE`.** Distinguishable from aubergine across common colour-vision types, and far enough from felt green that no-green-as-good survives.
-- **Caution is carried by rank position, weight and size**, not colour. Unverified data is flagged in **neutral grey** — never ochre, which sits too close to the banned gold, and grey reads as "not yet confirmed" rather than "warning".
-- **No gold. No bronze. Anywhere.** This is the rule doing the most work: gold is what makes a brand read as *a casino*, and we are the independent tool that says which casino treats you best.
+- **Caution is carried by rank position, weight and size**, not colour. Unverified data is flagged in **neutral grey** — never ochre. Gold being permitted makes this **more** important, not less: an ochre "not yet confirmed" would now sit one step from the decorative gold and one step from a warning, which is the worst place for a state to live. Grey is neither.
+- **GOLD IS IN, AS THE ACCENT TIER (reversed 2026-08-04 by Phil).** The old rule was "no gold, no bronze, anywhere — it is what makes a brand read as *a casino*". The real concern was never gold alone but gold **plus a second colour taken from a competitor or a poker room**; aubergine + gold is ours. Aubergine stays primary (the one filled action, the mark, active nav); gold takes highlights, hairlines, hover, rules, emphasis and the Strip corridor — the roles where aubergine does nothing. **Gold is never semantic**: no state, no rank, no provenance. On record: the Orleans uses purple + gold, but it is an off-Strip locals room in a Mardi Gras register, so the pairing does not collide.
 - Type is unchanged: **Instrument Serif** identity · **Archivo** UI · **IBM Plex Mono** every number, tabular. No neon, no card suits, no emoji, no exclamation marks.
 
 ---

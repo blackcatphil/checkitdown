@@ -933,12 +933,88 @@ before the landing map rather than after, because the map is the surface most
 likely to acquire ad-hoc colour, and a rule added afterwards is a cleanup while a
 rule added first means the drift never gets written.
 
+## Gold is in, as the ACCENT TIER (reversed 2026-08-04)
+
+The ban is lifted, by Phil, with the reasoning intact:
+
+> "use gold highlights throughout the website. i just didnt want to use gold and
+> another color from our competitors or the poker rooms."
+
+**The concern was never gold — it was the COMBINATION.** Gold plus a second
+colour lifted from a competitor or a poker room is what makes a brand read as a
+casino. Aubergine + gold is ours, and nobody else's.
+
+**One fact on record, because it technically qualifies:** the Orleans uses
+purple + gold. It is one off-Strip locals room in a Mardi Gras register rather
+than a luxe one, so aubergine + gold will not read as Orleans — but Phil asked
+to avoid gold plus a competitor colour, and that is the single pairing that
+meets the description. Noted at the time, proceeded anyway.
+
+### The hierarchy is the load-bearing part
+
+- **Aubergine stays PRIMARY.** `#5E3A93` keeps the one filled action per screen,
+  the mark, active nav. Unchanged.
+- **Gold is the ACCENT TIER.** Highlights, hairlines, hover, rules, emphasis,
+  the Strip corridor. It does the lifting **everywhere aubergine does nothing** —
+  which is why the section eyebrows went gold and the commitment controls did
+  not. An eyebrow commits to nothing; aubergine was never going to take it.
+- **One filled accent per screen still holds, and still belongs to aubergine.**
+  Gold may repeat. It is not the commitment colour.
+- `#A98CE8` was the resting link colour *and* the value reserved for hover,
+  which cannot both be true. Links moved to gold, so the reservation is now real
+  and a test asserts it.
+
+### GOLD IS NEVER SEMANTIC — the rule that keeps the rest working
+
+- Teal `#4FBFAE` still and **only** means verified.
+- **Unverified stays NEUTRAL GREY.** Do not revisit this to ochre now that gold
+  is permitted. It is grey because "not yet confirmed" must read as neither a
+  warning nor a decoration — and gold entering the palette makes an ochre flag
+  **more** confusable, not less. A test asserts `--cid-unverified` stays neutral.
+- Gold carries no state, no rank, no provenance. Decoration and identity only.
+- `--cid-gold-700` is 3.9:1 on the page: **fills and hairlines only, never
+  text.** A test reads the stylesheets and fails if it is used as a `color:` —
+  the comment beside the token is not the enforcement.
+
+### The map's dark tier
+
+Aubergine land · **indigo** water · desaturated **moss** parks and golf · **gold**
+network, with the Strip as the corridor.
+
+**Water moved off teal entirely.** It had been a desaturated teal-slate, safe
+only by carrying very little chroma — one nudge from competing with the colour
+that means verified. Indigo removes the question instead of managing it: hue
+does the work, so water can carry real colour and never read as a signal.
+
+**"Nothing on the map may be green" was over-read and is now stated properly.**
+What the palette bans is green meaning *good*. A park is not a claim about
+anything. The test now asserts what was actually being protected — no ground
+colour may be close to `--cid-value` in **both** hue and chroma — which permits
+the briefed moss and would still catch a green that could pass for a signal.
+
+**"Aubergine in the shadows, not the highlights" is superseded for roads.** Gold
+is deliberately the brightest thing on the ground now. What survives is the
+constraint that actually protects the view — brightness belongs to the buildings
+— asserted as an ordered chain: minor < casing < major < building.
+
+### Gold is a light hue on a dark palette, so contrast is what breaks
+
+It breaks **per surface**, not globally, so the test walks every gold that
+carries text against every surface it can land on (`ink-800/700/600/500`). Six
+gold and map rules, each verified red by injection: fill-only gold used as text,
+unverified drifting to ochre, the resting link taking the hover-reserved value,
+gold taking a filled action, gold text too dark for a surface.
+
 ## Locked decisions worth not relitigating
 
-- **Palette:** aubergine on ink. Accent `#5E3A93` (+1px `#A98CE8` lit top edge),
-  accent type `#A98CE8`, mark `#8A66C9`, value teal `#4FBFAE`, base `#0C0E11`,
-  surface `#14171B`, paper `#F2F4F6`. **No gold or bronze anywhere** — gold is
-  what makes a brand read as a casino, and we are the independent tool.
+- **Palette:** aubergine on ink. Accent `#5E3A93`, mark `#8A66C9`, value teal
+  `#4FBFAE`, base `#0C0E11`, surface `#14171B`, paper `#F2F4F6`.
+  ~~**No gold or bronze anywhere** — gold is what makes a brand read as a
+  casino, and we are the independent tool.~~ **REVERSED 2026-08-04 — see
+  "Gold is in" below.** The original wording is kept struck through rather than
+  deleted, because the reason it was written is still the reason it is narrow
+  now, and a decision that quietly disappears reads as drift the next time
+  someone asks why there is gold on an audit tool.
 - **Logo:** two knuckles, double knock. Checking is a knuckle rap on the table;
   a knock makes rings, which is also a map ping.
 - **Type:** Instrument Serif (identity) / Archivo (UI) / IBM Plex Mono (every

@@ -1,7 +1,20 @@
 /* CHECK IT DOWN — colour system.
    Dark is the primary mode; [data-cid-theme="light"] is the secondary mode.
-   HARD RULE: no gold, no bronze, anywhere. Gold is what makes a brand read as
-   a casino, and we are the independent tool that audits them.
+
+   GOLD IS IN, AND IT IS THE ACCENT TIER (reversed 2026-08-04, deliberately).
+   The old rule banned gold outright. The real concern was never gold alone but
+   gold PLUS a second colour lifted from a competitor or a poker room — that
+   combination is what makes a brand read as a casino. Aubergine + gold is ours.
+   Aubergine stays PRIMARY: the one filled action per screen, the mark, active
+   nav. Gold is the accent tier — highlights, hairlines, hover, rules, emphasis,
+   the Strip corridor — and it does the lifting everywhere aubergine does
+   nothing. Gold may repeat; it is not the commitment colour.
+
+   GOLD IS NEVER SEMANTIC. It carries no state, no rank, no provenance:
+   decoration and identity only. Teal still and only means verified.
+   --cid-unverified stays NEUTRAL GREY and must NOT become ochre now that gold
+   is allowed — "not yet confirmed" must read as neither a warning nor a
+   decoration, and gold in the palette makes an ochre flag MORE confusable.
    Value is TEAL, not green — deutan/protan vision pulls purple toward blue and
    would collapse a blue "good" marker against the aubergine accent. */
 :root {
@@ -21,6 +34,16 @@
   --cid-accent-200: #C4AEF5;  /* link hover */
   --cid-accent-wash: rgba(94, 58, 147, 0.24);
   --cid-accent-line: rgba(169, 140, 232, 0.35);
+
+  /* gold — the accent tier. NOT a state, NOT a rank, NOT a provenance.
+     --cid-gold-700 is 3.9:1 on ink-800: FILLS AND HAIRLINES ONLY, never text.
+     A test asserts it is never used as a `color:`. */
+  --cid-gold-700: #8A6D1F;
+  --cid-gold-500: #C9A227;   /* identity gold, the mark's highlight */
+  --cid-gold-300: #E3C567;   /* gold TYPE on dark — links, emphasis */
+  --cid-gold-200: #F0DC9C;   /* the brightest highlight */
+  --cid-gold-wash: rgba(201, 162, 39, 0.14);
+  --cid-gold-line: rgba(227, 197, 103, 0.34);
 
   /* paper */
   --cid-paper: #F2F4F6;
@@ -61,14 +84,14 @@
      always wins the saturated value. */
   --cid-map-land: #0B0910;          /* background / land base */
   --cid-map-land-2: #120E1A;        /* landuse polygons, one step up */
-  --cid-map-natural: #16101F;       /* parks, wood, GOLF — tinted, never green */
-  --cid-map-water: #142029;         /* desaturated teal-slate */
-  --cid-map-water-line: #1B2C38;    /* waterways */
+  --cid-map-natural: #1C2318;       /* parks, wood, GOLF — desaturated moss */
+  --cid-map-water: #141634;         /* indigo-blue, well clear of the teal signal */
+  --cid-map-water-line: #1E2149;    /* waterways */
   --cid-map-building: #191322;      /* the tiles' own buildings, kept quiet */
   --cid-map-building-edge: #251C34; /* their hairline; Positron ships it near-WHITE */
-  --cid-map-road-minor: #241E30;    /* stays out of the way */
-  --cid-map-road-casing: #3A3149;   /* frames the major roads */
-  --cid-map-road-major: #6B5C85;    /* the Strip reads as a spine */
+  --cid-map-road-minor: #2E2712;    /* stays out of the way */
+  --cid-map-road-casing: #4A3D18;   /* frames the major roads */
+  --cid-map-road-major: #7A6528;    /* GOLD: the Strip corridor, still under a lit building */
   --cid-map-boundary: rgba(169, 140, 232, 0.22);
 
   /* map */
@@ -102,16 +125,23 @@
 
   /* map — ground, on paper. Same ordering inverted: the accent tint now lives
      in the LIGHT end's shadows, and the buildings still sit above everything. */
+  --cid-gold-700: #6B520F;
+  --cid-gold-500: #8A6D1F;
+  --cid-gold-300: #6B520F;   /* gold type darkens on paper */
+  --cid-gold-200: #4F3C0A;
+  --cid-gold-wash: rgba(138, 109, 31, 0.12);
+  --cid-gold-line: rgba(107, 82, 15, 0.34);
+
   --cid-map-land: #ECEAF0;
   --cid-map-land-2: #E2DEE9;
-  --cid-map-natural: #DCD5E6;
-  --cid-map-water: #CBD8DE;
-  --cid-map-water-line: #B6C7D0;
+  --cid-map-natural: #D3DBCD;
+  --cid-map-water: #C6CEE2;
+  --cid-map-water-line: #AFBAD6;
   --cid-map-building: #DAD4E2;
   --cid-map-building-edge: #C6BDD3;
-  --cid-map-road-minor: #D6D0DE;
-  --cid-map-road-casing: #BCB2CB;
-  --cid-map-road-major: #FFFFFF;
+  --cid-map-road-minor: #E4DBC2;
+  --cid-map-road-casing: #C9B98C;
+  --cid-map-road-major: #F3E4B4;
   --cid-map-boundary: rgba(94, 58, 147, 0.28);
 
   --cid-accent-300: #5E3A93;   /* accent type darkens on paper */
