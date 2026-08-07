@@ -124,7 +124,8 @@ const GROUPS = {
   ],
   'mgm-grand': [
     { osm: 116770006, name: 'Hotel MGM Grand Las Vegas', roomBuilding: true,
-      note: 'named OSM polygon. levels=2 in OSM and DELIBERATELY UNUSED — that tag is what made MGM Grand a two-storey box' },
+      height: 89, src: wiki('MGM_Grand_Las_Vegas'), hfetched: '2026-08-07',
+      note: 'named OSM polygon. levels=2 in OSM and DELIBERATELY UNUSED — that tag is what made MGM Grand a two-storey box. Height seeded 2026-08-07: 293 ft / 89 m / 30 floors per the Wikipedia property page, corroborated by CTBUH Skyscraper Center at 89.3 m — two sources agreeing about a NAMED building (the Palazzo case), and NOT recorded as a conflict: both state the same 293 ft, the metres differ only in rounding. One polygon stands for the whole main building including the 14-storey ex-Marina wing; the three 38-storey Signature condo-hotel towers are separate buildings east of the property and deliberately OUT of the group' },
   ],
   'santa-fe-station': [
     { osm: 961460045, name: 'Santa Fe Station Hotel and Casino', roomBuilding: true, note: 'named OSM polygon' },
@@ -261,11 +262,14 @@ for (const [slug, comps] of Object.entries(GROUPS)) {
         source_url: osm(c.osm),
         fetched_at: FETCHED,
         verified_at: null,
-        /* Only a CITED height is seeded. No height -> renders flat. */
+        /* Only a CITED height is seeded. No height -> renders flat.
+           A height researched AFTER the footprint pass carries its own fetch
+           date via `hfetched` — the date rule: the stamp belongs to the day
+           the fact was fetched, not the day the file was first derived. */
         ...(c.height ? {
           height: c.height,
           height_source_url: c.src,
-          height_fetched_at: FETCHED,
+          height_fetched_at: c.hfetched ?? FETCHED,
           height_verified_at: null,
         } : {}),
         ...(c.conflict ? { height_conflict: c.conflict } : {}),
