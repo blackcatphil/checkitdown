@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 
 import { STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { coverageFrom } from '@/lib/coverage'
+import type { Fact } from '@/lib/provenance'
+import { PROVENANCE_COPY, provenanceState, unverifiedSources } from '@/lib/provenance'
 import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { supabase } from '@/lib/supabase'
 
@@ -124,9 +126,12 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       + 'loyalty_program,comp_rate_hourly,comp_notes,dress_code,drinks_note,'
       + 'source_url,fetched_at,verified_at,'
       + 'cash_games(stakes_label,game,min_buy_in,max_buy_in,is_uncapped,rake_type,rake_percent,'
-      + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet,rake_source_url,rake_verified_at),'
+      /* `source_url`/`verified_at` are the GAME's own provenance and are
+         distinct from the rake's — the partner apply cited stakes to a doc and
+         rake to the sheet on the same row. The provenance block needs both. */
+      + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet,source_url,verified_at,rake_source_url,rake_verified_at),'
       + 'room_amenities(available,detail,menu_url,source_url,verified_at,amenity_types(slug,label,grp)),'
-      + 'house_rules(label,value),'
+      + 'house_rules(label,value,source_url,verified_at),'
       + 'room_formats(slug,label,note,source_url,verified_at)',
     )
     .eq('slug', slug)
@@ -160,6 +165,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       is_uncapped: boolean; rake_type: string | null; rake_percent: number | null
       rake_cap: number | null; jackpot_drop: number | null; structure_note: string | null
       big_blind: number | null; big_bet: number | null
+      source_url: string | null; verified_at: string | null
       rake_source_url: string | null; rake_verified_at: string | null
     }>
     room_amenities: Array<{
@@ -167,7 +173,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       source_url: string | null; verified_at: string | null
       amenity_types: { slug: string; label: string; grp: string } | null
     }>
-    house_rules: Array<{ label: string; value: string }>
+    house_rules: Array<{ label: string; value: string; source_url: string | null; verified_at: string | null }>
     room_formats: Array<{
       slug: string; label: string | null; note: string | null
       source_url: string | null; verified_at: string | null
@@ -309,6 +315,62 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
   if (floorAmenities.length) {
     floorReceipts.push(`Amenities: ${inPersonReceipt(floorAmenities[0].verified_at)}`)
   }
+
+  /* EVERY FACT THE PAGE RENDERS, WITH ITS OWN RECEIPT.
+     Built from what is displayed rather than from what the tables hold: the
+     block describes what a reader is looking at, so a row that renders nowhere
+     must not decide whether it appears. `formats` is already the label-gated
+     subset and `present` the visible amenities, for exactly that reason.
+
+     A CASH GAME IS TWO FACTS. That it is spread is confirmed by `verified_at`
+     against `source_url`; the rake figures are confirmed by `rake_verified_at`
+     against `rake_source_url`, and the partner apply cited those to DIFFERENT
+     documents on the same row. Folding them into one would let a verified
+     stakes line vouch for an unverified rake — the shape the rake-receipt split
+     was introduced to prevent.
+
+     The rake fact only exists WHEN THERE IS A FIGURE. A row that states no rake
+     has nothing to confirm, and counting it as unverified would leave a
+     permanent unverified remainder that no floor visit could ever clear —
+     Golden Nugget's $4/8 is exactly that row today. */
+  const provFacts: Fact[] = [
+    { kind: 'room', verified: room.verified_at != null, sourceUrl: room.source_url },
+    ...games.flatMap((g) => {
+      const statesRake = g.rake_cap != null || g.rake_percent != null || g.jackpot_drop != null
+      return [
+        { kind: `game:${g.stakes_label}`, verified: g.verified_at != null, sourceUrl: g.source_url },
+        ...(statesRake
+          ? [{ kind: `rake:${g.stakes_label}`, verified: g.rake_verified_at != null, sourceUrl: g.rake_source_url }]
+          : []),
+      ]
+    }),
+    /* EVERY amenity row, not just the visible ones. A CONFIRMED ABSENCE IS A
+       DISPLAYED FACT — it is what the empty AMENITIES block reports, and it is
+       the whole reason that block distinguishes "checked, has none" from "not
+       checked". Scoping this to `present` read Horseshoe as having nothing
+       verified while the receipt directly above said "Amenities: Confirmed in
+       person on 2026-08-06" — the exact contradiction this task exists to
+       remove, reintroduced one line down. */
+    ...room.room_amenities.map((a) => ({
+      kind: `amenity:${a.amenity_types?.slug ?? '?'}`,
+      verified: a.verified_at != null,
+      sourceUrl: a.source_url,
+    })),
+    ...(coverage.houseRules
+      ? room.house_rules.map((r) => ({
+        kind: `rule:${r.label}`, verified: r.verified_at != null, sourceUrl: r.source_url,
+      }))
+      : []),
+    ...formats.map((f) => ({
+      kind: `format:${f.slug}`, verified: f.verified_at != null, sourceUrl: f.source_url,
+    })),
+  ]
+  const provState = provenanceState(provFacts)
+  const provSources = unverifiedSources(
+    provFacts,
+    (u) => isPrivate(u, priv),
+    hostOf,
+  )
 
   const notCheckedTitle = room.verified_at
     ? 'Checked on site — not published for this room'
@@ -474,26 +536,54 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       )}
 
       <section style={{ borderTop: '1px solid var(--cid-line-1)', paddingTop: 'var(--cid-space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-5)' }}>
-        <span className="cid-label">WHERE THIS CAME FROM</span>
-        <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
-          {room.verified_at
-            ? 'Someone has stood in this room and confirmed what is here — including what is not. A dash on a checked room means the room does not publish it, not that we skipped it.'
-            : 'Every figure on this page is sourced and none is verified — we read it from a published page, we have not stood in the room. Ranked columns elsewhere exclude this room until someone does.'}
-          {room.source_url && !isPrivate(room.source_url, priv) && hostOf(room.source_url) && (
-            <>
-              {' '}
-              Source: <a href={room.source_url} rel="nofollow noopener" target="_blank">{hostOf(room.source_url)}</a>.
-            </>
-          )}
-          {/* A PRIVATE SOURCE GETS WORDS, NOT A LINK. Offering a reader a URL
-              they cannot open is a receipt that behaves like a locked door. */}
-          {room.source_url && isPrivate(room.source_url, priv) && (
-            <> {inPersonReceipt(room.verified_at)}</>
-          )}
-        </p>
+        {/* THE HEADER NEEDS SOMETHING UNDER IT. Two rooms — Skyline and Boulder
+            Station — cite no private source at all, so a floor visit verifying
+            them against published pages produces no receipt AND no remainder,
+            and the header would stand alone over the correction form. That is a
+            layout consequence of the all-verified state, not a reason to invent
+            copy for a state that is meant to be silent. */}
+        {(floorReceipts.length > 0 || provState !== 'all') && (
+          <span className="cid-label">WHERE THIS CAME FROM</span>
+        )}
+
+        {/* WHAT WAS CONFIRMED COMES FIRST. The remainder sentence below opens
+            with "Everything else", which only parses once the reader has been
+            told what the something-else is. Printed above these receipts it did
+            not merely read oddly — it denied them. */}
         {floorReceipts.length > 0 && (
           <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
             {floorReceipts.join(' ')}
+          </p>
+        )}
+
+        {/* ...AND THE REMAINDER EXPLAINS ITSELF, or does not render.
+            `all` produces no sentence: with nothing unverified there is nothing
+            to hold out of the rankings, and a block saying so would be noise
+            that a future unverified row silently makes wrong again. */}
+        {provState !== 'all' && (
+          <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
+            {PROVENANCE_COPY[provState]}
+            {provSources.length > 0 && (
+              <>
+                {' '}
+                {provSources.length === 1 ? 'Source: ' : 'Sources: '}
+                {provSources.map((src, i) => (
+                  <span key={src.url}>
+                    {i > 0 && ', '}
+                    {/* A PRIVATE SOURCE GETS WORDS, NOT A LINK — offering a URL
+                        a reader cannot open is a receipt that behaves like a
+                        locked door. The test is `data_type = 'floor'`, never a
+                        host match: the next private source is on another host. */}
+                    {src.isPrivate
+                      ? 'a partner document that is not public'
+                      : src.host
+                        ? <a href={src.url} rel="nofollow noopener" target="_blank">{src.host}</a>
+                        : 'an unnamed source'}
+                  </span>
+                ))}
+                .
+              </>
+            )}
           </p>
         )}
         <CorrectionForm roomId={room.id} roomName={room.name} />

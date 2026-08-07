@@ -178,6 +178,14 @@ async function roomPage(slug) {
   return main.replace(/<[^>]+>/g, ' ').replace(/&#x27;|&rsquo;/g, "'").replace(/\s+/g, ' ')
 }
 
+/** The same page unstripped. Some assertions are about MARKUP — "this source is
+ *  named but never linked" cannot be checked once the tags are gone. */
+async function roomPageRaw(slug) {
+  const res = await fetch(`${BASE}/rooms/${slug}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`GET /rooms/${slug} -> ${res.status}`)
+  return res.text()
+}
+
 /**
  * Warm every route the suite touches before asserting anything.
  *
@@ -265,6 +273,21 @@ const leaderSlugs = () => sql(`
   .split('\n').filter(Boolean)
 
 const ROOMS = sql('select slug from rooms order by name').split('\n').filter(Boolean)
+
+/* Rooms holding at least one verified fact, DERIVED from the same columns the
+   room page reads. Never a hardcoded list: the sentence this checks went wrong
+   precisely because a static claim outlived the data behind it, and a static
+   expectation here would fail the same way while looking like a passing test. */
+const verifiedFactRooms = () => new Set(sql(`
+  select r.slug from rooms r
+   where r.verified_at is not null
+      or exists (select 1 from cash_games g where g.room_id = r.id
+                   and (g.verified_at is not null or g.rake_verified_at is not null))
+      or exists (select 1 from room_amenities a where a.room_id = r.id
+                   and a.verified_at is not null)`).split('\n').filter(Boolean))
+
+const SAYS_NONE = /Nothing here is confirmed in person yet/
+const SAYS_SOME = /Everything else comes from published sources/
 const RAKEABLE = sql(`
   select distinct r.slug from rooms r join cash_games c on c.room_id = r.id
    where c.rake_type = 'pot' and c.rake_cap is not null order by 1`)
@@ -506,7 +529,16 @@ try {
     check('no stale "not yet checked" anywhere', !/Not yet checked on site/.test(t))
     check('absence framed as a finding', /the absence is the fact/.test(t))
     check('header flips to VERIFIED ON SITE', /VERIFIED ON SITE \d{4}-\d{2}-\d{2}/.test(t))
-    check('provenance no longer claims nothing is verified', !/none is verified/.test(t))
+    /* Was matching /none is verified/, a phrase the copy no longer contains
+       anywhere — so it passed whatever the page said. An assertion that cannot
+       fail is worse than none: it occupies the slot where a real one would go.
+       Now matched against the sentence that actually ships. */
+    check('provenance no longer claims nothing is verified', !SAYS_NONE.test(t))
+    /* This scenario verifies the WHOLE room, so the correct end state is that
+       the block has nothing left to explain and does not render at all — not
+       that it switched sentences. Asserting SOME here failed, correctly. */
+    check('...and with nothing unverified left, the block is gone entirely',
+      !SAYS_SOME.test(t))
   })
 
   /* THE REAPPEARANCE. This is the assertion most likely to break silently
@@ -537,6 +569,110 @@ try {
     restore()
     const after = await roomPage('horseshoe')
     check('hidden again once the row is gone', !/HOUSE RULES/.test(after) && !/DRESS CODE/.test(after))
+  })
+
+  /* ────────────────────────────────────────────────────────────────────
+     THE PROVENANCE SENTENCE. It shipped as a static claim that nothing on
+     the page was verified, gated on `rooms.verified_at` — NULL for all
+     seventeen rooms — while the facts are verified per row. Wynn therefore
+     printed four in-person rake receipts under a sentence denying them.
+     One scenario per state, and the sweep is the one that matters: it
+     compares every room's copy against the rows, so the claim cannot
+     outlive the data a second time.
+     ──────────────────────────────────────────────────────────────────── */
+
+  await scenario('PROVENANCE — NONE, and the sweep that proves no room contradicts itself', [],
+    async () => {
+      const verified = verifiedFactRooms()
+      const wrong = []
+      const states = { none: 0, some: 0, all: 0 }
+      for (const slug of ROOMS) {
+        const t = await roomPage(slug)
+        const none = SAYS_NONE.test(t)
+        const some = SAYS_SOME.test(t)
+        states[none ? 'none' : some ? 'some' : 'all']++
+        /* THE ASSERTION THIS WHOLE TASK EXISTS FOR. */
+        if (none && verified.has(slug)) wrong.push(slug)
+        if (none && some) wrong.push(`${slug} (both sentences)`)
+      }
+      check('NO room holding a verified row says nothing is verified',
+        wrong.length === 0, wrong.join(', '))
+      check('the rooms with zero verified rows DO say it',
+        states.none === ROOMS.length - verified.size,
+        `${states.none} said NONE, ${ROOMS.length - verified.size} have no verified row`)
+      check('the live partial case is Wynn, and it reads as a remainder',
+        SAYS_SOME.test(await roomPage('wynn-encore')))
+      console.log(`   states across ${ROOMS.length} rooms: ${states.none} none · ${states.some} some · ${states.all} all`)
+    })
+
+  /* NO harness verification: `verifyRooms` would confirm every fact on the
+     room and push it to ALL, removing the very sentence this checks the order
+     of. Horseshoe is already partial in seeded data — its amenities are
+     confirmed absences — which is what makes it the right subject. */
+  await scenario('PROVENANCE — SOME reads under the receipts, not above them', [],
+    async () => {
+      const raw = await roomPageRaw('horseshoe')
+      const receipt = raw.indexOf('Confirmed in person on')
+      const remainder = raw.indexOf('Everything else comes from published sources')
+      check('both are on the page', receipt !== -1 && remainder !== -1)
+      /* ORDER IS THE FIX. "Everything else" above the receipts does not read
+         as a qualifier, it reads as a denial. */
+      check('the confirmation is printed BEFORE the remainder',
+        receipt < remainder, `receipt@${receipt} remainder@${remainder}`)
+    })
+
+  /* ALL — unreachable from seeded data today, so the harness makes it and
+     then puts it back. Verifying every fact must leave NOTHING to explain. */
+  await scenario('PROVENANCE — ALL verified removes the block entirely', [], async () => {
+    const before = await roomPage('wynn-encore')
+    check('Wynn starts in the partial state', SAYS_SOME.test(before))
+
+    verifyRooms(['wynn-encore'])
+    const after = await roomPage('wynn-encore')
+    check('no remainder sentence survives', !SAYS_SOME.test(after) && !SAYS_NONE.test(after))
+    check('the receipts remain — the block went, the evidence did not',
+      /Confirmed in person on/.test(after))
+    check('and the section header stays', /WHERE THIS CAME FROM/.test(after))
+
+    restore()
+    const back = await roomPage('wynn-encore')
+    check('and it comes BACK when the rows are restored', SAYS_SOME.test(back),
+      'a block that cannot return is a block nobody notices is missing')
+
+    /* THE BARE-SECTION CASE. Skyline cites no private source, so verifying it
+       leaves neither a receipt nor a remainder — the one room shape where the
+       section header could be left standing over nothing. */
+    verifyRooms(['skyline'])
+    const bare = await roomPage('skyline')
+    check('a room with no private source has no receipt to show',
+      !/Confirmed in person on/.test(bare))
+    check('...and no remainder either', !SAYS_SOME.test(bare) && !SAYS_NONE.test(bare))
+    check('so the header does not stand alone over nothing',
+      !/WHERE THIS CAME FROM/.test(bare))
+    check('the correction form is still offered', /REPORT A CORRECTION/.test(bare))
+    restore()
+    check('and the header returns with the sentence', /WHERE THIS CAME FROM/.test(await roomPage('skyline')))
+  })
+
+  /* THE PRIVATE SOURCE, on the unverified side. Seeded data never produces
+     this — every sheet-cited fact is verified — so the branch that decides
+     whether the Drive link leaks has no live coverage. Make it live. */
+  await scenario('PROVENANCE — a private source is NAMED, never linked', [], async () => {
+    const sheet = sql(`select url from sources where data_type = 'floor' limit 1`)
+    check('the floor source exists to test against', sheet.startsWith('http'), sheet)
+
+    mutate(['orleans'], `
+      update cash_games set rake_verified_at = null
+        where room_id = (select id from rooms where slug = 'orleans')
+          and rake_source_url = '${sheet}' and rake_cap is not null;`)
+
+    const raw = await roomPageRaw('orleans')
+    check('the private source is named in words', /a partner document that is not public/.test(raw))
+    check('THE DRIVE SHEET IS NEVER AN HREF', !new RegExp(`href="[^"]*${sheet.split('/d/')[1]?.split('/')[0]}`).test(raw),
+      'a receipt a reader cannot open is a locked door wearing a link')
+    check('no docs.google.com href anywhere on the page',
+      !/href="[^"]*docs\.google\.com/.test(raw))
+    restore()
   })
 
 } finally {

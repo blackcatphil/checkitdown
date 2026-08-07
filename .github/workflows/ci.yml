@@ -132,7 +132,23 @@ jobs:
           curl -sf -o /dev/null http://127.0.0.1:3000/rooms/horseshoe \
             || { echo "::error::room pages unreachable — the suite's room-page scenarios would fail for the wrong reason"; exit 1; }
 
-      - name: "test:mixed (63 assertions, 15 scenarios)"
+      # THE CENSUS IS TAKEN, NOT ASSUMED. The old rollback check counted
+      # `rooms.verified_at` and nothing else — a room-level proxy for
+      # verification that is per-FACT, which is the same mistake the provenance
+      # block was carrying. The suite now moves cash_games.verified_at,
+      # rake_verified_at, room_amenities.verified_at and room_formats.verified_at
+      # to force its scenarios; none of those were visible to the gate, so a
+      # broken rollback could leave verification stamps behind and still report
+      # a clean database. Snapshot before, diff after: no hardcoded baseline to
+      # go stale the next time a floor visit lands.
+      - name: Census before test:mixed
+        run: |
+          set -euo pipefail
+          export PGPASSWORD=postgres
+          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -f scripts/census.sql > /tmp/census-before.txt
+          cat /tmp/census-before.txt
+
+      - name: "test:mixed (19 scenarios; the assertion count is asserted below)"
         env:
           PSQL: psql
           BASE_URL: http://127.0.0.1:3000
@@ -143,14 +159,15 @@ jobs:
             || { echo "::error::mixed-state suite did not pass"; exit 1; }
           n=$(grep -c '^   PASS' /tmp/mixed.log || true)
           echo "assertions passed: $n"
-          [ "$n" -ge 60 ] || { echo "::error::only $n assertions ran (expected >= 60) — the suite shrank, which is a silent regression"; exit 1; }
+          [ "$n" -ge 95 ] || { echo "::error::only $n assertions ran (expected >= 95) — the suite shrank, which is a silent regression"; exit 1; }
 
       - name: Assert the database was left clean
         run: |
           set -euo pipefail
           export PGPASSWORD=postgres
-          left=$(psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -c 'select count(*) from rooms where verified_at is not null')
-          [ "$left" = "0" ] || { echo "::error::test:mixed left $left verified rows behind; its rollback is broken"; exit 1; }
+          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -f scripts/census.sql > /tmp/census-after.txt
+          diff /tmp/census-before.txt /tmp/census-after.txt \
+            || { echo "::error::test:mixed did not restore the database — the diff above is what it left behind, and its rollback is broken"; exit 1; }
 
       - name: lint
         run: npm run lint

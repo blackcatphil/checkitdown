@@ -1557,6 +1557,9 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 |---|---|---|
 | Roster: 17 rooms, WSOP·Paris seasonal and off all counts | code + test | `inRoster()`; `test:mixed` seasonal scenario |
 | Amenity filter: unknown is never counted as a match | code + test | `amenityState()`, `combineStates()`; `amenity-filter.test.mjs`; `test:map` three-state pixels |
+| Provenance copy tracks the rows, never a static claim | code + test | `provenanceState()`; `provenance.test.mjs`; `test:mixed` 17-room sweep |
+| The remainder sentence renders below the receipts | test | `test:mixed` byte-offset assertion |
+| A private source is named, never linked | code + test | `isPrivate()`; `test:mixed` asserts no `docs.google.com` href |
 | A slug ships only at `AMENITY_SHIP_FLOOR` answered rooms | code + test | `shippableAmenities()`; `amenity-filter.test.mjs` boundary test |
 | A group header never renders without a shipped slug | code + test | `amenityGroups()`; `amenity-filter.test.mjs` |
 | A format with no confirmed label is stored, never shown | code | `room_formats.label` NULL gate in the room page; census counts `formats-labelled` |
@@ -1991,6 +1994,83 @@ The check that works compares which pixels changed and what they became, split
 by chroma. Observed: `8587 lit · 50964 dimmed · 2653 neutral`, neutral chroma 7.
 `amenity_types.is_filterable` has left `UNFILTERED_BY_DESIGN` — it was waiting
 for this panel and now gates the catalogue.
+
+## The provenance block was a static claim (2026-08-07)
+
+Room Detail carried one sentence, always: *"Every figure on this page is sourced
+and none is verified."* True when written. By the time anyone looked, production
+held **6 game-verified and 33 rake-verified rows**, so Wynn printed four
+in-person receipts with a sentence directly above them denying all of it — the
+number-copied-forward class, in prose.
+
+The mechanism was narrower than stale copy. The block gated on
+`rooms.verified_at`, which is **NULL for all seventeen rooms**, while facts are
+verified one row at a time on `cash_games.verified_at` and
+`cash_games.rake_verified_at`. A room-level flag cannot describe a page whose
+verification is per-fact, and it failed in the worst direction: it
+**under-reported**, so the site looked less trustworthy than its own data.
+
+| State | Condition | Copy |
+|---|---|---|
+| none | no fact verified | "Nothing here is confirmed in person yet…" |
+| some | mixed | "Everything else comes from published sources…" |
+| all | nothing unverified | **no block** — nothing left to explain |
+
+Computed off the same columns the rankings gate on, with **no hardcoded room
+list** — a list of verified rooms is the same failure one layer down: right on
+the day it is written, silently wrong after the next visit.
+
+### It moved below the receipts, and that is the fix, not a tidy-up
+
+"Everything else" only parses once the reader has been told what the
+something-else *is*. Printed above the receipts it did not read oddly — it
+**denied them**. `test:mixed` asserts the byte offsets: confirmation before
+remainder.
+
+### A cash game is two facts, and a rake with no figure is none
+
+Stakes are confirmed by `verified_at` against `source_url`; rake by
+`rake_verified_at` against `rake_source_url` — and the partner apply cited those
+to **different documents on the same row**. Folding them would let a verified
+stakes line vouch for an unverified rake, which is what the rake-receipt split
+exists to prevent. The rake fact only exists when a figure is stated: Golden
+Nugget's `$4/8` states none, and counting it would leave an unverified remainder
+**no floor visit could ever clear**.
+
+### A confirmed absence is a displayed fact
+
+Scoping the fact list to *visible* amenity rows read Horseshoe as having nothing
+verified while the receipt immediately above said "Amenities: Confirmed in
+person on 2026-08-06" — **the exact contradiction being removed, reintroduced
+one line down and caught only by rendering the page**. Horseshoe's amenities are
+confirmed absences: they render as the empty block's finding, not as rows, and
+they are verified facts. All amenity rows count.
+
+### Sources come from the unverified remainder only
+
+Deduped by URL — two games off one page are one source, and a repeated URL reads
+like corroboration that does not exist. A verified fact's receipt is the floor
+visit; republishing its URL down here would offer a published page as the
+evidence for something a person confirmed. `data_type = 'floor'` renders as
+words with no href, tested by asserting **no `docs.google.com` href appears on
+any room page**.
+
+That branch had no live coverage — every sheet-cited fact in the seed is
+verified, so the leak-or-not decision never executed. `test:mixed` now
+un-verifies one Orleans rake row to make it execute.
+
+### Proven by reinstating the bug
+
+`provenanceState` was forced to return `'none'`, and the suite failed with
+**9 assertions and all fifteen contradicting rooms named**. It also removed a
+dead assertion found in passing: `!/none is verified/` matched a phrase the copy
+no longer contains anywhere, so it passed whatever the page said — an assertion
+that cannot fail occupying the slot where a real one would go.
+
+One layout consequence: Skyline and Boulder Station cite **no** private source,
+so verifying them yields neither a receipt nor a remainder and the section header
+would stand alone over the correction form. The header is now conditional. No
+copy was invented for a state that is meant to be silent.
 
 ## Open items — recorded, not built (2026-08-07)
 
