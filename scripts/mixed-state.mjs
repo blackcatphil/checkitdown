@@ -53,7 +53,7 @@ const snapshot = () => sql(`
   drop schema if exists ${SNAP} cascade;
   create schema ${SNAP};
   create table ${SNAP}.rooms as
-    select id, status, is_seasonal, closed_on, verified_at from rooms;
+    select id, status, is_seasonal, closed_on, verified_at, dress_code from rooms;
   create table ${SNAP}.cash_games as
     select id, verified_at, rake_verified_at from cash_games;
   create table ${SNAP}.room_amenities as
@@ -80,7 +80,8 @@ const restore = () => {
   const l = list([...touched])
   sql(`
     update rooms r set status = s.status, is_seasonal = s.is_seasonal,
-                       closed_on = s.closed_on, verified_at = s.verified_at
+                       closed_on = s.closed_on, verified_at = s.verified_at,
+                       dress_code = s.dress_code
       from ${SNAP}.rooms s where s.id = r.id and r.slug in (${l});
     update cash_games c set verified_at = s.verified_at, rake_verified_at = s.rake_verified_at
       from ${SNAP}.cash_games s where s.id = c.id
@@ -100,7 +101,8 @@ const census = () => sql(`
  || (select count(*) from cash_games where verified_at is not null) || ' games-verified/'
  || (select count(*) from room_amenities where verified_at is not null) || ' amenities-verified/'
  || (select count(*) from room_amenities where available = false) || ' absences/'
- || (select count(*) from rooms where status <> 'open' or is_seasonal) || ' off-roster'`)
+ || (select count(*) from rooms where status <> 'open' or is_seasonal) || ' off-roster/'
+ || (select count(*) from house_rules) || ' house-rules'`)
 
 /** A floor visit confirms the room AND the facts in it, so verify both. */
 const verifyRooms = (slugs) => {
@@ -465,18 +467,57 @@ try {
     /* Blocks with no verified data behind them must still read as gaps: the
        distinction is per-fact, and collapsing it would be the same error in the
        other direction. */
-    check('house rules still read as a gap', /Not yet checked on site/.test(t))
+    /* HOUSE RULES IS NOT ON THE PAGE AT ALL, and that is the new intended
+       behaviour rather than a lost assertion. Coverage is 0/17 and researched
+       to stay there, so the block is gated off — a block that can only ever say
+       "not checked" teaches a reader that our dashes mean nothing. */
+    check('the house rules block is gone while coverage is zero', !/HOUSE RULES/.test(t))
+    check('and so is the dress code tile', !/DRESS CODE/.test(t))
+    check('and drinks', !/>DRINKS</.test(t))
     check('the ROOM header still says UNVERIFIED', /UNVERIFIED . SOURCED/.test(t))
   })
 
   await scenario('HORSESHOE CHECKED — empty blocks are findings', ['horseshoe'], async () => {
     const t = await roomPage('horseshoe')
     check('amenities read as CONFIRMED ABSENT', /Checked on site — no amenities/.test(t))
-    check('house rules read as CONFIRMED ABSENT', /Checked on site — no house rules/.test(t))
+    /* Was "house rules read as CONFIRMED ABSENT". Verifying the room no longer
+       summons the block: the gate is ROSTER coverage, not this room's
+       verification, and nothing on the roster has a house rule. */
+    check('verifying a room does NOT summon a zero-coverage block', !/HOUSE RULES/.test(t))
     check('no stale "not yet checked" anywhere', !/Not yet checked on site/.test(t))
     check('absence framed as a finding', /the absence is the fact/.test(t))
     check('header flips to VERIFIED ON SITE', /VERIFIED ON SITE \d{4}-\d{2}-\d{2}/.test(t))
     check('provenance no longer claims nothing is verified', !/none is verified/.test(t))
+  })
+
+  /* THE REAPPEARANCE. This is the assertion most likely to break silently
+     later: a hidden surface stays hidden, the first floor visit that records a
+     house rule fills a column that renders nowhere, and the omission has to be
+     REDISCOVERED. One row must bring the block back — on every room, because
+     the gate is roster coverage, including the rooms that still have none. */
+  await scenario('ZERO-COVERAGE SURFACES COME BACK when one room fills them', [], async () => {
+    const before = await roomPage('horseshoe')
+    check('hidden while the roster has none', !/HOUSE RULES/.test(before) && !/DRESS CODE/.test(before))
+
+    mutate(['bellagio'], `
+      insert into house_rules (room_id, label, value)
+        select id, 'Straddle', 'UTG only' from rooms where slug = 'bellagio';
+      update rooms set dress_code = 'No tank tops' where slug = 'bellagio';`)
+
+    const filled = await roomPage('bellagio')
+    check('the room with the rule shows it', /HOUSE RULES/.test(filled) && /Straddle/.test(filled))
+    check('and its dress code', /DRESS CODE/.test(filled) && /No tank tops/.test(filled))
+
+    const other = await roomPage('horseshoe')
+    check('a room WITHOUT one shows the block too — the gate is roster-wide',
+      /HOUSE RULES/.test(other) && /DRESS CODE/.test(other))
+    check('DRINKS stays hidden — each surface is gated on its own column',
+      !/>DRINKS</.test(other))
+
+    sql("delete from house_rules where label = 'Straddle'")
+    restore()
+    const after = await roomPage('horseshoe')
+    check('hidden again once the row is gone', !/HOUSE RULES/.test(after) && !/DRESS CODE/.test(after))
   })
 
 } finally {

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { STATUS_LABEL, type RoomStatus } from '@/lib/roster'
+import { coverageFrom } from '@/lib/coverage'
 import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { supabase } from '@/lib/supabase'
 
@@ -136,6 +137,14 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     .from('source_kinds').select('url').eq('data_type', 'floor')
   const priv: PrivateSources = new Set((privateRows ?? []).map((r) => r.url as string))
 
+  /* COVERAGE IS A ROSTER QUESTION, so it is asked of the roster. Two cheap
+     reads: seventeen rows of two nullable columns, and a count. */
+  const [{ data: allRooms }, { count: houseRuleCount }] = await Promise.all([
+    supabase.from('rooms').select('dress_code,drinks_note'),
+    supabase.from('house_rules').select('*', { count: 'exact', head: true }),
+  ])
+  const coverage = coverageFrom(allRooms ?? [], houseRuleCount ?? 0)
+
   if (!data) notFound()
   const room = data as unknown as {
     id: string; slug: string; name: string; property: string | null; area: string
@@ -254,13 +263,19 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     (a, b) => (Number(a.big_blind ?? a.big_bet ?? 0)) - (Number(b.big_blind ?? b.big_bet ?? 0)),
   )
 
+  /* DRESS CODE and DRINKS are 0/17 and researched to stay there — the only
+     first-party dress code that exists is the Venetian's, and it governs the
+     casino floor rather than the poker room. A tile that can only ever hold a
+     dash teaches a reader that our dashes mean nothing, which costs more than
+     the tile is worth. They reappear the moment one room has a value; the
+     columns and the floor-visit checklist are untouched. */
   const facts: Array<[string, string | null]> = [
     ['TABLES', room.table_count != null ? String(room.table_count) : null],
     ['HOURS', room.hours_note],
     ['COMPS', room.comp_rate_hourly != null ? `$${Number(room.comp_rate_hourly).toFixed(2)}/hr` : null],
     ['CLUB', room.loyalty_program],
-    ['DRESS CODE', room.dress_code],
-    ['DRINKS', room.drinks_note],
+    ...(coverage.dressCode ? [['DRESS CODE', room.dress_code] as [string, string | null]] : []),
+    ...(coverage.drinks ? [['DRINKS', room.drinks_note] as [string, string | null]] : []),
   ]
 
   /* Facts whose receipt is a private floor visit. Grouped by what was confirmed
@@ -378,7 +393,17 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
         </div>
       </Block>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.15fr) minmax(0,1fr)', gap: 'var(--cid-space-7)' }}>
+      {/* HOUSE RULES is 0 rows across the roster and researched to stay that
+          way — the only house-rules documents found were out-of-state rooms.
+          While that holds, the block is not rendered and the grid collapses to
+          a single column rather than leaving a hole where it used to be. The
+          table, the query and the floor-visit checklist are all untouched: this
+          is a display decision, and one recorded rule brings the block back. */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: coverage.houseRules ? 'minmax(0,1.15fr) minmax(0,1fr)' : 'minmax(0,1fr)',
+        gap: 'var(--cid-space-7)',
+      }}>
         <Block
           label="AMENITIES"
           empty={present.length === 0 ? <EmptyBlock what="amenities" checkedAt={amenitiesCheckedAt} /> : undefined}
@@ -395,6 +420,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           </div>
         </Block>
 
+        {coverage.houseRules && (
         <Block
           label="HOUSE RULES"
           empty={room.house_rules.length === 0 ? <EmptyBlock what="house rules" checkedAt={room.verified_at} /> : undefined}
@@ -408,6 +434,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
             ))}
           </div>
         </Block>
+        )}
       </div>
 
       <section style={{ borderTop: '1px solid var(--cid-line-1)', paddingTop: 'var(--cid-space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-5)' }}>

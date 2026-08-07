@@ -335,11 +335,29 @@ Constraints now carry their test:
 | Overpass unreachable | `POST` with a `User-Agent`, 2026-08-04 | **FALSE** — 200, 220KB of buildings |
 | Five hosts block automated fetching | `curl -sL -w %{http_code}`, browser UA, re-run 2026-08-04 | **TRUE** — MGM `000`, Golden Nugget `403`; Boyd and Westgate `200` on the same run |
 | `next-env.d.ts` must be committed | fresh clone, file deleted, `npm ci`, `tsc --noEmit` + `next build` | **FALSE** — typechecks without it and Next regenerates it |
-| Dress code / drinks 0/17 | absence across 17 fetched pages | **WEAK** — an inference from not finding it, not a test that it is unpublishable |
+| Dress code / drinks / house rules 0/17 | searched every room's own site plus the partner floor sheet for a published dress code, drinks policy or house-rules document, 2026-08-07 | **TRUE** — no room on the sheet publishes house rules; the only house-rules documents found anywhere were **out-of-state** rooms; the one first-party dress code that exists (Venetian) governs the **casino floor**, not the poker room |
 | OSM heights are either right or absent | counted `height=` vs `building:levels=` across 1,283 corridor buildings, then read the named short ones | **FALSE** — 72% of tagged buildings are levels-only, and 40 named buildings ≤3 storeys include *"Hotel MGM Grand Las Vegas"* at **2**. **0 buildings carry `building:part`**, so podium-vs-tower is undetectable from the tiles |
 
-That last row is deliberately marked weak rather than quietly promoted. It is
-the same shape as the Overpass claim and has not earned "will stay there".
+The dress-code row was **WEAK** until 2026-08-07 — "an inference from not
+finding it, not a test that it is unpublishable". It has now been searched
+rather than assumed, and it is the rare case where looking properly CONFIRMED
+the guess: 0/17 on all three, and the near-miss is instructive. The Venetian
+does publish a dress code, and reading it carelessly would have put a
+casino-floor rule on a poker-room page — the same shape as the Westgate
+provenance bug, avoided only because someone checked what the document actually
+governs.
+
+**So the surfaces are gated on coverage and the columns stay.** `rooms.dress_code`,
+`rooms.drinks_note` and the `house_rules` table are untouched, the floor-visit
+checklist still collects all three, and `lib/coverage.ts` hides the tiles and
+the block while coverage is zero. The threshold is ONE ROOM, deliberately: a
+surface behind a hardcoded `false` is one nobody remembers exists, so the first
+visit that records a house rule brings the block back on its own and forces a
+live decision instead of a silence. `test:mixed` asserts the reappearance,
+because that is the half that would rot unnoticed.
+
+The OSM-heights row below stays as it is — it is a measured **FALSE**, not an
+inference.
 
 This is why `verified_at` exists in the first place. A fact needs a date because
 the world moves underneath it. We built that discipline into the product while
