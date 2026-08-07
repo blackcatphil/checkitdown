@@ -80,3 +80,6 @@ spike/.bak.html
 screens/
 .vercel
 .env*
+
+# Operational, not structural: who holds admin is not version-controlled.
+scripts/bootstrap-admin.sql

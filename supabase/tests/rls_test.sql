@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(10);
+select plan(20);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -45,6 +45,8 @@ insert into expected_access(relname, access) values
   ('promotions','public_read'),
   ('room_freshness','public_read'),
   ('source_kinds','public_read'),
+  ('pending_review','service_only'),
+  ('admins','service_only'),
   ('sources','service_only'),
   ('pending_changes','service_only'),
   ('change_log','service_only'),
@@ -64,6 +66,58 @@ exception when insufficient_privilege then
   reset role;
   return false;
 end $$;
+
+-- Probe as a SIGNED-IN user, which `works_as` cannot express: admin identity
+-- lives in the JWT, so the claims have to travel with the role.
+--
+-- Returns -1 when the statement is REFUSED outright and a row count otherwise,
+-- because those are different failures and conflating them is how an RLS test
+-- passes while a policy does nothing. A missing grant raises; a policy that
+-- filters everything returns zero rows quietly.
+create or replace function pg_temp.count_as(as_role text, claims jsonb, stmt text)
+returns int language plpgsql as $$
+declare n int;
+begin
+  execute format('set local role %I', as_role);
+  perform set_config('request.jwt.claims', claims::text, true);
+  execute stmt into n;
+  perform set_config('request.jwt.claims', null, true);
+  reset role;
+  return n;
+exception when insufficient_privilege then
+  perform set_config('request.jwt.claims', null, true);
+  reset role;
+  return -1;
+end $$;
+
+create or replace function pg_temp.runs_as(as_role text, claims jsonb, stmt text)
+returns boolean language plpgsql as $$
+begin
+  execute format('set local role %I', as_role);
+  perform set_config('request.jwt.claims', claims::text, true);
+  execute stmt;
+  perform set_config('request.jwt.claims', null, true);
+  reset role;
+  return true;
+exception when others then
+  perform set_config('request.jwt.claims', null, true);
+  reset role;
+  return false;
+end $$;
+
+-- THE TEST MAKES ITS OWN ADMIN. The allowlist is operational data and lives
+-- outside the repo, so nothing here may depend on a real person's address —
+-- a public repo whose suite only passes for one human is a broken suite.
+-- Rolled back with the rest of the transaction.
+insert into public.admins (email, note) values ('admin@example.test', 'pgtap fixture');
+
+-- One proposal to triage, so the admin tests have something to see. Targets a
+-- rake figure the partner verified in person, which is the interesting case.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, source_url, agent, confidence)
+select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(8), 'https://example.test/rake', 'pgtap', 0.9
+  from public.cash_games c
+ where c.rake_verified_at is not null
+ limit 1;
 
 -- ---------------------------------------------------------------------
 -- 1. Nothing unclassified. This is the guard that survives staff turnover.
@@ -126,6 +180,114 @@ select ok(
     $$ insert into public.rooms (market_id, slug, name, area, latitude, longitude)
        values ((select id from public.markets limit 1),'anon-injected','x','strip',36.1,-115.1) $$),
   'anon is refused INSERT on rooms'
+);
+
+-- ---------------------------------------------------------------------
+-- 5b. THE ADMIN LOOP. anon gains nothing, and — the case nobody writes by
+--     default — a signed-in NON-admin gains nothing either.
+-- ---------------------------------------------------------------------
+select is(
+  pg_temp.count_as('anon', '{"email":"stranger@example.test"}'::jsonb,
+                   'select count(*)::int from public.pending_changes'),
+  -1,
+  'anon is REFUSED outright on pending_changes (no grant, not merely filtered)'
+);
+
+select is(
+  pg_temp.count_as('authenticated', '{"email":"stranger@example.test"}'::jsonb,
+                   'select count(*)::int from public.pending_changes'),
+  0,
+  'a signed-in NON-admin can reach pending_changes and sees nothing in it'
+);
+
+select is(
+  pg_temp.count_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+                   'select count(*)::int from public.pending_changes'),
+  1,
+  'a signed-in ADMIN sees the queue'
+);
+
+select is(
+  pg_temp.count_as('authenticated', '{"email":"stranger@example.test"}'::jsonb,
+                   'select count(*)::int from public.pending_review'),
+  0,
+  'the review VIEW carries the caller''s identity too — a non-admin sees nothing'
+);
+
+-- An UPDATE filtered by policy touches zero rows rather than raising, so the
+-- assertion has to count rows changed, not catch an error.
+select is(
+  pg_temp.count_as('authenticated', '{"email":"stranger@example.test"}'::jsonb,
+                   $$ with u as (update public.pending_changes set state='approved' returning 1)
+                      select count(*)::int from u $$),
+  0,
+  'a signed-in non-admin updates no rows in pending_changes'
+);
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"stranger@example.test"}'::jsonb,
+                      'select public.approve_change((select id from public.pending_changes limit 1))'),
+  'a signed-in non-admin cannot call approve_change'
+);
+
+-- THE PRECEDENCE RULE, asserted rather than described: the partner's floor data
+-- is not overwritten by a proposal unless the reviewer says so explicitly.
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+                      'select public.approve_change((select id from public.pending_changes limit 1))'),
+  'even an ADMIN cannot approve over a person-verified fact without an explicit override'
+);
+
+-- ---------------------------------------------------------------------
+-- 5c. WHAT A PROPOSAL MAY NOT TOUCH. Structural, not social.
+-- ---------------------------------------------------------------------
+-- Validating `field` against the catalogue proves a column EXISTS. These are
+-- all catalogue-valid, so without an explicit denylist a scraper could propose
+-- a verification stamp and an approval would write it — research setting
+-- verified_at, which the seeding rule forbids everywhere else.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent)
+select 'cash_games', c.id, c.room_id, 'rake_verified_at', 'null'::jsonb, to_jsonb(now()), 'pgtap'
+  from public.cash_games c where c.rake_verified_at is not null limit 1;
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change(
+         (select id from public.pending_changes where field='rake_verified_at' limit 1), true) $$),
+  'an admin WITH override still cannot approve a proposal that writes a verification stamp'
+);
+
+-- ---------------------------------------------------------------------
+-- 5d. THE TARGET ROW MUST BELONG TO THE ROOM THE PROPOSAL NAMES.
+-- ---------------------------------------------------------------------
+-- A valid FK pointing at the wrong document — the Westgate provenance bug, now
+-- in the write path. Left unchecked it updates one room's fact, logs it against
+-- another, and revalidates a third page: every artefact internally consistent
+-- and collectively wrong.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent)
+select 'cash_games', c.id,
+       (select r.id from public.rooms r where r.id <> c.room_id limit 1),
+       'rake_cap', to_jsonb(c.rake_cap), to_jsonb(9), 'pgtap-mismatch'
+  from public.cash_games c where c.rake_cap is not null limit 1;
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change(
+         (select id from public.pending_changes where agent='pgtap-mismatch' limit 1), true) $$),
+  'a proposal whose target row belongs to a different room is refused'
+);
+
+-- And the honest control: the SAME shape, correctly parented, is accepted.
+-- Without this the test above would pass just as well if approve_change were
+-- broken outright.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent)
+select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(9), 'pgtap-matched'
+  from public.cash_games c where c.rake_cap is not null and c.rake_verified_at is null limit 1;
+
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change(
+         (select id from public.pending_changes where agent='pgtap-matched' limit 1)) $$),
+  'a correctly parented proposal on an unverified fact IS applied'
 );
 
 -- ---------------------------------------------------------------------

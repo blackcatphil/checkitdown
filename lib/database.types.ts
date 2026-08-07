@@ -34,6 +34,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      admins: {
+        Row: {
+          created_at: string
+          email: string
+          note: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          note?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       amenity_types: {
         Row: {
           grp: Database["public"]["Enums"]["amenity_group"]
@@ -1071,6 +1089,43 @@ export type Database = {
       }
     }
     Views: {
+      pending_review: {
+        Row: {
+          agent: string | null
+          confidence: number | null
+          created_at: string | null
+          fact_verified_at: string | null
+          fetched_at: string | null
+          field: string | null
+          id: string | null
+          new_value: Json | null
+          note: string | null
+          old_value: Json | null
+          room_id: string | null
+          room_name: string | null
+          room_slug: string | null
+          source_url: string | null
+          state: Database["public"]["Enums"]["change_state"] | null
+          target_id: string | null
+          target_table: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_changes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_freshness"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "pending_changes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_freshness: {
         Row: {
           room_id: string | null
@@ -1109,7 +1164,20 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      approve_change: {
+        Args: { p_id: string; p_override_verified?: boolean }
+        Returns: Json
+      }
+      detector_status: {
+        Args: never
+        Returns: {
+          last_run: string
+          sources_failing: number
+          sources_read: number
+        }[]
+      }
+      is_admin: { Args: never; Returns: boolean }
+      reject_change: { Args: { p_id: string }; Returns: Json }
     }
     Enums: {
       amenity_group: "games" | "food_drink" | "parking" | "comfort" | "services"
