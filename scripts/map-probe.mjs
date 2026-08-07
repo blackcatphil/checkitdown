@@ -527,11 +527,54 @@ async function probe(browser, { cold }) {
       delta: +(before - after).toFixed(3),
     }
   }
+  /* THE THIRD FILTER STATE, MEASURED ON COMPOSITED PIXELS.
+     The amenity filter has three answers — match, confirmed absent, and never
+     checked — and only the first two have ever had a colour. A neutral pin that
+     silently renders as a dim one would restore exactly the confusion the state
+     was added to remove, and no token test can see it: every mass layer paints
+     at fill-opacity 0.55 over a dark ground, so what reaches the screen is
+     nowhere near the token. Matching the three hexes directly was tried and
+     reported all three states missing on a map where all three were present.
+     So this drives the real control and compares two real frames. */
+  let threeState = null
+  const amenBtn = await page.$('aside button.cid-check:has-text("Free self-park")')
+  if (canvasEl && amenBtn) {
+    const chroma = (r, g, b) => Math.max(r, g, b) - Math.min(r, g, b)
+    /* Its own copy: the dim measurement's BADGE_H is scoped to that block, and
+       borrowing it silently across scopes is how this crashed once already. The
+       debug badge repaints twice a second and would read as movement. */
+    const BADGE = 80
+    const before = decodePng(await canvasEl.screenshot())
+    await amenBtn.click()
+    await page.waitForTimeout(2200)
+    const after = decodePng(await canvasEl.screenshot())
+    const { w, h, nc } = before
+    let neutral = 0, coloured = 0, lit = 0
+    const nSum = [0, 0, 0]
+    for (let y = 0; y < h - BADGE; y += 2) for (let x = 0; x < w; x += 2) {
+      const i = (y * w + x) * nc
+      const ar = before.px[i], ag = before.px[i + 1], ab = before.px[i + 2]
+      const br = after.px[i], bg = after.px[i + 1], bb = after.px[i + 2]
+      if (0.2126 * ar + 0.7152 * ag + 0.0722 * ab < 40) continue
+      const moved = Math.max(Math.abs(ar - br), Math.abs(ag - bg), Math.abs(ab - bb))
+      if (moved <= 6) { if (chroma(br, bg, bb) >= 14) lit++; continue }
+      if (chroma(br, bg, bb) <= 8) { neutral++; nSum[0] += br; nSum[1] += bg; nSum[2] += bb }
+      else coloured++
+    }
+    const summary = (await page.$eval('aside p.num', (el) => el.textContent) ?? '').trim()
+    threeState = {
+      neutral, coloured, lit, summary,
+      neutralChroma: neutral ? chroma(...nSum.map((v) => Math.round(v / neutral))) : null,
+    }
+    await amenBtn.click()
+    await page.waitForTimeout(600)
+  }
+
   const colours = new Set()
   for (let i = 0; i < shot.length - 3; i += 997) colours.add(shot.readUInt32BE(i))
 
   await ctx.close()
-  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot), wire, dimWiring, dimPixels, reach, hitFloor, styleSettled }
+  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot), wire, dimWiring, dimPixels, reach, hitFloor, styleSettled, threeState }
 }
 
 const browser = await chromium.launch()
@@ -623,6 +666,25 @@ for (const [i, r] of results.entries()) {
       'the style fully loads (read once the camera is still, not mid-drift)')
   } else {
     console.log('  (build with NEXT_PUBLIC_MAP_DEBUG=1 for the rendered-feature assertions)')
+  }
+
+  if (r.threeState) {
+    const t = r.threeState
+    console.log(`  amenity     "${t.summary}"`)
+    console.log(`  three-state ${t.lit} lit · ${t.coloured} dimmed · ${t.neutral} neutral (chroma ${t.neutralChroma})`)
+    /* The panel says three numbers; the map must show three states. Asserting
+       the summary STRING as well as the pixels is deliberate — a filter that
+       paints correctly while reporting "13 rooms match" has still told the
+       reader the untrue thing. */
+    ok(/not yet checked/.test(t.summary),
+      `the panel names the unchecked rooms rather than absorbing them ("${t.summary}")`)
+    ok(t.neutral > 200, `the UNKNOWN state PAINTS — ${t.neutral} px turned neutral`)
+    ok(t.coloured > 200, `the ABSENT state paints separately — ${t.coloured} px dimmed`)
+    ok(t.lit > 200, `matching rooms are left lit — ${t.lit} px unchanged`)
+    ok(t.neutralChroma != null && t.neutralChroma <= 8,
+      `unknown is genuinely neutral (chroma ${t.neutralChroma} <= 8), so it cannot be read as a dim`)
+  } else {
+    console.log('  (no amenity control found — the three-state assertions did not run)')
   }
 }
 

@@ -839,6 +839,101 @@ update cash_games c
 commit;
 
 -- =====================================================================
+-- VENDOR AND FORMATS — 2026-08-07, from the same partner sheet.
+--
+-- Partner data is law (the 2026-08-05 ruling), so every row here lands
+-- with verified_at SET and cited to the sheet. Nothing below renders:
+-- the waitlist button is hidden by standing ruling and every format row
+-- has a NULL label. These are facts put where they cannot be lost.
+--
+-- EVERY SLUG IS CHECKED BY NAME, NOT BY COUNT. The seed's own detector
+-- rule is "copy, don't retype" — but a rule is not a mechanism, and a
+-- mistyped slug in a `where slug in (...)` inserts one row fewer in
+-- silence. The self-check at the bottom would catch the total and blame
+-- the count; these guards name the slug that was wrong. `westgate` cost
+-- an hour once by being spelled with an "and" the stored URL did not
+-- have, and that was in a script that DID report a finding — about a URL
+-- we do not hold.
+-- =====================================================================
+begin;
+
+-- Waitlist vendor, 15 of 17 rooms. Skyline and Boulder Station are
+-- ABSENT rather than false: the sheet does not say they run no list, it
+-- says nothing about them, and those are different facts. A row here
+-- means "we know who runs it"; no row means "not answered" — the same
+-- distinction room_amenities draws, and the reason the amenity filter
+-- needs a third state at all.
+-- THE LIST, THE GUARD AND THE INSERT ARE ONE STATEMENT — deliberately.
+-- The first version put them in three, with the slug list in a
+-- `create temp table ... on commit drop`, and the seed failed with
+-- `relation "_fmt" does not exist`: the Supabase seeder splits the file
+-- into batches and commits between them, so the temp table was dropped
+-- between its creation and its use. (It runs clean under `psql`, which
+-- is the trap — the tool used to check the SQL is not the tool that runs
+-- it.) Inside a DO block the whole thing is a single statement and no
+-- batching boundary can fall through the middle of it.
+do $$
+declare bad text;
+begin
+  create temp table _wl(slug text primary key, vendor waitlist_vendor);
+  insert into _wl values
+    -- PokerAtlas
+    ('wynn-encore','pokeratlas'), ('venetian','pokeratlas'), ('westgate','pokeratlas'),
+    -- Bravo
+    ('aria','bravo'), ('bellagio','bravo'), ('caesars-palace','bravo'),
+    ('golden-nugget','bravo'), ('green-valley-ranch','bravo'), ('horseshoe','bravo'),
+    ('mandalay-bay','bravo'), ('mgm-grand','bravo'), ('orleans','bravo'),
+    ('red-rock','bravo'), ('santa-fe-station','bravo'), ('south-point','bravo');
+
+  select string_agg(w.slug, ', ' order by w.slug) into bad
+    from _wl w where not exists (select 1 from rooms r where r.slug = w.slug);
+  if bad is not null then
+    raise exception 'room_waitlist names slugs that are not rooms: %', bad;
+  end if;
+
+  insert into room_waitlist (room_id, vendor, url, enabled, source_url, fetched_at, verified_at)
+  select r.id, w.vendor, null, false,
+         'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+         timestamptz '2026-08-07 12:00:00-07', timestamptz '2026-08-07 12:00:00-07'
+    from _wl w join rooms r on r.slug = w.slug
+  on conflict (room_id) do update
+    set vendor = excluded.vendor, source_url = excluded.source_url,
+        fetched_at = excluded.fetched_at, verified_at = excluded.verified_at;
+
+  drop table _wl;
+end $$;
+
+-- Formats: the two dbbp observations. `label` is NULL, so nothing
+-- renders — see the FORMATS block in the room page, which gates on
+-- exactly that.
+do $$
+declare bad text;
+begin
+  create temp table _fmt(slug text primary key);
+  insert into _fmt values ('venetian'), ('south-point');
+
+  select string_agg(f.slug, ', ' order by f.slug) into bad
+    from _fmt f where not exists (select 1 from rooms r where r.slug = f.slug);
+  if bad is not null then
+    raise exception 'room_formats names slugs that are not rooms: %', bad;
+  end if;
+
+  insert into room_formats (room_id, slug, label, note, source_url, fetched_at, verified_at)
+  select r.id, 'dbbp', null,
+         'Abbreviation as recorded on the partner sheet; expansion unconfirmed — see README open items.',
+         'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+         timestamptz '2026-08-07 12:00:00-07', timestamptz '2026-08-07 12:00:00-07'
+    from _fmt f join rooms r on r.slug = f.slug
+  on conflict (room_id, slug) do update
+    set note = excluded.note, source_url = excluded.source_url,
+        fetched_at = excluded.fetched_at, verified_at = excluded.verified_at;
+
+  drop table _fmt;
+end $$;
+
+commit;
+
+-- =====================================================================
 -- THE SEED CHECKS ITSELF.
 --
 -- The seed and production have diverged twice: once silently, once
@@ -850,18 +945,21 @@ commit;
 -- =====================================================================
 do $$
 declare
-  n_rooms int; n_games int; n_gv int; n_rv int; n_src int;
+  n_rooms int; n_games int; n_gv int; n_rv int; n_src int; n_wl int; n_fmt int;
 begin
   select count(*) into n_rooms from rooms;
   select count(*) into n_games from cash_games;
   select count(*) into n_gv    from cash_games where verified_at is not null;
   select count(*) into n_rv    from cash_games where rake_verified_at is not null;
   select count(*) into n_src   from sources;
+  select count(*) into n_wl    from room_waitlist;
+  select count(*) into n_fmt   from room_formats;
 
-  if (n_rooms, n_games, n_gv, n_rv, n_src) is distinct from (17, 78, 6, 33, 44) then
+  if (n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt)
+     is distinct from (17, 78, 6, 33, 44, 15, 2) then
     raise exception
-      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources (expected 17 / 78 / 6 / 33 / 44)',
-      n_rooms, n_games, n_gv, n_rv, n_src;
+      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources / % waitlist / % formats (expected 17 / 78 / 6 / 33 / 44 / 15 / 2)',
+      n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt;
   end if;
-  raise notice 'seed matches production: 17 rooms / 78 games / 6 game-verified / 33 rake-verified / 44 sources';
+  raise notice 'seed matches production: 17 rooms / 78 games / 6 game-verified / 33 rake-verified / 44 sources / 15 waitlist / 2 formats';
 end $$;

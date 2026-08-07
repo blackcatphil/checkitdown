@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(20);
+select plan(24);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -43,6 +43,8 @@ insert into expected_access(relname, access) values
   ('tournament_levels','public_read'),
   ('tournament_instances','public_read'),
   ('promotions','public_read'),
+  ('room_waitlist','public_read'),
+  ('room_formats','public_read'),
   ('room_freshness','public_read'),
   ('source_kinds','public_read'),
   ('pending_review','service_only'),
@@ -317,6 +319,49 @@ select ok(
   pg_temp.works_as('service_role',
     $$ update public.rooms set comp_notes = comp_notes where slug = 'aria' $$),
   'service_role can write rooms'
+);
+
+-- ---------------------------------------------------------------------
+-- 7. THE TWO NEW TABLES, at both layers.
+--
+-- The classification guard above already forces a read decision for
+-- these, and tests 3 and 4 exercise it. What it CANNOT see is the write
+-- side, in either direction — so both are asserted here.
+-- ---------------------------------------------------------------------
+select ok(
+  not pg_temp.works_as('anon',
+    $$ insert into public.room_waitlist (room_id, vendor)
+       values ((select id from public.rooms where slug='aria'), 'bravo') $$),
+  'anon is refused INSERT on room_waitlist'
+);
+
+select ok(
+  not pg_temp.works_as('anon',
+    $$ insert into public.room_formats (room_id, slug)
+       values ((select id from public.rooms where slug='aria'), 'anon-injected') $$),
+  'anon is refused INSERT on room_formats'
+);
+
+-- SERVICE_ROLE'S GRANT DOES NOT ARRIVE BY ITSELF, and this is the test
+-- that says so. The initial schema's `grant ... on all tables ... to
+-- service_role` covered the tables existing that day and does not reach
+-- forward; `rolbypassrls` bypasses policies, never table privileges. So
+-- a table added without an explicit grant is readable by the public and
+-- unwritable by the one role meant to maintain it — a shape no existing
+-- assertion catches, because `admins` (migration 4) has exactly that gap
+-- today and is only ever touched through a SECURITY DEFINER function.
+select ok(
+  pg_temp.works_as('service_role',
+    $$ insert into public.room_waitlist (room_id, vendor)
+       values ((select id from public.rooms where slug='skyline'), 'bravo') $$),
+  'service_role can write room_waitlist (the forward-grant gap)'
+);
+
+select ok(
+  pg_temp.works_as('service_role',
+    $$ insert into public.room_formats (room_id, slug, label)
+       values ((select id from public.rooms where slug='aria'), 'pgtap-probe', 'probe') $$),
+  'service_role can write room_formats (the forward-grant gap)'
 );
 
 select * from finish();

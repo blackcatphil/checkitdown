@@ -126,7 +126,8 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       + 'cash_games(stakes_label,game,min_buy_in,max_buy_in,is_uncapped,rake_type,rake_percent,'
       + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet,rake_source_url,rake_verified_at),'
       + 'room_amenities(available,detail,menu_url,source_url,verified_at,amenity_types(slug,label,grp)),'
-      + 'house_rules(label,value)',
+      + 'house_rules(label,value),'
+      + 'room_formats(slug,label,note,source_url,verified_at)',
     )
     .eq('slug', slug)
     .maybeSingle()
@@ -167,7 +168,25 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       amenity_types: { slug: string; label: string; grp: string } | null
     }>
     house_rules: Array<{ label: string; value: string }>
+    room_formats: Array<{
+      slug: string; label: string | null; note: string | null
+      source_url: string | null; verified_at: string | null
+    }>
   }
+
+  /* THE COVERAGE GATE, in its smallest form — and it renders NOTHING today.
+     That is the correct state, not an unfinished one, so do not delete this
+     as dead code.
+     Both seeded rows are `dbbp`, an abbreviation whose expansion is
+     unconfirmed. We hold the fact; we cannot write the words. A NULL label
+     means exactly that, and this filter is the difference between "recorded"
+     and "published" — the same line `lib/coverage.ts` draws for the roster,
+     drawn here per row because a format is a per-room fact.
+     The moment someone confirms what dbbp stands for, a single UPDATE setting
+     `label` makes this block appear on two pages. Nothing else has to be
+     remembered, which is the whole point of gating on data instead of on a
+     boolean somebody has to find. */
+  const formats = room.room_formats.filter((f) => f.label != null)
 
 
   /* A CLOSED room keeps its page. /rooms/<slug> stays linked from search for
@@ -436,6 +455,23 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
         </Block>
         )}
       </div>
+
+      {/* FORMATS — gated on a label existing, per the note beside `formats`
+          above. Renders nothing today; two rows are waiting behind a NULL. */}
+      {formats.length > 0 && (
+        <Block label="FORMATS">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
+            {formats.map((f) => (
+              <div key={f.slug} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-4) var(--cid-space-5)', display: 'grid', gridTemplateColumns: '120px minmax(0,1fr)', gap: 'var(--cid-space-5)', alignItems: 'baseline' }}>
+                <span className="cid-label">{f.label}</span>
+                <span className={f.verified_at ? undefined : 'cid-unverified'} style={{ font: 'var(--cid-body)' }}>
+                  {f.note ?? '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Block>
+      )}
 
       <section style={{ borderTop: '1px solid var(--cid-line-1)', paddingTop: 'var(--cid-space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-5)' }}>
         <span className="cid-label">WHERE THIS CAME FROM</span>

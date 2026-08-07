@@ -1555,6 +1555,12 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 | Decision | Status | Where |
 |---|---|---|
 | Roster: 17 rooms, WSOP·Paris seasonal and off all counts | code + test | `inRoster()`; `test:mixed` seasonal scenario |
+| Amenity filter: unknown is never counted as a match | code + test | `amenityState()`, `combineStates()`; `amenity-filter.test.mjs`; `test:map` three-state pixels |
+| A slug ships only at `AMENITY_SHIP_FLOOR` answered rooms | code + test | `shippableAmenities()`; `amenity-filter.test.mjs` boundary test |
+| A group header never renders without a shipped slug | code + test | `amenityGroups()`; `amenity-filter.test.mjs` |
+| A format with no confirmed label is stored, never shown | code | `room_formats.label` NULL gate in the room page; census counts `formats-labelled` |
+| The waitlist button ships hidden on every room | code + test | `enabled` defaults false; `test:mixed` census counts `waitlist-enabled` |
+| A new table must grant service_role explicitly | test | `rls_test.sql` forward-grant assertions (checked against `admins`, which fails them) |
 | Closed room leaves the roster but keeps a dated page | code + test | `inRoster()`, `closure_is_dated` constraint, `test:mixed` |
 | Temporarily closed is shown but never ranked | code + test | `isRankable()`; `test:mixed` |
 | Provenance: verified or tilde'd, never a third state | code + test | `Cell`, `EmptyBlock`; `test:mixed` |
@@ -1842,6 +1848,149 @@ gold taking a filled action, gold text too dark for a surface.
   just palette — when mobile comes, do a fresh responsive pass from the current
   six surfaces rather than re-skinning the old ones.
 
+## Vendor and formats — storing what we cannot yet show (2026-08-07)
+
+Migration `...005` adds `room_waitlist` (15 rows) and `room_formats` (2 rows).
+**Neither renders anything**, and that is the finished state rather than a
+half-built one. The waitlist button is hidden by standing ruling; both format
+rows have a NULL label. They exist because the alternative to storing a
+partner-verified fact is re-deriving it later, and re-derivation is where
+"Venetian" became the Sphere.
+
+### `slug` is TEXT because we do not know the word
+
+`dbbp` is an abbreviation read off the sheet whose expansion is unconfirmed. An
+enum would put that guess in `pg_type`, in the generated TypeScript and in every
+dump — the most permanent kind of naming available, spent on a term nobody has
+verified. Text buys the ability to be wrong cheaply: an `UPDATE` instead of a
+migration. `waitlist_vendor` IS an enum, because that vocabulary is closed and
+both members have been measured.
+
+The render gate is the NULL label, not a flag. When someone confirms what dbbp
+stands for, one `UPDATE` makes the block appear on two pages and nothing else
+has to be remembered — the failure mode of a hardcoded `false` is that the
+surface is invisible to the person who fills the data.
+
+### service_role's grant does not arrive by itself
+
+| Role | On tables from migration 1 | On tables added later |
+|---|---|---|
+| anon / authenticated | explicit `grant select` | **nothing** (migration 2 revokes the default) |
+| service_role | `grant ... on all tables` | **nothing** — that grant did not reach forward |
+
+`grant ... on all tables in schema public to service_role` covered the tables
+existing that day. Migration 2's `ALTER DEFAULT PRIVILEGES` only *revokes*, and
+only for the public roles. So a new table lands **readable by the world and
+unwritable by the role meant to maintain it** — and `rolbypassrls` does not
+help, because bypassing RLS is not holding a table privilege.
+
+Verified rather than reasoned: `admins` (migration 4) holds exactly
+`REFERENCES, TRIGGER, TRUNCATE` for service_role today — no SELECT, no DML.
+Nothing has broken only because it is read through a SECURITY DEFINER function.
+Both new tables grant explicitly, and `rls_test.sql` now asserts it. That
+assertion was checked against `admins` to confirm it can fail; a grant test that
+passes for a table with no grant is not a test.
+
+### The seeder commits between statements
+
+The slug lists first went into `create temp table ... on commit drop`, and the
+seed failed with `relation "_fmt" does not exist`. The Supabase seeder splits
+the file into batches and commits between them, so the temp table was dropped
+between its creation and its use. **It runs clean under `psql`** — which is the
+trap, the same shape as `curl` clearing a chunk that 403s in a browser: the tool
+used to check the SQL is not the tool that runs it. Both lists now live inside a
+single `DO` block, which no batch boundary can fall through.
+
+### The guards name the slug
+
+A mistyped slug in a `where slug in (...)` inserts one row fewer, silently. The
+self-check would catch the total and report a count. These guards report
+`room_formats names slugs that are not rooms: westgate-las-vegas-resort-and-casino`
+— proven by feeding it exactly that historical typo. The seed self-check now
+covers all seven counts: 17 / 78 / 6 / 33 / 44 / 15 / 2.
+
+## The amenity filter reopens, with a THIRD state (2026-08-07)
+
+The filter shipped GAMES-only under this line: *"amenity coverage is not yet
+complete enough for a dim to be true."* That was right, and the reason is worth
+separating from the fix, because **coverage is not what was wrong**.
+
+A two-state filter says MATCH or DOESN'T. On amenity data that made a room
+nobody had asked look identical to a room that was asked and said no — the exact
+confusion this product exists to prevent, and the same failure as a dash that
+might mean "none" or might mean "we didn't look". `room_amenities` already drew
+the distinction: `available = false` is a **confirmed absence** somebody stood in
+the room to establish; no row is a question nobody asked.
+
+So the third state was required at *any* coverage level. Coverage is only what
+made it affordable — at 0/17 the map would have been entirely "not yet checked"
+and the control would have been theatre.
+
+| State | Meaning | Treatment |
+|---|---|---|
+| MATCH | every checked slug a confirmed yes | lit accent |
+| CONFIRMED ABSENT | asked, and it does not have it | the existing dim |
+| UNKNOWN | no answer for some checked slug | **neutral**, `--cid-map-mass-unknown` |
+
+Precedence is **absent > unknown > match**, and the order is the design: a
+confirmed no settles it; otherwise a single unanswered slug makes the room
+unknown *even if every other checked slug is a yes*. Rounding "three of the four
+things you asked for" up to a match is how a filtered list gains rooms that fail
+the filter.
+
+### What ships, and why the floor is a count
+
+A slug ships once it is **answered** — yes or no — for at least
+`AMENITY_SHIP_FLOOR = 13` rooms. Today that is exactly `freeself` (13/17) and
+`tableside` (15/17); `validated` (2), `freevalet` (0) and every comfort and
+services slug (≤1) stay hidden, and a group header renders only when it has a
+shipped slug, so PARKING and FOOD & DRINK appear with one checkbox each.
+
+**An absolute count, not a ratio.** As a fraction of the roster, a slug could be
+promoted by rooms *leaving* — close two unanswered rooms and `validated` climbs
+toward the bar without anyone answering anything. A count can only be raised by
+someone doing the work.
+
+### The neutral is chosen by chroma, so it stays out of the road ladder
+
+`--cid-map-mass-unknown: #515151` is the **neutral twin** of the dimmed mass:
+L\* 34.45 against 34.66, chroma ~0 against 31.6. Holding lightness is what keeps
+it out of the coupled road ladder (land 13.9 < land-2 17.0 < minor 21.0 < casing
+27.0 < major 29.9 < dim 34.7) — a fourth mass tone picked by eye would have
+landed somewhere inside it, which is precisely what the ground raise did when it
+walked past the road rungs. Neutral is also semantically correct rather than
+convenient: gold is never semantic, teal means verified, and unverified stays
+neutral grey. "We have no answer" is the state with no colour to spend.
+
+### The number is where the third state could vanish
+
+Clusters total `hits` and `unks` as **two separate sums**. Folding unknowns into
+`hits` would make a cluster of nine read `9/9` while four were never checked, and
+supercluster can only report what it is asked to total. The caption carries them
+outside the fraction — `5/9 +2?` — and a cluster whose members are *all*
+unchecked takes the neutral ring rather than the zero-matches one.
+
+The panel says all three out loud: **"7 match · 6 don't · 4 not yet checked"**,
+with the unchecked rooms named while they are under `ENUMERATE_MAX` and counted
+after. Per-checkbox counts read `7 +4?` — the `+n?` is what stops the count
+reading as "the other rooms don't".
+
+### Measured on composited pixels, not on swatches
+
+`test:map` now drives the real checkbox and compares two frames. The first two
+attempts at this measurement were both wrong, in instructive ways:
+
+1. Classifying "violet" as dimmed **cannot tell a dimmed mass from a lit one** —
+   both are violet. It reported a failure on a map where the state was working.
+2. Matching the three token hexes directly reported all three states missing on
+   a frame containing all three. Every mass layer paints at `fill-opacity: 0.55`
+   over a dark ground, so **what reaches the screen is nowhere near the token**.
+
+The check that works compares which pixels changed and what they became, split
+by chroma. Observed: `8587 lit · 50964 dimmed · 2653 neutral`, neutral chroma 7.
+`amenity_types.is_filterable` has left `UNFILTERED_BY_DESIGN` — it was waiting
+for this panel and now gates the catalogue.
+
 ## Open items — recorded, not built (2026-08-07)
 
 Two things arrived that are real but have nowhere correct to land yet. Both are
@@ -1852,7 +2001,7 @@ an unmade decision is harder to unwind than a note.
 | Open item | What we have | Blocked on |
 |---|---|---|
 | **dbbp at Venetian and South Point** | Two rooms listed running it in the sheet's **Alt Games** column (relayed 2026-08-07) — read as **double-board bomb pots**, a game *format*, which is exactly why it has no column: formats beyond stakes are what the parked migration exists to model | The parked vendor/format migration. A format needs a home — a flag or a formats table — before any row can claim it |
-| **Atlas-or-Bravo** | Both vendors now measured shut (`403` each — see the constraint table). The build-decision teardown is still unfiled, below | The same migration. With both vendors unfetchable the choice is not "which do we scrape" but "which, if either, do we deal with" — a partnership question, not an engineering one |
+| **Atlas-or-Bravo** | **Now stored** — `room_waitlist`, 15 of 17 rooms, 3 PokerAtlas and 12 Bravo. Both vendors measured shut (`403` each). Skyline and Boulder Station are absent rather than false: the sheet says nothing about them | A per-room reason to trust a list. `enabled` defaults false everywhere and the button ships hidden. With both vendors unfetchable the question is "which, if either, do we deal with" — a partnership question, not an engineering one |
 
 Two cautions attached to the dbbp line specifically:
 

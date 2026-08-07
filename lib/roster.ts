@@ -80,9 +80,10 @@ export function isLive(
  *   tournament_templates.reentry_allowed         display
  *   tournament_templates.reliability             EDITORIAL — display only, and
  *                                                never sortable or ordinalised
- *   amenity_types.is_filterable  belongs to the filter panel, which ships with
- *                                the GAMES group only; apply it there when the
- *                                amenity groups turn on
+ * (`amenity_types.is_filterable` LEFT THIS LIST on 2026-08-07. It was here
+ * waiting for the amenity groups to turn on; they have, and `app/page.tsx` now
+ * applies it when loading the catalogue. A column listed as deliberately
+ * unfiltered while something filters on it would be worse than no list.)
  */
 export const UNFILTERED_BY_DESIGN = [
   'cash_games.is_spread_limit',
@@ -93,5 +94,4 @@ export const UNFILTERED_BY_DESIGN = [
   'tournament_templates.guarantee_is_estimated',
   'tournament_templates.reentry_allowed',
   'tournament_templates.reliability',
-  'amenity_types.is_filterable',
 ] as const

@@ -57,7 +57,16 @@ const snapshot = () => sql(`
   create table ${SNAP}.cash_games as
     select id, verified_at, rake_verified_at from cash_games;
   create table ${SNAP}.room_amenities as
-    select room_id, amenity_id, available, verified_at from room_amenities;`)
+    select room_id, amenity_id, available, verified_at from room_amenities;
+  /* Snapshotted BEFORE any scenario touches them, not after the first one
+     does. Neither table has a mutation today — but the fixture-leak lesson
+     is that the gap opens at the moment someone adds one, and a snapshot
+     that lags the mutation by a single commit restores the damage rather
+     than the data. Cheap to carry, expensive to add late. */
+  create table ${SNAP}.room_waitlist as
+    select room_id, vendor, enabled, verified_at from room_waitlist;
+  create table ${SNAP}.room_formats as
+    select room_id, slug, label, verified_at from room_formats;`)
 
 const dropSnapshot = () => sql(`drop schema if exists ${SNAP} cascade`)
 
@@ -89,7 +98,13 @@ const restore = () => {
     update room_amenities a set available = s.available, verified_at = s.verified_at
       from ${SNAP}.room_amenities s
       where s.room_id = a.room_id and s.amenity_id = a.amenity_id
-        and a.room_id in (select id from rooms where slug in (${l}));`)
+        and a.room_id in (select id from rooms where slug in (${l}));
+    update room_waitlist w set vendor = s.vendor, enabled = s.enabled, verified_at = s.verified_at
+      from ${SNAP}.room_waitlist s where s.room_id = w.room_id
+        and w.room_id in (select id from rooms where slug in (${l}));
+    update room_formats f set label = s.label, verified_at = s.verified_at
+      from ${SNAP}.room_formats s where s.room_id = f.room_id and s.slug = f.slug
+        and f.room_id in (select id from rooms where slug in (${l}));`)
   touched = new Set()
 }
 
@@ -102,7 +117,11 @@ const census = () => sql(`
  || (select count(*) from room_amenities where verified_at is not null) || ' amenities-verified/'
  || (select count(*) from room_amenities where available = false) || ' absences/'
  || (select count(*) from rooms where status <> 'open' or is_seasonal) || ' off-roster/'
- || (select count(*) from house_rules) || ' house-rules'`)
+ || (select count(*) from house_rules) || ' house-rules/'
+ || (select count(*) from room_waitlist) || ' waitlist/'
+ || (select count(*) from room_waitlist where enabled) || ' waitlist-enabled/'
+ || (select count(*) from room_formats) || ' formats/'
+ || (select count(*) from room_formats where label is not null) || ' formats-labelled'`)
 
 /** A floor visit confirms the room AND the facts in it, so verify both. */
 const verifyRooms = (slugs) => {

@@ -636,6 +636,96 @@ export type Database = {
           },
         ]
       }
+      room_formats: {
+        Row: {
+          fetched_at: string | null
+          label: string | null
+          note: string | null
+          room_id: string
+          slug: string
+          source_url: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          fetched_at?: string | null
+          label?: string | null
+          note?: string | null
+          room_id: string
+          slug: string
+          source_url?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          fetched_at?: string | null
+          label?: string | null
+          note?: string | null
+          room_id?: string
+          slug?: string
+          source_url?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_formats_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_freshness"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_formats_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_waitlist: {
+        Row: {
+          enabled: boolean
+          fetched_at: string | null
+          room_id: string
+          source_url: string | null
+          url: string | null
+          vendor: Database["public"]["Enums"]["waitlist_vendor"]
+          verified_at: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          fetched_at?: string | null
+          room_id: string
+          source_url?: string | null
+          url?: string | null
+          vendor: Database["public"]["Enums"]["waitlist_vendor"]
+          verified_at?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          fetched_at?: string | null
+          room_id?: string
+          source_url?: string | null
+          url?: string | null
+          vendor?: Database["public"]["Enums"]["waitlist_vendor"]
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_waitlist_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "room_freshness"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_waitlist_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           area: Database["public"]["Enums"]["area_kind"]
@@ -1200,6 +1290,7 @@ export type Database = {
         | "series_only"
         | "unknown"
       source_status: "ok" | "partial" | "failing" | "idle"
+      waitlist_vendor: "pokeratlas" | "bravo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1352,6 +1443,7 @@ export const Constants = {
         "unknown",
       ],
       source_status: ["ok", "partial", "failing", "idle"],
+      waitlist_vendor: ["pokeratlas", "bravo"],
     },
   },
 } as const

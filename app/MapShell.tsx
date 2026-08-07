@@ -14,8 +14,11 @@ import {
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import type { AmenityDef, FilterState } from '@/lib/amenity-filter'
+import { amenityGroups, amenityState, combineStates, summaryLine, tally } from '@/lib/amenity-filter'
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
 import { applyPalette, type MapStyle } from '@/lib/map-style'
+import { ENUMERATE_MAX } from '@/lib/ranking'
 import { ROOM_FOOTPRINTS, ROOM_ROOFS, ROOM_SHELLS } from '@/lib/room-footprints'
 import { createWireframeLayer, WIRE_STAGGER, type WireframeLayer } from '@/lib/wireframe'
 import { inRoster, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
@@ -33,6 +36,8 @@ export type MapRoom = {
   verified_at: string | null
   games: string[]
   stakes: string | null
+  /* Answered slugs only. A missing key is "not asked" — see `amenityState`. */
+  amenities: Record<string, boolean>
 }
 
 /**
@@ -207,13 +212,21 @@ const FULL_BASE = ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecifica
  * like it forgot. Either behaviour falls out of expression ORDER, so it is
  * stated here once rather than re-derived at five paint blocks.
  */
-const dimFirst = (dim: string, hover: string, base: string): ExpressionSpecification =>
+/* UNKNOWN SITS BETWEEN THEM, and it beats hover for the same reason `dim`
+   does: "we have not checked this room" is a statement about the room, and
+   lighting it under the pointer would read as the filter forgetting. The three
+   filter answers are therefore all resolved before hover is considered, and the
+   ORDER here is the entire precedence rule — dim, then unknown, then hover. */
+const dimFirst = (
+  dim: string, hover: string, base: string, unknown?: string,
+): ExpressionSpecification =>
   ['case',
     ['boolean', ['feature-state', 'dim'], false], dim,
+    ...(unknown ? [['boolean', ['feature-state', 'unknown'], false], unknown] : []),
     ['boolean', ['feature-state', 'hover'], false], hover,
     base] as ExpressionSpecification
 
-export function MapShell({ rooms }: { rooms: MapRoom[] }) {
+export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs: AmenityDef[] }) {
   const holder = useRef<HTMLDivElement>(null)
   const roseRef = useRef(false)
   const lastActivity = useRef(0)
@@ -222,6 +235,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const hovered = useRef<string | null>(null)
   const rosterRef = useRef<MapRoom[]>([])
   const [checked, setChecked] = useState<string[]>([])
+  const [amenChecked, setAmenChecked] = useState<string[]>([])
   const [season, setSeason] = useState(false)
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(STRIP_Z)
@@ -248,7 +262,44 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     () => applyGameFilter(roster, checked),
     [roster, checked],
   )
-  const matched = useMemo(() => new Set(matches.map((r) => r.slug)), [matches])
+
+  /* THE PANEL'S CONTROLS AND THE MAP'S COLOURS COME FROM ONE DERIVATION.
+     `groups` decides which amenity checkboxes exist; `activeAmen` narrows the
+     checked list to those, so a slug that stops shipping cannot keep filtering
+     invisibly — the same trap `applyGameFilter` closes for games, arriving here
+     for amenities. */
+  const groups = useMemo(() => amenityGroups(roster, amenityDefs), [roster, amenityDefs])
+  const shipped = useMemo(
+    () => new Set(groups.flatMap((g) => g.items.map((d) => d.slug))),
+    [groups],
+  )
+  const activeAmen = useMemo(
+    () => amenChecked.filter((s) => shipped.has(s)),
+    [amenChecked, shipped],
+  )
+
+  /* One state per room, folding both filters. Three values, never two. */
+  const stateBySlug = useMemo(() => {
+    const gameMatch = new Set(matches.map((r) => r.slug))
+    const m = new Map<string, FilterState>()
+    for (const r of roster) {
+      m.set(r.slug, combineStates(
+        gameMatch.has(r.slug) ? 'match' : 'absent',
+        amenityState(r.amenities, activeAmen),
+      ))
+    }
+    return m
+  }, [roster, matches, activeAmen])
+
+  const stateOf = useCallback(
+    (slug: string): FilterState => stateBySlug.get(slug) ?? 'match',
+    [stateBySlug],
+  )
+  const counts = useMemo(
+    () => tally(roster.map((r) => stateOf(r.slug))),
+    [roster, stateOf],
+  )
+  const filtering = activeKeys.length > 0 || activeAmen.length > 0
 
   /* The map's `check` closure is created once and must read the CURRENT roster,
      so it goes through a ref — assigned in an effect, not during render. */
@@ -263,7 +314,13 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       properties: {
         slug: r.slug,
         name: r.name,
-        hit: matched.has(r.slug) ? 1 : 0,
+        /* `hit` counts MATCHES ONLY and `unk` counts unknowns, as two
+           separate sums. Folding unknowns into `hit` would make a cluster of
+           nine read "9/9" while four of them were never checked — the cluster
+           number is the one place the third state could vanish silently, and
+           supercluster can only total what it is given. */
+        hit: stateOf(r.slug) === 'match' ? 1 : 0,
+        unk: stateOf(r.slug) === 'unknown' ? 1 : 0,
         /* Drives the pin's disappearance above MASS_ZOOM. Nine rooms had no
            footprint until this pass; if any room ever lacks one again, its dot
            simply keeps showing, which is the safe direction to fail. */
@@ -277,7 +334,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       },
       geometry: { type: 'Point' as const, coordinates: [r.longitude, r.latitude] },
     })),
-  }), [roster, matched])
+  }), [roster, stateOf])
 
   useEffect(() => {
     if (!holder.current || mapRef.current) return
@@ -427,7 +484,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         paint: {
           /* GOLD, NOT TEAL. Teal is --cid-value and means verified; spending it
              on a hover spends the only hue in the product that carries a claim. */
-          'fill-color': dimFirst(T.massDim, T.hover, T.pin),
+          'fill-color': dimFirst(T.massDim, T.hover, T.pin, T.massUnknown),
           /* 0.45 -> 0.55. A FLAT footprint has no walls to shade, so it carries
              the filter on fill and outline alone. At 0.45 a dimmed flat mass
              sat at 1.38 against the ground and 1.30 against its lit self —
@@ -438,7 +495,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           /* THE OUTLINE DOES THE WORK ON A FLAT SHAPE, and it was a STATIC
              lavender — a dimmed footprint would have kept a fully-lit edge,
              the same miss as the cap layer one layer over. */
-          'fill-outline-color': dimFirst(T.massDim, T.hover, T.accent300),
+          'fill-outline-color': dimFirst(T.massDim, T.hover, T.accent300, T.massUnknown),
         },
       })
       map.addLayer({
@@ -450,7 +507,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         paint: {
           /* Colour, never opacity — `fill-extrusion-opacity` takes zoom
              expressions only and rejects feature-state outright (see below). */
-          'fill-extrusion-color': dimFirst(T.massDim, T.hover, T.pin),
+          'fill-extrusion-color': dimFirst(T.massDim, T.hover, T.pin, T.massUnknown),
           'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
           'fill-extrusion-base': 0,
           /* CONSTANT, because `fill-extrusion-opacity` takes zoom expressions
@@ -475,7 +532,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         source: 'fp',
         type: 'line',
         paint: {
-          'line-color': dimFirst(T.litDim, T.hover, T.buildingLit),
+          'line-color': dimFirst(T.litDim, T.hover, T.buildingLit, T.massUnknown),
           'line-width': 1.4,
           'line-opacity': 0.9,
         },
@@ -491,7 +548,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           paint: {
             /* Was a FLAT colour with no case expression at all — the layer that
                would have kept a bright gold rim around a dimmed mass. */
-            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit),
+            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit, T.massUnknown),
             'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.9,
@@ -511,7 +568,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           source: 'roofs',
           type: 'fill-extrusion',
           paint: {
-            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit),
+            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit, T.massUnknown),
             /* `max` keeps a short component from inverting base above height. */
             'fill-extrusion-base': ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification,
             'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
@@ -587,7 +644,11 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         cluster: true,
         clusterRadius: CLUSTER_RADIUS,
         clusterMaxZoom: 13,
-        clusterProperties: { hits: ['+', ['get', 'hit']] },
+        /* Two independent sums. `unks` exists so the cluster caption can say
+           "4 of these were never checked" — a number supercluster can only
+           report if it is asked to total it, and one that would be lost
+           forever the moment unknowns were folded into `hits`. */
+        clusterProperties: { hits: ['+', ['get', 'hit']], unks: ['+', ['get', 'unk']] },
       })
 
       map.addLayer({
@@ -601,6 +662,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           'circle-stroke-width': 1.5,
           'circle-stroke-color': [
             'case',
+            /* Every member unchecked is NOT the same as every member failing,
+               and the ring is where that shows at cluster zoom. Tested before
+               the hits-are-zero arm, which both states would otherwise satisfy. */
+            ['==', ['get', 'unks'], ['get', 'point_count']], T.pinUnknown,
             ['==', ['get', 'hits'], 0], T.line,
             ['<', ['get', 'hits'], ['get', 'point_count']], T.clusterPartial,
             T.accent300,
@@ -615,9 +680,20 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         filter: ['has', 'point_count'],
         type: 'symbol',
         layout: {
+          /* THE UNKNOWNS RIDE OUTSIDE THE FRACTION. "5/9" counts matches
+             against members and says nothing about how many of the four
+             remaining were asked; "5/9 +2?" says two of them were never
+             checked. Reading the plain count as "all nine match" is only safe
+             because `hits` excludes unknowns — which is exactly why they are
+             summed apart. */
           'text-field': [
             'case',
-            ['==', ['get', 'hits'], ['get', 'point_count']], ['to-string', ['get', 'point_count']],
+            ['all',
+              ['==', ['get', 'hits'], ['get', 'point_count']],
+              ['==', ['get', 'unks'], 0]], ['to-string', ['get', 'point_count']],
+            ['>', ['get', 'unks'], 0],
+              ['concat', ['to-string', ['get', 'hits']], '/', ['to-string', ['get', 'point_count']],
+                         ' +', ['to-string', ['get', 'unks']], '?'],
             ['concat', ['to-string', ['get', 'hits']], '/', ['to-string', ['get', 'point_count']]],
           ] as ExpressionSpecification,
           'text-size': 12,
@@ -640,7 +716,15 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           /* Filtering DIMS, never removes — a room that vanishes reads as
              "we don't have it" rather than "it doesn't match". */
           'circle-radius': 7,
-          'circle-color': ['case', ['==', ['get', 'hit'], 1], T.accent300, T.pinDim] as ExpressionSpecification,
+          /* Three colours for three answers. `unk` is tested before the dim
+             fallback, so an unchecked room reads neutral-and-present rather
+             than joining the rooms that were asked and said no. */
+          'circle-color': [
+            'case',
+            ['==', ['get', 'hit'], 1], T.accent300,
+            ['==', ['get', 'unk'], 1], T.pinUnknown,
+            T.pinDim,
+          ] as ExpressionSpecification,
           'circle-stroke-width': ['case', ['==', ['get', 'flagged'], 1], 2, 1] as ExpressionSpecification,
           'circle-stroke-color': ['case', ['==', ['get', 'flagged'], 1], T.accent300, T.base] as ExpressionSpecification,
         },
@@ -979,21 +1063,33 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
-    const dimmed = new Set(rosterRef.current.filter((r) => !matched.has(r.slug)).map((r) => r.slug))
+    /* ONLY 'absent' DIMS. An unknown room is not dimmed and not lit — it takes
+       the neutral tone, and both flags are written on every feature every pass
+       so a room moving between states cannot keep a stale one. */
+    const dimmed = new Set(
+      rosterRef.current.filter((r) => stateOf(r.slug) === 'absent').map((r) => r.slug))
+    const unknown = new Set(
+      rosterRef.current.filter((r) => stateOf(r.slug) === 'unknown').map((r) => r.slug))
     const apply = (source: string, features: ReadonlyArray<{ id: number; properties: { slug: string } }>) => {
       if (!map.getSource(source)) return
       for (const f of features) {
-        map.setFeatureState({ source, id: f.id }, { dim: dimmed.has(f.properties.slug) })
+        map.setFeatureState({ source, id: f.id }, {
+          dim: dimmed.has(f.properties.slug),
+          unknown: unknown.has(f.properties.slug),
+        })
       }
     }
     apply('fp', ROOM_FOOTPRINTS.features as never)
     apply('shells', ROOM_SHELLS.features as never)
     apply('roofs', ROOM_ROOFS.features as never)
     /* The wireframe is a custom GL layer and cannot read feature-state, so the
-       same set goes in as a per-vertex attribute. */
+       same set goes in as a per-vertex attribute. It carries the ABSENT set
+       only: the wireframe is a gold edge treatment, and giving "not checked" a
+       gold state would spend the accent on a semantic, which the palette rules
+       forbid. An unknown room keeps its ordinary edges. */
     wireRef.current?.setDimmed(dimmed)
     map.triggerRepaint()
-  }, [matched, ready])
+  }, [stateOf, ready])
 
   /* Cluster properties are computed at LOAD time, so `hits` cannot be
      repainted when the filter changes — the data has to be re-set. */
@@ -1030,6 +1126,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
 
   const toggle = (k: string) =>
     setChecked((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]))
+  const toggleAmen = (slug: string) =>
+    setAmenChecked((c) => (c.includes(slug) ? c.filter((x) => x !== slug) : [...c, slug]))
+
   const toggleCompare = (slug: string) =>
     setCompare((c) => (c.includes(slug) ? c.filter((x) => x !== slug) : [...c, slug]))
 
@@ -1046,7 +1145,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       >
         <div>
           <p className="num" style={{ font: 'var(--cid-num-lg)', margin: 0 }}>
-            {activeKeys.length ? `${matches.length} of ${roster.length} rooms match` : `${roster.length} rooms`}
+            {filtering ? summaryLine(counts) : `${roster.length} rooms`}
           </p>
           {/* Only when it differs — the count and the viewport must not
               contradict each other on the first screen anyone sees. */}
@@ -1056,11 +1155,26 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
               <button type="button" onClick={goValley} className="cid-inline-btn">see the whole valley</button>
             </p>
           )}
+          {/* THE THIRD STATE IS EXPLAINED, not just coloured. A neutral pin no
+              one can interpret is the same failure as a dash that might mean
+              "none" or might mean "we didn't look". */}
           <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 'var(--cid-space-2) 0 0' }}>
-            {activeKeys.length
-              ? 'Rooms without every checked game stay on the map, dimmed.'
-              : 'Check a game to dim the rooms that lack it.'}
+            {!filtering
+              ? 'Check a filter to see which rooms have it.'
+              : counts.unknown > 0
+                ? `Dimmed rooms were asked and do not have it. ${
+                    counts.unknown === 1 ? 'One room is' : `${counts.unknown} rooms are`
+                  } neutral: nobody has checked ${counts.unknown === 1 ? 'it' : 'them'} yet.`
+                : 'Rooms without everything checked stay on the map, dimmed.'}
           </p>
+          {/* Name them while naming is useful, count them once it is not —
+              the same ENUMERATE_MAX rule the ranked columns use. */}
+          {filtering && counts.unknown > 0 && counts.unknown <= ENUMERATE_MAX && (
+            <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 'var(--cid-space-2) 0 0' }}>
+              Not yet checked:{' '}
+              {roster.filter((r) => stateOf(r.slug) === 'unknown').map((r) => r.name).join(', ')}.
+            </p>
+          )}
         </div>
 
         {/* Peers, not a primary and a way back: the valley view is where
@@ -1083,11 +1197,33 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
               </button>
             )
           })}
-          <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0 }}>
-            Only games are filterable today. A dim means a room does not have it — and
-            amenity coverage is not yet complete enough for that to be true.
-          </p>
         </div>
+
+        {/* AMENITY GROUPS — reopened 2026-08-07. A group appears only when a
+            slug under it is answered for at least AMENITY_SHIP_FLOOR rooms, so
+            this list grows out of the floor visits rather than out of an edit
+            here. Today: PARKING and FOOD & DRINK, one checkbox each. */}
+        {groups.map((g) => (
+          <div key={g.grp} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
+            <span className="cid-label">{g.label}</span>
+            {g.items.map((d) => {
+              const on = amenChecked.includes(d.slug)
+              const n = roster.filter((r) => r.amenities[d.slug] === true).length
+              const unknown = roster.filter((r) => r.amenities[d.slug] === undefined).length
+              return (
+                <button key={d.slug} type="button" onClick={() => toggleAmen(d.slug)} className="cid-check" data-on={on ? 'true' : 'false'}>
+                  <span aria-hidden className="cid-box">{on ? '✓' : ''}</span>
+                  <span style={{ flex: 1 }}>{d.label}</span>
+                  {/* The count is of CONFIRMED yeses, and the "+n?" is what
+                      stops it reading as "the other rooms don't". */}
+                  <span className="num" style={{ font: 'var(--cid-tag)', color: n ? 'var(--cid-dim)' : 'var(--cid-disabled)' }}>
+                    {n}{unknown > 0 ? ` +${unknown}?` : ''}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        ))}
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--cid-space-4)', minHeight: 'var(--cid-target)', font: 'var(--cid-body)', color: 'var(--cid-text-3)', cursor: 'pointer' }}>
           <input type="checkbox" checked={season} onChange={(e) => setSeason(e.target.checked)} />

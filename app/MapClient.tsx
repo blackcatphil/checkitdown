@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic'
 
 import type { MapRoom } from './MapShell'
 
+import type { AmenityDef } from '@/lib/amenity-filter'
+
 /**
  * Leaflet reads `window` at module scope, so it cannot be prerendered. Loading
  * it ssr:false keeps the rest of the page static — and the map is the one
@@ -28,6 +30,6 @@ const MapShell = dynamic(() => import('./MapShell').then((m) => m.MapShell), {
   ),
 })
 
-export function MapClient({ rooms }: { rooms: MapRoom[] }) {
-  return <MapShell rooms={rooms} />
+export function MapClient({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs: AmenityDef[] }) {
+  return <MapShell rooms={rooms} amenityDefs={amenityDefs} />
 }

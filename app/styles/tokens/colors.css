@@ -153,6 +153,21 @@
   --cid-map-mass-dim: #564A7C;
   --cid-map-lit-dim: #5E4C22;
 
+  /* THE THIRD FILTER STATE — "not yet checked", separated by CHROMA, not by
+     lightness. It is the NEUTRAL TWIN of the dimmed mass above: L* 34.45
+     against that token's 34.66, and chroma ~0 against its 31.6.
+     Holding lightness is what keeps it out of the road ladder. That ladder
+     (land 13.9 < land-2 17.0 < minor 21.0 < casing 27.0 < major 29.9 < dim
+     34.7) is one coupled decision, and a fourth mass tone picked by eye would
+     have landed somewhere inside it — the exact mistake the ground raise made
+     when it walked past the road rungs. Held at the same rung, it cannot.
+     Neutral is the semantically correct choice, not merely a convenient one:
+     gold is never semantic, teal means verified, and the standing ruling is
+     that unverified stays NEUTRAL GREY. "We have no answer" is precisely the
+     state with no colour to spend. */
+  --cid-map-mass-unknown: #515151;
+  --cid-pin-unknown: rgba(242, 244, 246, 0.55);
+
   /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
      glow rather than a black plane. A sky is the one surface that can break the
      "brightest thing is a building" rule SILENTLY — it is enormous, it sits
@@ -267,6 +282,7 @@
      never a one-line contrast fix. */
   --cid-map-mass-dim: #564A7C;
   --cid-map-lit-dim: #5E4C22;
+  --cid-map-mass-unknown: #515151;
 
   /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
      glow rather than a black plane. A sky is the one surface that can break the
@@ -288,5 +304,6 @@
   --cid-unverified: rgba(16, 19, 26, 0.62);
   --cid-unverified-rule: rgba(16, 19, 26, 0.38);
   --cid-pin-dim: rgba(16, 19, 26, 0.24);
+  --cid-pin-unknown: rgba(16, 19, 26, 0.52);
   --cid-scrim: rgba(16, 19, 26, 0.4);
 }

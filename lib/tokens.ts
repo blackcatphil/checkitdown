@@ -67,6 +67,9 @@ export const MAP_TOKENS = {
   buildingLit: '--cid-map-building-lit',
   hover: '--cid-map-hover',
   massDim: '--cid-map-mass-dim',
+  /* The third filter state. Neutral by design — see the token's note. */
+  massUnknown: '--cid-map-mass-unknown',
+  pinUnknown: '--cid-pin-unknown',
   litDim: '--cid-map-lit-dim',
   sky: '--cid-map-sky',
   horizon: '--cid-map-horizon',
