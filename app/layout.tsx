@@ -4,6 +4,11 @@ import Link from 'next/link'
 import './globals.css'
 
 export const metadata: Metadata = {
+  /* The real domain, set the day it landed (2026-08-07). Every relative
+     canonical and OG URL resolves against this; without it they resolve
+     against whatever host served the page — which was the .vercel.app
+     deployment URL, a spelling of the site we never want indexed. */
+  metadataBase: new URL('https://checkitdown.com'),
   title: 'Check It Down — every poker room in the Las Vegas valley',
   description:
     'Independent map and rankings of every poker room in the Las Vegas valley. '
