@@ -385,6 +385,7 @@ async function probe(browser, { cold }) {
   /* And BEHAVIOURALLY: dim a real slug and confirm the picture moves. An
      expression that mentions `dim` and never resolves to it would pass the
      check above and change nothing on screen. */
+  let styleSettled = null
   let dimPixels = null
   if (canvasEl && dimWiring) {
     /* STOP THE DRIFT FIRST. The first version compared two screenshots while
@@ -423,6 +424,18 @@ async function probe(browser, { cold }) {
     /* CONTROL: two frames with nothing changed. Whatever this reads is the
        noise floor, and the dim has to beat it by a wide margin to mean
        anything. */
+    /* STYLE-LOADED, READ FROM A SETTLED MAP.
+       This used to be sampled in the `rendered` block above, which runs while
+       the ambient drift is still turning the camera — and `isStyleLoaded()` is
+       false whenever ANY source is loading, so a continuously-moving camera
+       makes it flicker. Measured: 88% true while drifting, 100% true once
+       stopped and idle. That is the "styleLoaded flake" — one run in eight,
+       an intermittent gate everyone learns to re-run.
+       Here the drift is already stopped and the map already idle, so the
+       question is "does the style finish loading" rather than "was a tile in
+       flight at this instant". */
+    styleSettled = await page.evaluate(() => window.__cid_map.isStyleLoaded() === true)
+
     const lit = decodePng(await canvasEl.screenshot())
     await page.waitForTimeout(600)
     const stillLit = decodePng(await canvasEl.screenshot())
@@ -477,7 +490,7 @@ async function probe(browser, { cold }) {
   for (let i = 0; i < shot.length - 3; i += 997) colours.add(shot.readUInt32BE(i))
 
   await ctx.close()
-  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot), wire, dimWiring, dimPixels, reach, hitFloor }
+  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot), wire, dimWiring, dimPixels, reach, hitFloor, styleSettled }
 }
 
 const browser = await chromium.launch()
@@ -565,7 +578,8 @@ for (const [i, r] of results.entries()) {
     ok(r.rendered.extruded > 0,
       `the sourced buildings are RENDERED, not merely in the data (${r.rendered.extruded}`
       + `${r.rendered.extruded === 0 ? `; styleLoaded=${r.rendered.styleLoaded}` : ''})`)
-    ok(r.rendered.styleLoaded, 'the style reports itself fully loaded')
+    ok(r.styleSettled !== false,
+      'the style fully loads (read once the camera is still, not mid-drift)')
   } else {
     console.log('  (build with NEXT_PUBLIC_MAP_DEBUG=1 for the rendered-feature assertions)')
   }

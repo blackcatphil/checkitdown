@@ -82,17 +82,25 @@
      same screen would compete for that meaning, exactly as a brand-red that
      cannot mean warning. Same family, far less saturation — the data signal
      always wins the saturated value. */
-  /* THE GROUND FLOOR, RAISED TO 2x ITS RELATIVE LUMINANCE. Computed, not
-     picked: L 0.003039 -> 0.006139 (2.02x) and 0.005173 -> 0.010205 (1.97x),
-     mean 2.00x. Hexes that hit exactly 2.000x exist (#170932, #20113C) and are
-     NOT used — reaching the last 2% costs a heavy purple cast, and the ground
-     is meant to be a base rather than a colour. If this is tuned again, move
-     the LUMINANCE by a stated factor; "looks about right" is what puts an
-     arbitrary value here.
-     THIS IS THE DARK THEME'S FLOOR, not a theme switch — the light block below
-     is a separate design and is untouched. */
-  --cid-map-land: #13111A;          /* background / land base */
-  --cid-map-land-2: #1D1727;        /* landuse polygons, one step up */
+  /* THE GROUND FLOOR, SET BY PERCEPTUAL LIGHTNESS — TARGET L* = 14.
+     The previous note said "2.00x relative luminance", and that raise was
+     correct, committed, live, and INVISIBLE. Luminance is a physical quantity;
+     the eye reads L*, which is roughly its cube root down here. Doubling Y at
+     the bottom of the scale moved L* from 2.75 to 5.55 — under three points of
+     a hundred, RGB 11,9,16 -> 19,17,26 — so "twice as light" was true and
+     unnoticeable.
+     So the target is stated in the scale a person actually sees:
+       --cid-map-land   L* 13.90  (was 5.55, originally 2.75)
+       --cid-map-land-2 L* 17.01  (was 9.16, originally 4.67)
+     which is ~5.6x the original luminance and ~2.8x what the doubling gave.
+     IF THIS IS TUNED AGAIN, MOVE L*, NOT Y. That is the whole reason this
+     comment exists rather than a hex.
+     The hue ratio is preserved (260deg, blue-over-green 1.45) — the earlier
+     purple-cast tradeoff still applies: values that hit a round luminance
+     figure exactly do so by pushing the ground toward being a colour, and the
+     ground is a base. */
+  --cid-map-land: #262130;          /* background / land base */
+  --cid-map-land-2: #2E263D;        /* landuse polygons, one step up */
   --cid-map-natural: #1C2318;       /* parks, wood, GOLF — desaturated moss */
   --cid-map-water: #141634;         /* indigo-blue, well clear of the teal signal */
   --cid-map-water-line: #1E2149;    /* waterways */
@@ -122,7 +130,7 @@
      BUILDING though: a mass that sinks into the dark theme says "there is
      nothing there", which is the map lying about a real casino that simply
      does not spread Omaha. Held well above the ground plane it sits on
-     (--cid-map-land #13111A, land-2 #1D1727, the tiles' own buildings
+     (--cid-map-land #262130, land-2 #2E263D, the tiles' own buildings
      #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
      The gold accents dim with it — a dimmed building wearing a lit roof or a
      bright edge still reads as selected. */
@@ -133,6 +141,15 @@
      did not. Measured composited: 2.01 vs land, 1.91 vs tile buildings, and
      1.63 between a dimmed and a matched mass. Bright enough to be a building,
      dim enough not to be a match. */
+  /* DO NOT STEP THIS DARKER TO "FIX" THE FLAT-FILL NUMBERS.
+     Two flat-fill margins sit under 1.6 (dim fill vs land 1.44, lit vs dim fill
+     1.40) and they are PASSENGERS, not the signal. The flat mass is carried by
+     its OUTLINE at 2.85 — both colours opaque, so the ground moving does not
+     touch it — and that is what was confirmed by eye at Orleans.
+     This token is squeezed from both sides: darker separates it from the roads
+     and buries it against the land; lighter does the reverse. It is a rung in
+     the ladder above, so moving it is a coupled change to that whole ladder,
+     never a one-line contrast fix. */
   --cid-map-mass-dim: #564A7C;
   --cid-map-lit-dim: #5E4C22;
 
@@ -149,13 +166,21 @@
      is the densest thing on the map, so it is held BELOW the casing in
      luminance. The chain is the weight limit — if a gold minor breaks it, the
      weight is too high, and the answer is weight, never reverting the hue. */
-  --cid-map-road-minor: #241C0A;   /* halved with the rest of the map gold */
+  --cid-map-road-minor: #3D3116;   /* L* 21.0 — a rung above land-2 */
   /* GOLD, AS A CASING — the arterial outline. Positron draws the casing WIDER
      than the body (3 vs 2 at z10), so gold beneath purple shows as an edge on
      each side rather than as the road itself. Gold stays a line, which is the
      rule that broke when the whole network went gold. */
-  --cid-map-road-casing: #5C4915;
-  --cid-map-road-major: #574B70;    /* the mid step: land -> ROADS -> buildings */
+  --cid-map-road-casing: #4E3E10;  /* L* 27.0 */
+  /* THE ROAD RUNGS ARE SET BY L*, AS A LADDER, NOT INDIVIDUALLY.
+     Raising the ground to L* 14 walked it PAST the network: road-minor sat at
+     L* 10.8, darker than the land it draws on, and the lightness-family test
+     went red — correctly. Road-major was also within 0.2 L* of the dimmed mass
+     AND the same hue, so a dimmed building and an arterial were near-identical
+     in both. Restated with hues held (within 1 degree) the family reads:
+       land 13.9 < land-2 17.0 < minor 21.0 < casing 27.0 < major 29.9 < dim 34.7
+     Change one of these and re-check the whole ladder; they are one decision. */
+  --cid-map-road-major: #4C4162;   /* L* 29.9 — 4.8 below the dimmed mass, was 0.2 */
   --cid-map-boundary: rgba(169, 140, 232, 0.22);
 
   /* map */
@@ -220,7 +245,7 @@
      BUILDING though: a mass that sinks into the dark theme says "there is
      nothing there", which is the map lying about a real casino that simply
      does not spread Omaha. Held well above the ground plane it sits on
-     (--cid-map-land #13111A, land-2 #1D1727, the tiles' own buildings
+     (--cid-map-land #262130, land-2 #2E263D, the tiles' own buildings
      #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
      The gold accents dim with it — a dimmed building wearing a lit roof or a
      bright edge still reads as selected. */
@@ -231,6 +256,15 @@
      did not. Measured composited: 2.01 vs land, 1.91 vs tile buildings, and
      1.63 between a dimmed and a matched mass. Bright enough to be a building,
      dim enough not to be a match. */
+  /* DO NOT STEP THIS DARKER TO "FIX" THE FLAT-FILL NUMBERS.
+     Two flat-fill margins sit under 1.6 (dim fill vs land 1.44, lit vs dim fill
+     1.40) and they are PASSENGERS, not the signal. The flat mass is carried by
+     its OUTLINE at 2.85 — both colours opaque, so the ground moving does not
+     touch it — and that is what was confirmed by eye at Orleans.
+     This token is squeezed from both sides: darker separates it from the roads
+     and buries it against the land; lighter does the reverse. It is a rung in
+     the ladder above, so moving it is a coupled change to that whole ladder,
+     never a one-line contrast fix. */
   --cid-map-mass-dim: #564A7C;
   --cid-map-lit-dim: #5E4C22;
 
