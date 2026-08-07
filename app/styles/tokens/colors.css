@@ -107,6 +107,26 @@
      decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
   --cid-map-hover: #E3C567;
 
+  /* FILTERED OUT, NOT ABSENT.
+     Checking a game filter dims the rooms that lack it, and in 3D the building
+     IS the room — so the mass dims with the pin. It must still read as a
+     BUILDING though: a mass that sinks into the dark theme says "there is
+     nothing there", which is the map lying about a real casino that simply
+     does not spread Omaha. Held well above the ground plane it sits on
+     (--cid-map-land #0B0910, land-2 #120E1A, the tiles' own buildings
+     #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
+     The gold accents dim with it — a dimmed building wearing a lit roof or a
+     bright edge still reads as selected. */
+  /* TUNED AS RENDERED, NOT AS A SWATCH. The masses draw at
+     fill-extrusion-opacity 0.8 and composite over the ground, which pulled the
+     first value (#4E4370, a comfortable 2.23 against land in isolation) down to
+     1.72 against the tiles' own buildings — the swatch passed and the pixels
+     did not. Measured composited: 2.01 vs land, 1.91 vs tile buildings, and
+     1.63 between a dimmed and a matched mass. Bright enough to be a building,
+     dim enough not to be a match. */
+  --cid-map-mass-dim: #564A7C;
+  --cid-map-lit-dim: #5E4C22;
+
   /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
      glow rather than a black plane. A sky is the one surface that can break the
      "brightest thing is a building" rule SILENTLY — it is enormous, it sits
@@ -184,6 +204,26 @@
      at all. Separated by VALUE, exactly as brand teal was separated from
      decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
   --cid-map-hover: #E3C567;
+
+  /* FILTERED OUT, NOT ABSENT.
+     Checking a game filter dims the rooms that lack it, and in 3D the building
+     IS the room — so the mass dims with the pin. It must still read as a
+     BUILDING though: a mass that sinks into the dark theme says "there is
+     nothing there", which is the map lying about a real casino that simply
+     does not spread Omaha. Held well above the ground plane it sits on
+     (--cid-map-land #0B0910, land-2 #120E1A, the tiles' own buildings
+     #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
+     The gold accents dim with it — a dimmed building wearing a lit roof or a
+     bright edge still reads as selected. */
+  /* TUNED AS RENDERED, NOT AS A SWATCH. The masses draw at
+     fill-extrusion-opacity 0.8 and composite over the ground, which pulled the
+     first value (#4E4370, a comfortable 2.23 against land in isolation) down to
+     1.72 against the tiles' own buildings — the swatch passed and the pixels
+     did not. Measured composited: 2.01 vs land, 1.91 vs tile buildings, and
+     1.63 between a dimmed and a matched mass. Bright enough to be a building,
+     dim enough not to be a match. */
+  --cid-map-mass-dim: #564A7C;
+  --cid-map-lit-dim: #5E4C22;
 
   /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
      glow rather than a black plane. A sky is the one surface that can break the

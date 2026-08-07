@@ -29,7 +29,7 @@
  */
 
 type Ring = [number, number][]
-export type WireFeature = { ring: Ring; height: number; stagger: number }
+export type WireFeature = { ring: Ring; height: number; stagger: number; slug?: string }
 
 /** Must match the stagger in the rise expression, or the edges lag the masses. */
 export const WIRE_STAGGER = 0.35
@@ -41,17 +41,20 @@ attribute vec2 a_posb;
 attribute float a_ztopb;
 attribute float a_side;
 attribute float a_stagger;
+attribute float a_dim;
 uniform mat4 u_matrix;
 uniform float u_p;
 uniform float u_width;
 uniform vec2 u_res;
 uniform float u_depthBias;
+varying float v_dim;
 
 float rise(float st) {
   return clamp((u_p - st) / ${(1 - WIRE_STAGGER).toFixed(2)}, 0.0, 1.0);
 }
 
 void main() {
+  v_dim = a_dim;
   float f = rise(a_stagger);
   vec4 ca = u_matrix * vec4(a_pos, a_ztop * f, 1.0);
   vec4 cb = u_matrix * vec4(a_posb, a_ztopb * f, 1.0);
@@ -86,7 +89,12 @@ void main() {
 const FRAG = `
 precision mediump float;
 uniform vec4 u_color;
-void main() { gl_FragColor = u_color; }
+uniform vec4 u_colorDim;
+varying float v_dim;
+/* A CUSTOM LAYER CANNOT READ feature-state, so the dim travels as a per-vertex
+   attribute instead. Without it the wireframe would stay gold around a dimmed
+   mass, and a dimmed building wearing a lit cage still reads as selected. */
+void main() { gl_FragColor = mix(u_color, u_colorDim, step(0.5, v_dim)); }
 `
 
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
@@ -109,6 +117,10 @@ export type WireframeLayer = {
   readonly segments: number
   setProgress(p: number): void
   setColor(rgba: [number, number, number, number]): void
+  /** Dim every vertex belonging to these slugs. Same group model as the fills:
+   *  a property dims whole, never half. */
+  setDimmed(slugs: ReadonlySet<string>): void
+  readonly dimmedVertices: number
   /** Frames this layer has actually been asked to render, and the last GL error
    *  it saw. A segment count proves the BUFFER; these prove the DRAW. */
   readonly frames: number
@@ -184,12 +196,16 @@ export function buildWireGeometry(
   offsetMetres = 0,
 ) {
   const data: number[] = []
+  /* One slug per VERTEX, so a dim flag can be written straight into a parallel
+     buffer without re-deriving which building a vertex came from. */
+  const vertexSlug: string[] = []
   let segments = 0
 
   const push = (
     ax: number, ay: number, az: number,
     bx: number, by: number, bz: number,
     stagger: number,
+    slug: string,
   ) => {
     segments++
     /* Two triangles per segment, four corners, each carrying BOTH endpoints so
@@ -202,6 +218,7 @@ export function buildWireGeometry(
     for (const i of order) {
       const [px, py, pz, qx, qy, qz, side] = corners[i]
       data.push(px, py, pz, qx, qy, qz, side, stagger)
+      vertexSlug.push(slug)
     }
   }
 
@@ -226,12 +243,12 @@ export function buildWireGeometry(
       const [x, y] = mercator(lng, lat)
       const [x2, y2] = mercator(lng2, lat2)
       // vertical edge, ground to roof
-      push(x, y, 0, x, y, zTop, f.stagger)
+      push(x, y, 0, x, y, zTop, f.stagger, f.slug ?? '')
       // roof edge, following the ring
-      push(x, y, zTop, x2, y2, zTop2, f.stagger)
+      push(x, y, zTop, x2, y2, zTop2, f.stagger, f.slug ?? '')
     }
   }
-  return { array: new Float32Array(data), segments, vertices: data.length / FLOATS_PER_VERTEX }
+  return { array: new Float32Array(data), segments, vertices: data.length / FLOATS_PER_VERTEX, vertexSlug }
 }
 
 /** Web Mercator, normalised 0..1 — the space MapLibre's matrix expects. */
@@ -250,11 +267,20 @@ export function zPerMeterAt(lat: number): number {
 export function createWireframeLayer(
   id: string,
   features: WireFeature[],
-  opts: { width: number; color: [number, number, number, number]; offsetMetres?: number },
+  opts: {
+    width: number
+    color: [number, number, number, number]
+    colorDim: [number, number, number, number]
+    offsetMetres?: number
+  },
 ): WireframeLayer {
   const geom = buildWireGeometry(features, zPerMeterAt, opts.offsetMetres ?? 0)
   let program: WebGLProgram | null = null
   let buffer: WebGLBuffer | null = null
+  let dimBuffer: WebGLBuffer | null = null
+  const dimFlags = new Float32Array(geom.vertices)
+  let dimDirty = false
+  let glRef: WebGL2RenderingContext | null = null
   let loc: Record<string, number> = {}
   let uni: Record<string, WebGLUniformLocation | null> = {}
   let progress = 1
@@ -280,6 +306,19 @@ export function createWireframeLayer(
     },
     setProgress(p) { progress = p },
     setColor(c) { color = c },
+    get dimmedVertices() { return dimFlags.reduce((n, v) => n + (v > 0.5 ? 1 : 0), 0) },
+    setDimmed(slugs) {
+      for (let i = 0; i < dimFlags.length; i++) {
+        dimFlags[i] = slugs.has(geom.vertexSlug[i]) ? 1 : 0
+      }
+      dimDirty = true
+      /* Upload immediately when the context is up; otherwise onAdd will. */
+      if (glRef && dimBuffer) {
+        glRef.bindBuffer(glRef.ARRAY_BUFFER, dimBuffer)
+        glRef.bufferData(glRef.ARRAY_BUFFER, dimFlags, glRef.DYNAMIC_DRAW)
+        dimDirty = false
+      }
+    },
 
     onAdd(_map, gl) {
       const vs = compile(gl, gl.VERTEX_SHADER, VERT)
@@ -298,6 +337,7 @@ export function createWireframeLayer(
         a_ztopb: gl.getAttribLocation(program, 'a_ztopb'),
         a_side: gl.getAttribLocation(program, 'a_side'),
         a_stagger: gl.getAttribLocation(program, 'a_stagger'),
+        a_dim: gl.getAttribLocation(program, 'a_dim'),
       }
       uni = {
         u_matrix: gl.getUniformLocation(program, 'u_matrix'),
@@ -306,13 +346,20 @@ export function createWireframeLayer(
         u_res: gl.getUniformLocation(program, 'u_res'),
         u_color: gl.getUniformLocation(program, 'u_color'),
         u_depthBias: gl.getUniformLocation(program, 'u_depthBias'),
+        u_colorDim: gl.getUniformLocation(program, 'u_colorDim'),
       }
       buffer = gl.createBuffer()
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
       gl.bufferData(gl.ARRAY_BUFFER, geom.array, gl.STATIC_DRAW)
+      glRef = gl
+      dimBuffer = gl.createBuffer()
+      gl.bindBuffer(gl.ARRAY_BUFFER, dimBuffer)
+      gl.bufferData(gl.ARRAY_BUFFER, dimFlags, gl.DYNAMIC_DRAW)
+      dimDirty = false
     },
 
     onRemove(_map, gl) {
+      if (dimBuffer) gl.deleteBuffer(dimBuffer)
       if (buffer) gl.deleteBuffer(buffer)
       if (program) gl.deleteProgram(program)
       buffer = null
@@ -339,6 +386,20 @@ export function createWireframeLayer(
       attrib('a_side', 1, 24)
       attrib('a_stagger', 1, 28)
 
+      /* Separate, tightly-packed buffer: the dim flag changes on every filter
+         click while the geometry never does, so re-uploading the interleaved
+         array would push 8x the bytes for one float per vertex. */
+      if (dimDirty && dimBuffer) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, dimBuffer)
+        gl.bufferData(gl.ARRAY_BUFFER, dimFlags, gl.DYNAMIC_DRAW)
+        dimDirty = false
+      }
+      if (loc.a_dim >= 0 && dimBuffer) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, dimBuffer)
+        gl.enableVertexAttribArray(loc.a_dim)
+        gl.vertexAttribPointer(loc.a_dim, 1, gl.FLOAT, false, 0, 0)
+      }
+
       /* THE MATRIX IS `defaultProjectionData.mainMatrix`, NOT
          `modelViewProjectionMatrix`.
          The first version used the latter, which is the MapLibre v2/v3 custom
@@ -357,6 +418,7 @@ export function createWireframeLayer(
       gl.uniform1f(uni.u_width, opts.width * (window.devicePixelRatio || 1))
       gl.uniform2f(uni.u_res, gl.drawingBufferWidth, gl.drawingBufferHeight)
       gl.uniform4f(uni.u_color, color[0], color[1], color[2], color[3])
+      gl.uniform4f(uni.u_colorDim, opts.colorDim[0], opts.colorDim[1], opts.colorDim[2], opts.colorDim[3])
       gl.uniform1f(uni.u_depthBias, this.depthBias)
 
       /* DEPTH TEST ON, DEPTH WRITE OFF. Testing is what hides an edge behind a

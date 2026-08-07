@@ -66,6 +66,8 @@ export const MAP_TOKENS = {
   buildingEdge: '--cid-map-building-edge',
   buildingLit: '--cid-map-building-lit',
   hover: '--cid-map-hover',
+  massDim: '--cid-map-mass-dim',
+  litDim: '--cid-map-lit-dim',
   sky: '--cid-map-sky',
   horizon: '--cid-map-horizon',
   fog: '--cid-map-fog',

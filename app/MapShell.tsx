@@ -160,6 +160,24 @@ const riseBase = (p: number) => ['max', 0, ['-', ['*', ['get', 'height'], riseFa
 const FULL_HEIGHT = ['get', 'height'] as ExpressionSpecification
 const FULL_BASE = ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification
 
+
+/**
+ * DIM BEATS HOVER, DELIBERATELY.
+ *
+ * The filter is a statement about the room — "this one does not spread Omaha" —
+ * and hovering should not appear to retract it. So `dim` is the FIRST arm of
+ * every case below: a filtered-out mass stays dim while the pointer is over it,
+ * and the popup still opens, which is where the room's actual detail lives.
+ * The alternative (hover wins, the mass lights normally) makes the filter look
+ * like it forgot. Either behaviour falls out of expression ORDER, so it is
+ * stated here once rather than re-derived at five paint blocks.
+ */
+const dimFirst = (dim: string, hover: string, base: string): ExpressionSpecification =>
+  ['case',
+    ['boolean', ['feature-state', 'dim'], false], dim,
+    ['boolean', ['feature-state', 'hover'], false], hover,
+    base] as ExpressionSpecification
+
 export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   const holder = useRef<HTMLDivElement>(null)
   const roseRef = useRef(false)
@@ -369,7 +387,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         paint: {
           /* GOLD, NOT TEAL. Teal is --cid-value and means verified; spending it
              on a hover spends the only hue in the product that carries a claim. */
-          'fill-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.pin] as ExpressionSpecification,
+          'fill-color': dimFirst(T.massDim, T.hover, T.pin),
           'fill-opacity': 0.45,
           'fill-outline-color': T.accent300,
         },
@@ -380,7 +398,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         type: 'fill-extrusion',
         filter: ['has', 'height'],
         paint: {
-          'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.pin] as ExpressionSpecification,
+          /* Colour, never opacity — `fill-extrusion-opacity` takes zoom
+             expressions only and rejects feature-state outright (see below). */
+          'fill-extrusion-color': dimFirst(T.massDim, T.hover, T.pin),
           'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
           'fill-extrusion-base': 0,
           /* CONSTANT, because `fill-extrusion-opacity` takes zoom expressions
@@ -404,7 +424,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         source: 'fp',
         type: 'line',
         paint: {
-          'line-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.buildingLit] as ExpressionSpecification,
+          'line-color': dimFirst(T.litDim, T.hover, T.buildingLit),
           'line-width': 1.4,
           'line-opacity': 0.9,
         },
@@ -417,7 +437,9 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           source: 'shells',
           type: 'fill-extrusion',
           paint: {
-            'fill-extrusion-color': T.buildingLit,
+            /* Was a FLAT colour with no case expression at all — the layer that
+               would have kept a bright gold rim around a dimmed mass. */
+            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit),
             'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.9,
@@ -436,7 +458,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
           source: 'roofs',
           type: 'fill-extrusion',
           paint: {
-            'fill-extrusion-color': ['case', ['boolean', ['feature-state', 'hover'], false], T.hover, T.buildingLit] as ExpressionSpecification,
+            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit),
             /* `max` keeps a short component from inverting base above height. */
             'fill-extrusion-base': ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification,
             'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
@@ -453,7 +475,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       if (WIRE) {
         const feats = (ROOM_FOOTPRINTS.features as unknown as Array<{
           geometry: { coordinates: [number, number][][] }
-          properties: { height?: number }
+          properties: { height?: number; slug: string }
           id: number
         }>)
           .filter((f) => f.properties.height)
@@ -464,8 +486,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
                same id arithmetic. Two copies of this number is precisely how
                edges end up floating above buildings that have not risen yet. */
             stagger: STAGGER * ((f.id % 8) / 8),
+            slug: f.properties.slug,
           }))
         const wire = createWireframeLayer('rooms-wire', feats, {
+          colorDim: glColor(T.litDim, 0.95),
           width: 2.4,
           /* 1.2 m OUT, plus a small depth bias in the shader. Measured: neither
              alone is enough. Offset alone needs ~5 m before the flicker stops,
@@ -783,6 +807,35 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     if (!filtersMounted.current) { filtersMounted.current = true; return }
     lastActivity.current = Date.now()
   }, [checked])
+
+  /* THE FILTER DIM REACHES THE BUILDING.
+     In 3D the building IS the room — the same reasoning that turned the pin
+     into a locator — so a room filtered out dims its whole mass, not just its
+     7px dot. Driven from feature-state per SLUG, exactly like setGroupHover:
+     ARIA's podium and tower carry one slug between them and change together.
+     Lighting or dimming half a property is the group model leaking out.
+     ADDITIVE, NOT A REPLACEMENT. Only 8 of 17 rooms have a footprint at all —
+     the four locals rooms, Golden Nugget, MGM Grand, Orleans, Westgate and
+     Skyline have no mass to dim. The pin keeps carrying filter state for every
+     room, so those nine still answer the filter. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    const dimmed = new Set(rosterRef.current.filter((r) => !matched.has(r.slug)).map((r) => r.slug))
+    const apply = (source: string, features: ReadonlyArray<{ id: number; properties: { slug: string } }>) => {
+      if (!map.getSource(source)) return
+      for (const f of features) {
+        map.setFeatureState({ source, id: f.id }, { dim: dimmed.has(f.properties.slug) })
+      }
+    }
+    apply('fp', ROOM_FOOTPRINTS.features as never)
+    apply('shells', ROOM_SHELLS.features as never)
+    apply('roofs', ROOM_ROOFS.features as never)
+    /* The wireframe is a custom GL layer and cannot read feature-state, so the
+       same set goes in as a per-vertex attribute. */
+    wireRef.current?.setDimmed(dimmed)
+    map.triggerRepaint()
+  }, [matched, ready])
 
   /* Cluster properties are computed at LOAD time, so `hits` cannot be
      repainted when the filter changes — the data has to be re-set. */
