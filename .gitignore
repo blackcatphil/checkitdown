@@ -78,3 +78,5 @@ spike/.bak.html
 
 # Probe screenshots — build artefacts, reachable in the repo for review.
 screens/
+.vercel
+.env*
