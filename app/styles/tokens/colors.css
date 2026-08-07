@@ -82,8 +82,17 @@
      same screen would compete for that meaning, exactly as a brand-red that
      cannot mean warning. Same family, far less saturation — the data signal
      always wins the saturated value. */
-  --cid-map-land: #0B0910;          /* background / land base */
-  --cid-map-land-2: #120E1A;        /* landuse polygons, one step up */
+  /* THE GROUND FLOOR, RAISED TO 2x ITS RELATIVE LUMINANCE. Computed, not
+     picked: L 0.003039 -> 0.006139 (2.02x) and 0.005173 -> 0.010205 (1.97x),
+     mean 2.00x. Hexes that hit exactly 2.000x exist (#170932, #20113C) and are
+     NOT used — reaching the last 2% costs a heavy purple cast, and the ground
+     is meant to be a base rather than a colour. If this is tuned again, move
+     the LUMINANCE by a stated factor; "looks about right" is what puts an
+     arbitrary value here.
+     THIS IS THE DARK THEME'S FLOOR, not a theme switch — the light block below
+     is a separate design and is untouched. */
+  --cid-map-land: #13111A;          /* background / land base */
+  --cid-map-land-2: #1D1727;        /* landuse polygons, one step up */
   --cid-map-natural: #1C2318;       /* parks, wood, GOLF — desaturated moss */
   --cid-map-water: #141634;         /* indigo-blue, well clear of the teal signal */
   --cid-map-water-line: #1E2149;    /* waterways */
@@ -113,7 +122,7 @@
      BUILDING though: a mass that sinks into the dark theme says "there is
      nothing there", which is the map lying about a real casino that simply
      does not spread Omaha. Held well above the ground plane it sits on
-     (--cid-map-land #0B0910, land-2 #120E1A, the tiles' own buildings
+     (--cid-map-land #13111A, land-2 #1D1727, the tiles' own buildings
      #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
      The gold accents dim with it — a dimmed building wearing a lit roof or a
      bright edge still reads as selected. */
@@ -211,7 +220,7 @@
      BUILDING though: a mass that sinks into the dark theme says "there is
      nothing there", which is the map lying about a real casino that simply
      does not spread Omaha. Held well above the ground plane it sits on
-     (--cid-map-land #0B0910, land-2 #120E1A, the tiles' own buildings
+     (--cid-map-land #13111A, land-2 #1D1727, the tiles' own buildings
      #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
      The gold accents dim with it — a dimmed building wearing a lit roof or a
      bright edge still reads as selected. */
