@@ -173,15 +173,27 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   border-color: var(--cid-accent-300); background: var(--cid-accent-700);
 }
 
+/* THE GLANCE POPUP, ENLARGED — more room for the facts, not a new visual
+   language. Everything below is an existing token moved one step up its own
+   scale; no new size, weight or radius is introduced.
+     padding   space-5 (14px) -> space-6 (20px)
+     width     unset (shrink-wrapped, ~180px) -> min 268px, max 320px
+     name      --cid-room-name (21px) -> --cid-h2 (28px)
+     meta      --cid-caption (12.5px) -> --cid-body (13.5px)
+   268px is the width at which the longest room name we hold — "Green Valley
+   Ranch" — sets on one line at 28px, so the box grew to fit the content rather
+   than to a round number. The cap stops a long stakes string turning the glance
+   into a paragraph; that is what the full page is for. */
 .maplibregl-popup.cid-popup .maplibregl-popup-content {
   background: var(--cid-ink-600); border: 1px solid var(--cid-line-2);
   border-radius: var(--cid-r-md); box-shadow: var(--cid-shadow-pop);
-  color: var(--cid-text); padding: var(--cid-space-5);
+  color: var(--cid-text); padding: var(--cid-space-6);
+  min-width: 268px; max-width: 320px;
 }
 .maplibregl-popup.cid-popup .maplibregl-popup-tip { border-top-color: var(--cid-ink-600); }
-.cid-pop { display: flex; flex-direction: column; gap: var(--cid-space-3); }
-.cid-pop-name { font: var(--cid-room-name); color: var(--cid-text); border-bottom: none; }
-.cid-pop-meta { font: var(--cid-caption); color: var(--cid-text-3); }
+.cid-pop { display: flex; flex-direction: column; gap: var(--cid-space-4); }
+.cid-pop-name { font: var(--cid-h2); color: var(--cid-text); border-bottom: none; }
+.cid-pop-meta { font: var(--cid-body); color: var(--cid-text-3); }
 .cid-pop-ver {
   font: var(--cid-tag); letter-spacing: var(--cid-track-nav);
   color: var(--cid-unverified); border-bottom: 1px dotted var(--cid-unverified-rule);

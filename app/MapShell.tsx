@@ -97,6 +97,41 @@ const PITCH = 52
 /** Below this the camera flattens: the tile building layer carries no data
  *  lower, so a pitched empty view would be all cost and no skyline. */
 const MIN_3D_ZOOM = 13.5
+/* THE ZOOM AT WHICH THE BUILDING TAKES OVER FROM THE DOT.
+   Same threshold as the 3D switch, deliberately: above it the camera pitches
+   and the masses read as volumes, below it they are sub-pixel smudges and the
+   clusters carry everything. One number rather than two, so "the mass renders"
+   and "the mass is the target" can never disagree.
+   Below this the locator is the only thing on screen for every room. Above it
+   the dot is dropped ONLY for rooms that actually have a mass — the property
+   that matters is that no room is unreachable at any zoom, and it is asserted
+   in scripts/map-probe.mjs at both cameras. */
+const MASS_ZOOM = MIN_3D_ZOOM
+/* The invisible padded target around each footprint, in pixels of stroke. A
+   small flat footprint is a WORSE target than the 7px dot it replaces, so the
+   mass gets a floor: this pads outward from every edge, and the fill itself is
+   clickable inside. */
+const HIT_PAD = 16
+/* Which rooms have a mass at all, derived from the footprints rather than kept
+   as a second list that can drift out of step with them. */
+const MASS_SLUGS = new Set(ROOM_FOOTPRINTS.features.map((f) => f.properties.slug as string))
+
+/** Per-property bounding box of the mass, computed once. */
+const MASS_BOUNDS = (() => {
+  const m = new Map<string, [number, number, number, number]>()
+  for (const f of ROOM_FOOTPRINTS.features) {
+    const slug = f.properties.slug as string
+    const b = m.get(slug) ?? [180, 90, -180, -90]
+    for (const ring of f.geometry.coordinates as unknown as [number, number][][]) {
+      for (const [x, y] of ring) {
+        b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y)
+        b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y)
+      }
+    }
+    m.set(slug, b)
+  }
+  return m
+})()
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
 
 /** '#rrggbb' -> normalised rgba, because a GL uniform cannot take a CSS hex and
@@ -229,6 +264,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         slug: r.slug,
         name: r.name,
         hit: matched.has(r.slug) ? 1 : 0,
+        /* Drives the pin's disappearance above MASS_ZOOM. Nine rooms had no
+           footprint until this pass; if any room ever lacks one again, its dot
+           simply keeps showing, which is the safe direction to fail. */
+        hasMass: MASS_SLUGS.has(r.slug) ? 1 : 0,
         flagged: STATUS_LABEL[r.status] ? 1 : 0,
         badge: STATUS_LABEL[r.status] ?? '',
         verified: r.verified_at ? r.verified_at.slice(0, 10) : '',
@@ -382,18 +421,29 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
          podium tag wearing a different hat. */
       map.addLayer({
         id: 'rooms-flat',
+        minzoom: MASS_ZOOM,
         source: 'fp',
         type: 'fill',
         paint: {
           /* GOLD, NOT TEAL. Teal is --cid-value and means verified; spending it
              on a hover spends the only hue in the product that carries a claim. */
           'fill-color': dimFirst(T.massDim, T.hover, T.pin),
-          'fill-opacity': 0.45,
-          'fill-outline-color': T.accent300,
+          /* 0.45 -> 0.55. A FLAT footprint has no walls to shade, so it carries
+             the filter on fill and outline alone. At 0.45 a dimmed flat mass
+             sat at 1.38 against the ground and 1.30 against its lit self —
+             below the extruded case (1.63) and close to invisible, which for
+             the nine rooms promoted in this pass would mean the filter had
+             quietly stopped speaking for them. */
+          'fill-opacity': 0.55,
+          /* THE OUTLINE DOES THE WORK ON A FLAT SHAPE, and it was a STATIC
+             lavender — a dimmed footprint would have kept a fully-lit edge,
+             the same miss as the cap layer one layer over. */
+          'fill-outline-color': dimFirst(T.massDim, T.hover, T.accent300),
         },
       })
       map.addLayer({
         id: 'rooms-fp',
+        minzoom: MASS_ZOOM,
         source: 'fp',
         type: 'fill-extrusion',
         filter: ['has', 'height'],
@@ -421,6 +471,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
          a field the way it did across the road network. */
       map.addLayer({
         id: 'rooms-edge',
+        minzoom: MASS_ZOOM,
         source: 'fp',
         type: 'line',
         paint: {
@@ -434,6 +485,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         map.addSource('shells', { type: 'geojson', data: ROOM_SHELLS as never })
         map.addLayer({
           id: 'rooms-shell',
+          minzoom: MASS_ZOOM,
           source: 'shells',
           type: 'fill-extrusion',
           paint: {
@@ -455,6 +507,7 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         map.addSource('roofs', { type: 'geojson', data: ROOM_ROOFS as never })
         map.addLayer({
           id: 'rooms-cap',
+          minzoom: MASS_ZOOM,
           source: 'roofs',
           type: 'fill-extrusion',
           paint: {
@@ -508,6 +561,26 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         map.addLayer(wire as never)
       }
 
+      /* THE HIT FLOOR. Skyline's footprint is a few pixels across at the
+         landing zoom — smaller than the 7px dot it replaces — so removing the
+         dot without this would make a room HARDER to reach, which is the one
+         outcome this change must not have. A wide, all-but-invisible stroke
+         pads every footprint outward; the fill covers the inside.
+         Not opacity 0: a zero-opacity layer is a layer somebody later "cleans
+         up", and its being hit-testable is then a coincidence rather than a
+         decision. 0.01 is invisible and obviously deliberate. */
+      map.addLayer({
+        id: 'rooms-hit',
+        source: 'fp',
+        type: 'line',
+        minzoom: MASS_ZOOM,
+        paint: {
+          'line-color': T.pin,
+          'line-width': HIT_PAD,
+          'line-opacity': 0.01,
+        },
+      })
+
       map.addSource('rooms', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -556,6 +629,10 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
       })
       map.addLayer({
         id: 'pin',
+        /* Set imperatively on zoom change rather than with a ["zoom"] filter:
+           zoom expressions inside a filter are evaluated per tile at integer
+           zooms, which would flip the dot a whole zoom level away from where
+           the mass appears. */
         source: 'rooms',
         filter: ['!', ['has', 'point_count']],
         type: 'circle',
@@ -599,6 +676,33 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
         const f = e.features?.[0]
         if (f) map.easeTo({ center: (f.geometry as GeoJSON.Point).coordinates as [number, number], zoom: map.getZoom() + 2 })
       })
+      /* THE BUILDING IS THE TARGET. Any component of the property group opens
+         the room — ARIA's podium and its tower are one building to a reader, so
+         clicking either does the same thing. The popup is anchored at the
+         CLICK, not at the footprint centroid: a long mass like Mandalay Bay
+         would otherwise pop up a long way from the pointer. */
+      for (const layer of ['rooms-hit', 'rooms-flat', 'rooms-fp']) {
+        map.on('click', layer, (e) => {
+          const slug = e.features?.[0]?.properties?.slug
+          if (!slug) return
+          const room = rosterRef.current.find((r) => r.slug === slug)
+          if (!room) return
+          new Popup({ className: 'cid-popup', closeButton: false, offset: 12 })
+            .setLngLat(e.lngLat)
+            .setHTML(popupHtml({
+              slug: room.slug,
+              name: room.name,
+              area: room.area,
+              tables: room.table_count ?? 0,
+              stakes: room.stakes ?? '',
+              verified: room.verified_at ? room.verified_at.slice(0, 10) : '',
+              badge: STATUS_LABEL[room.status] ?? '',
+            }))
+            .addTo(map)
+        })
+        map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
+      }
+
       map.on('click', 'pin', (e) => {
         const f = e.features?.[0]
         if (!f) return
@@ -636,6 +740,53 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     /* An empty view means OPPOSITE things depending on whether tiles have
        arrived, and nothing on screen distinguishes them — so this tracks both
        and the UI says which. Structural, not cosmetic. */
+    /* THE DOT GIVES WAY TO ITS OWN BUILDING, AND ONLY THEN.
+       The first version dropped the dot for every room that HAS a footprint
+       once past MASS_ZOOM. Orleans then became unreachable at the Strip
+       camera: its marker sits inside the viewport but its building does not,
+       so the dot vanished and nothing took over. "Has a mass" and "its mass is
+       on screen" are different statements, and only the second one can
+       justify removing the locator.
+       So the pin list is recomputed from what is ACTUALLY RENDERED each time
+       the camera settles — cheap, because it rides the existing moveend/idle
+       pass, and correct by construction rather than by a zoom guess. */
+    const yieldPins = () => {
+      if (!map.getLayer('pin')) return
+      if (map.getZoom() < MASS_ZOOM) { map.setFilter('pin', null); return }
+      /* GEOMETRY, NOT A RENDER QUERY. queryRenderedFeatures answers differently
+         depending on how far through a frame it is asked — at moveend it
+         returned every slug in the source and the map lost all its locators; at
+         idle it still disagreed with the same query run moments later, and
+         Orleans kept losing its dot while its building was off screen.
+         A footprint's bounding box against the viewport is the same answer
+         every time it is asked, which is what this needs to be. */
+      /* PROJECTED TO THE SCREEN, not compared in lng/lat. `getBounds()` at
+         pitch 52 returns a trapezoid big enough to contain every room in the
+         valley, so a lng/lat test said "on screen" for all seventeen and the
+         map lost its locators again. Projection is what the camera actually
+         does. */
+      const canvas = map.getCanvas()
+      const W = canvas.clientWidth, H = canvas.clientHeight
+      const onScreen = (x: number, y: number) => {
+        const p = map.project([x, y])
+        return p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H
+      }
+      const covered: string[] = []
+      for (const [slug, [minX, minY, maxX, maxY]] of MASS_BOUNDS) {
+        const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+        /* Corners AND centre: a mass can straddle the edge with every corner
+           outside, and one whose centre alone is visible is still a target. */
+        if (onScreen(minX, minY) || onScreen(maxX, minY)
+          || onScreen(minX, maxY) || onScreen(maxX, maxY) || onScreen(cx, cy)) {
+          covered.push(slug)
+        }
+      }
+      map.setFilter('pin', ['all',
+        ['!', ['has', 'point_count']],
+        ['!', ['in', ['get', 'slug'], ['literal', covered]]],
+      ])
+    }
+
     const check = () => {
       setZoom(Number(map.getZoom().toFixed(2)))
       /* Our footprints are bundled, so they paint immediately. What can still
@@ -647,6 +798,13 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
     }
     map.on('moveend', check)
     map.on('idle', check)
+    /* ON `idle` ONLY, NEVER `moveend`. queryRenderedFeatures on a source that
+       has not finished rendering answers with everything in it: at moveend the
+       drawn set came back as all seventeen slugs, the filter excluded every
+       pin, and the map lost its locators entirely at the landing zoom. `idle`
+       is the event that means "what you see is what is drawn". */
+    map.on('moveend', yieldPins)
+    map.on('idle', yieldPins)
 
     }
 
@@ -850,6 +1008,8 @@ export function MapShell({ rooms }: { rooms: MapRoom[] }) {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
+    wireRef.current?.setVisible(zoom >= MASS_ZOOM)
+
     const want = zoom >= MIN_3D_ZOOM ? PITCH : 0
     if (Math.abs(map.getPitch() - want) > 1) map.easeTo({ pitch: want, duration: 400 })
   }, [zoom, ready])

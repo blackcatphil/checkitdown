@@ -258,6 +258,96 @@ async function probe(browser, { cold }) {
   const canvasEl = await page.$('canvas.maplibregl-canvas')
   const shot = canvasEl ? await canvasEl.screenshot() : Buffer.alloc(4)
 
+  /* NO ROOM IS UNREACHABLE AT ANY ZOOM.
+     The locator dot is dropped above MASS_ZOOM for rooms that have a mass, so
+     "the dot went away" and "the room became unclickable" now look identical
+     from outside. This checks the property that actually matters, at BOTH
+     cameras: for each of the 17 rooms, is there something on screen that opens
+     it — a pin, a cluster containing it, or its own building. */
+  const reach = await page.evaluate(async () => {
+    const m = window.__cid_map
+    if (!m) return null
+    const settle = () => new Promise((r) => { m.once('idle', r); setTimeout(r, 4000) })
+    const MASS = ['rooms-hit', 'rooms-flat', 'rooms-fp']
+    const out = {}
+    for (const [name, cam] of [
+      ['valley', { center: [-115.1709, 36.1309], zoom: 10, pitch: 0, bearing: 0 }],
+      ['strip', { center: [-115.1726, 36.112], zoom: 14.5, pitch: 52, bearing: -18 }],
+    ]) {
+      m.jumpTo(cam)
+      await settle()
+      const pins = new Set(m.queryRenderedFeatures({ layers: ['pin'] }).map((f) => f.properties.slug))
+      const clustered = m.queryRenderedFeatures({ layers: ['clusters'] })
+        .reduce((n, f) => n + (f.properties.point_count ?? 0), 0)
+      const mass = new Set(
+        MASS.filter((l) => m.getLayer(l))
+          .flatMap((l) => m.queryRenderedFeatures({ layers: [l] }))
+          .map((f) => f.properties.slug),
+      )
+      /* THE PROPERTY, STATED EXACTLY: every room whose marker is inside the
+         viewport must have something on screen that opens it. Counting totals
+         hid Orleans — 7 masses and 8 rooms in view still "passed" a >0 check
+         while one room had nothing at all. */
+      /* IN VIEW MEANS ON THE SCREEN. `getBounds().contains()` is a lng/lat
+         rectangle, and at pitch 52 that rectangle reaches far outside the
+         frame: it called Orleans "in view" while the room projects to x=-465,
+         465px off the left edge. The probe then reported an unreachable room
+         for three iterations while the map was behaving correctly — a test
+         asserting something the user cannot see. */
+      const canvas = m.getCanvas()
+      const W = canvas.clientWidth, H = canvas.clientHeight
+      const inView = [...new Set(
+        m.querySourceFeatures('rooms')
+          .filter((f) => {
+            const p = m.project(f.geometry.coordinates)
+            return p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H
+          })
+          .map((f) => f.properties.slug),
+      )]
+      const clusterCovers = clustered > 0
+      out[name] = {
+        zoom: m.getZoom(),
+        pins: [...pins],
+        mass: [...mass],
+        clustered,
+        inView: inView.length,
+        unreachable: clusterCovers ? [] : inView.filter((s) => !pins.has(s) && !mass.has(s)),
+      }
+    }
+    /* Put the camera back: the assertions after this one measure the landing
+       view, and leaving it parked somewhere else made styleLoaded read as
+       false on a map that was merely still settling. */
+    m.jumpTo({ center: [-115.1726, 36.112], zoom: 14.5, pitch: 52, bearing: -18 })
+    await settle()
+    return out
+  })
+
+  /* THE HIT FLOOR. The smallest footprint on screen at the landing camera is
+     the room that got harder to reach — measured, not assumed. */
+  const hitFloor = await page.evaluate(() => {
+    const m = window.__cid_map
+    if (!m || !m.getLayer('rooms-flat')) return null
+    m.jumpTo({ center: [-115.1726, 36.112], zoom: 14.5, pitch: 52, bearing: -18 })
+    const seen = new Map()
+    for (const l of ['rooms-flat', 'rooms-fp']) {
+      for (const f of m.queryRenderedFeatures({ layers: [l] })) {
+        const ring = f.geometry?.coordinates?.[0]
+        if (!ring) continue
+        let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9
+        for (const c of ring) {
+          const p = m.project(c)
+          minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x)
+          minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y)
+        }
+        const px = Math.min(maxX - minX, maxY - minY)
+        const slug = f.properties.slug
+        if (!seen.has(slug) || px > seen.get(slug)) seen.set(slug, px)
+      }
+    }
+    const rows = [...seen].sort((a, b) => a[1] - b[1])
+    return { smallest: rows[0], all: rows.slice(0, 4) }
+  })
+
   /* DOES THE FILTER DIM REACH EVERY LAYER THAT DRAWS THE MASS?
      Five layers draw a building and each carries its own paint block, so
      "the dim works" is only ever true of the ones somebody remembered. The CAP
@@ -387,7 +477,7 @@ async function probe(browser, { cold }) {
   for (let i = 0; i < shot.length - 3; i += 997) colours.add(shot.readUInt32BE(i))
 
   await ctx.close()
-  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot), wire, dimWiring, dimPixels }
+  return { tiles, styleStatus, errors, geom, firstTileAt, distinctBytes: colours.size, rendered, afterResize, shot, hues: hueShare(shot), wire, dimWiring, dimPixels, reach, hitFloor }
 }
 
 const browser = await chromium.launch()
@@ -427,6 +517,24 @@ for (const [i, r] of results.entries()) {
   ok(r.errors.length === 0, 'no console errors')
   ok(r.afterResize.canvas === r.afterResize.holder,
     `the canvas tracks a CONTAINER-ONLY resize (${r.afterResize.canvas} vs holder ${r.afterResize.holder})`)
+  if (r.reach) {
+    const v = r.reach.valley, t = r.reach.strip
+    console.log(`  valley z${v.zoom.toFixed(1)}  pins ${v.pins.length} · masses ${v.mass.length} · clustered ${v.clustered}`)
+    console.log(`  strip  z${t.zoom.toFixed(1)}  pins ${t.pins.length} · masses ${t.mass.length} · clustered ${t.clustered}`)
+    ok(v.unreachable.length === 0,
+      `no room is unreachable at the VALLEY camera${v.unreachable.length ? ` — ${v.unreachable.join(', ')}` : ''}`)
+    ok(t.unreachable.length === 0,
+      `no room is unreachable at the STRIP camera${t.unreachable.length ? ` — ${t.unreachable.join(', ')}` : ''}`)
+    ok(t.mass.length > 0, 'the buildings are the target at the Strip camera')
+    ok(v.mass.length === 0, 'no mass draws at the valley camera, so the dot must carry it there')
+    ok(v.pins.length + v.clustered >= 17, `the valley view still accounts for all 17 rooms (${v.pins.length} pins + ${v.clustered} clustered)`)
+  }
+  if (r.hitFloor?.smallest) {
+    const [slug, px] = r.hitFloor.smallest
+    console.log(`  hit floor   smallest footprint at landing: ${slug} ${px.toFixed(1)}px`
+      + ` (padded to ~${(px + 32).toFixed(0)}px by the 16px hit stroke)`)
+    ok(px + 32 >= 14, `the smallest mass is not a worse target than the 7px dot (${(px + 32).toFixed(0)}px vs 14px)`)
+  }
   if (r.dimWiring) {
     console.log(`  dim wiring  ${r.dimWiring.present.join(', ')}`
       + `${r.dimWiring.missing.length ? ` · MISSING ${r.dimWiring.missing.join(', ')}` : ''}`)

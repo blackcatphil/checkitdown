@@ -98,7 +98,57 @@ const GROUPS = {
   horseshoe: [
     { osm: 116867081, name: 'Horseshoe Resort Tower', height: 83, src: 'https://www.caesars.com/horseshoe-las-vegas', roomBuilding: true, note: '26 floors, ~83 m. The 112 m polygon nearby is Le Boulevard At Paris — a DIFFERENT property, and the neighbour that contaminated the earlier room table' },
   ],
-  /* RED ROCK IS NOT SEEDED, and the reason matters: the ~60 m hotel-tower
+  /* ---------------------------------------------------------------------
+     THE OTHER NINE, PROMOTED AS FLAT MASSES.
+     ---------------------------------------------------------------------
+     This set was curated around researched HEIGHTS, which left nine rooms with
+     no mass at all — and once the filter dim moved onto the building, a room
+     with no building had nothing to dim. They are promoted with NO HEIGHT:
+     flat is the honest render for a building nobody has sourced a height for,
+     and for the locals rooms it is also the accurate one. Nothing is
+     synthesised from `building:levels` — that is the inflation path, and it is
+     how MGM Grand became a two-storey box.
+     Each way id was resolved by matching the already-vetted spike polygon
+     against the OSM cache: centroid delta 0.0 and area ratio 1.0000 for all
+     nine, so these identify the SAME polygon rather than re-running a match
+     that has picked the wrong building three times.
+     --------------------------------------------------------------------- */
+  'boulder-station': [
+    { osm: 88930441, name: 'Boulder Station', roomBuilding: true, note: 'named OSM polygon' },
+  ],
+  'golden-nugget': [
+    { osm: 206151446, name: 'Golden Nugget Las Vegas', roomBuilding: true, note: 'named OSM polygon' },
+  ],
+  'green-valley-ranch': [
+    { osm: 341326765, name: 'Green Valley Ranch Resort Spa & Casino', roomBuilding: true, note: 'named OSM polygon' },
+  ],
+  'mgm-grand': [
+    { osm: 116770006, name: 'Hotel MGM Grand Las Vegas', roomBuilding: true,
+      note: 'named OSM polygon. levels=2 in OSM and DELIBERATELY UNUSED — that tag is what made MGM Grand a two-storey box' },
+  ],
+  'santa-fe-station': [
+    { osm: 961460045, name: 'Santa Fe Station Hotel and Casino', roomBuilding: true, note: 'named OSM polygon' },
+  ],
+  skyline: [
+    { osm: 1019620432, name: 'Skyline Hotel and Casino', roomBuilding: true, note: 'named OSM polygon' },
+  ],
+  westgate: [
+    { osm: 134691921, name: 'Westgate Las Vegas Resort & Casino', roomBuilding: true, note: 'named OSM polygon' },
+  ],
+  /* UNNAMED polygons, identified by CONTAINMENT — the room's coordinates fall
+     inside them. Weaker than a name match and recorded as such, the same way
+     ARIA's tower is. No height is claimed for either, so there is no cited
+     number resting on a guessed shape. */
+  orleans: [
+    { osm: 532572299, name: 'The Orleans', roomBuilding: true,
+      identifiedBy: 'containment on an unnamed polygon', note: 'the room falls inside it; OSM carries no name' },
+  ],
+  'red-rock': [
+    { osm: 316302063, name: 'Red Rock Resort', roomBuilding: true,
+      identifiedBy: 'containment on an unnamed polygon', note: 'the ~60 m tower height stays UNSEEDED — cited height, unidentified tower' },
+  ],
+
+  /* RED ROCK'S HEIGHT IS STILL NOT SEEDED, and the reason matters: the ~60 m hotel-tower
      height IS cited, but no polygon in the cache is named, so choosing one
      means picking the largest unnamed shape and calling it the tower. That is
      the ARIA error in a new hat — a cited number attached to a guessed
@@ -203,6 +253,14 @@ for (const [slug, comps] of Object.entries(GROUPS)) {
       properties: {
         slug,
         component: c.name,
+        /* THE GEOMETRY IS A FACT AND CARRIES ITS OWN RECEIPT. Previously only
+           the HEIGHT had provenance and the polygon had none, which made every
+           footprint hardcoded geometry — a thing this project already ruled is
+           not fine for production. Same shape as every other fact: a source, a
+           date, and verified_at NULL until someone stands there. */
+        source_url: osm(c.osm),
+        fetched_at: FETCHED,
+        verified_at: null,
         /* Only a CITED height is seeded. No height -> renders flat. */
         ...(c.height ? {
           height: c.height,

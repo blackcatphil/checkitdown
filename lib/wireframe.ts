@@ -134,6 +134,10 @@ export type WireframeLayer = {
   polygonOffset: [number, number]
   /** NDC depth pulled toward the viewer. The lever that actually works. */
   depthBias: number
+  /** Hidden below the zoom at which the masses draw — a custom layer has no
+   *  `minzoom`, so the gate is here. */
+  visible: boolean
+  setVisible(v: boolean): void
   /** Diagnostic only: turn depth testing off to find out whether the edges are
    *  being drawn and then losing the depth comparison, versus never drawn. */
   depthTest: boolean
@@ -292,6 +296,8 @@ export function createWireframeLayer(
   return {
     id,
     depthTest: true,
+    visible: true,
+    setVisible(v) { this.visible = v },
     polygonOffset: [0, 0],
     depthBias: 0.0009,
     type: 'custom',
@@ -368,6 +374,7 @@ export function createWireframeLayer(
 
     render(gl, args) {
       frames++
+      if (!this.visible) return
       if (!program || !buffer || geom.vertices === 0) return
       gl.useProgram(program)
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
