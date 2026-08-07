@@ -337,6 +337,9 @@ Constraints now carry their test:
 | `next-env.d.ts` must be committed | fresh clone, file deleted, `npm ci`, `tsc --noEmit` + `next build` | **FALSE** — typechecks without it and Next regenerates it |
 | Dress code / drinks / house rules 0/17 | searched every room's own site plus the partner floor sheet for a published dress code, drinks policy or house-rules document, 2026-08-07 | **TRUE** — no room on the sheet publishes house rules; the only house-rules documents found anywhere were **out-of-state** rooms; the one first-party dress code that exists (Venetian) governs the **casino floor**, not the poker room |
 | OSM heights are either right or absent | counted `height=` vs `building:levels=` across 1,283 corridor buildings, then read the named short ones | **FALSE** — 72% of tagged buildings are levels-only, and 40 named buildings ≤3 storeys include *"Hotel MGM Grand Las Vegas"* at **2**. **0 buildings carry `building:part`**, so podium-vs-tower is undetectable from the tiles |
+| Bravo (the other waitlist vendor) blocks automated fetching | `curl -sL -A "<Chrome UA>"` on `/`, `/rooms`, `/rooms/las-vegas`, 2026-08-07 | **TRUE** — root `403` with Cloudflare's *"Just a moment"* challenge; both room paths `404` from Cloudflare. **Redirects had to be followed to see it**: without `-L` the root returns `302` and reads as merely redirected. With PokerAtlas already measured at `403`, **both** waitlist vendors are now tested rather than assumed |
+| Vegas Advantage is static — usable as a citation, useless as a detector | read `dateModified` from the Wynn and ARIA pages, 2026-08-07 | **TRUE** — both stamped `2025-04-19`, unchanged for **~15.6 months**. It is the source behind much of our seeded rake and remains perfectly good for that, but a page that never moves cannot signal a change; pointing the detector at it would buy a permanent, meaningless silence |
+| X/Twitter is unreadable unauthenticated | five paths against `@ARIAPoker`, Chrome UA, redirects followed, 2026-08-07 | **TRUE** — `x.com` `200` but a JS shell with **zero** post-text nodes; `cdn.syndication` and `nitter.net` `200` with **empty bodies**; `oembed` `200` but a content-free widget stub. The fifth, `syndication.twitter.com/srv/timeline-profile`, is the trap: `200`, 542 KB, **106 parseable posts** — newest **2025-11-03, none from 2026** for a *daily*-posting account. A frozen cache shaped like a live feed, on an undocumented endpoint. **Designated social channels are for people to read, not pipelines** |
 
 The dress-code row was **WEAK** until 2026-08-07 — "an inference from not
 finding it, not a test that it is unpublishable". It has now been searched
@@ -1226,6 +1229,54 @@ console reporting.
 long on inference because nothing could ask the map what it thought its own
 camera and sources were.
 
+### `localhost` is not `127.0.0.1`, and Next 16 enforces that (2026-08-07)
+
+`npm run test:map` stopped working entirely, and the failure was
+`Z_BUF_ERROR: unexpected end of file` inside a **PNG decoder** — a zlib stack
+trace for a problem that was a **hostname**.
+
+Next 16 blocks cross-origin requests to dev-only assets. `next dev` binds
+`localhost`; the probe's default URL was `http://127.0.0.1:3100`. Those are
+different origins, so **the dev server 403s its own chunks**. What that looks
+like from outside is the trap:
+
+| Signal | Reading |
+|---|---|
+| `GET /` | `200` |
+| Served HTML | complete, map holder present |
+| Error page | none |
+| Client JS | **never boots** — no canvas, no MapLibre |
+
+Every check a person runs first says the page is fine. The probe then screenshot
+a canvas that did not exist, fell back to a 4-byte placeholder, and died in
+zlib.
+
+**The tool that cleared the file was the one tool that could not see the bug.**
+The chunk `403`d to the browser and `200`d to `curl` — because `curl` sends no
+`Origin` and is therefore exempt from the exact check that was failing. That
+disagreement was the diagnosis, and it read at first like proof the file was
+fine.
+
+Two changes, and the second matters more than the first:
+
+1. The probe's default is now `http://localhost:3100`, with the reason written
+   at the point of use. (`allowedDevOrigins` in `next.config.ts` is the
+   supported way to widen this; matching the hostname needs no
+   production-facing config.)
+2. **A missing canvas now reports itself and exits 1.** The guard for this
+   already existed — it caught the Playwright timeout and was believed to have
+   covered the case, but the 4-byte placeholder it substituted flowed straight
+   into the decoder. *A guard that hands a fake value to the next stage has
+   moved the crash, not handled it.* The probe now prints the holder size,
+   console errors, style status, tile count, and the origin hint.
+
+**Not** filed as the explanation for the earlier `styleLoaded` flake. It is a
+candidate — an IP-addressed run reports no style and zero tiles, which can read
+as a slow style load — but that flake was seen before this was found, and
+nothing here reproduces it. Two failures in the same assertion are not evidence
+they share a cause, and closing the older one on a resemblance is how a fixed
+symptom becomes a permanent wrong answer. It stays open.
+
 ## Building groups, and 13 seeded heights (2026-08-04)
 
 A property is a **group of masses**, not one polygon — `scripts/room-groups.mjs`
@@ -1790,6 +1841,39 @@ gold taking a filled action, gold text too dark for a surface.
   depends on hover alone. The parked mobile screens are stale in **scope**, not
   just palette — when mobile comes, do a fresh responsive pass from the current
   six surfaces rather than re-skinning the old ones.
+
+## Open items — recorded, not built (2026-08-07)
+
+Two things arrived that are real but have nowhere correct to land yet. Both are
+**blocked on the same parked decision** — the vendor/format migration — and both
+are written down here rather than half-built, because a feature started against
+an unmade decision is harder to unwind than a note.
+
+| Open item | What we have | Blocked on |
+|---|---|---|
+| **dbbp at Venetian and South Point** | Two rooms listed running it in the sheet's **Alt Games** column (relayed 2026-08-07) — read as **double-board bomb pots**, a game *format*, which is exactly why it has no column: formats beyond stakes are what the parked migration exists to model | The parked vendor/format migration. A format needs a home — a flag or a formats table — before any row can claim it |
+| **Atlas-or-Bravo** | Both vendors now measured shut (`403` each — see the constraint table). The build-decision teardown is still unfiled, below | The same migration. With both vendors unfetchable the choice is not "which do we scrape" but "which, if either, do we deal with" — a partnership question, not an engineering one |
+
+Two cautions attached to the dbbp line specifically:
+
+- **The expansion is contextual, not confirmed.** It reached us as "dbbp" in the
+  *Alt Games* column — a column of game formats — so it is read as *double-board
+  bomb pots*, the reading the column supports. The other candidate, *daily
+  bad-beat progressive*, is a **promotion**, and a promotion in a games column
+  would be the sheet miscategorising itself; prefer the reading that keeps the
+  source coherent. Still an assumption, not a receipt — confirm the term on the
+  floor before any column or flag is named after it.
+- **There is no receipt.** Which rooms, at what stakes, told to us by whom, is
+  not recorded. Same shape as the ARIA channel designation in
+  [`research/data-sustainability.md`](research/data-sustainability.md): a
+  second-hand claim is worth writing down and worth *not* citing.
+
+The rule this follows: **a fact with no correct column is recorded beside the
+decision that will create one, never wedged into a wrong one.** Nothing here
+should be built until the migration decides what formats and vendors look like
+in the schema. (And if the floor comes back saying dbbp *is* the progressive,
+it moves to §2 of the sustainability doc as a fast field — a number that moves
+needs a feed, not a snapshot.)
 
 ## Still to file here
 

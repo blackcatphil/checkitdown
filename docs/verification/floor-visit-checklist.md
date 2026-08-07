@@ -2,6 +2,14 @@
 
 _Derived from the seeded database 2026-08-05, main@1916d70. If seed data changes before the visit, re-derive._
 
+> **THE RE-DERIVE FLAG HAS NOW FIRED — this sheet has been patched by hand, not
+> re-derived.** The partner apply of 2026-08-07 added three cash games and
+> verified six, so the printed claims below no longer all come from one snapshot.
+> The affected lines are marked **[2026-08-07]** inline. Before the next visit,
+> re-derive the whole sheet from the database rather than trusting these patches
+> to be complete — a hand-patched sheet is exactly the kind of document that
+> looks derived and is not.
+
 ## How to use this sheet
 
 - Circle Y or N on EVERY amenity line. A blank is indistinguishable from "didn't look", and didn't-look is what this visit eliminates. "No" is a finding - record it proudly.
@@ -16,6 +24,8 @@ _Derived from the seeded database 2026-08-05, main@1916d70. If seed data changes
 - Five conflicts to settle on the floor: Caesars Palace tables (16 vs 8) - Orleans tables (35 vs 34) - Westgate tables (7 vs 6) and its 3/6 limit game - Green Valley Ranch tables (15 vs 20) - Skyline's days.
 - Rake numbers owed: ARIA, MGM Grand, Venetian, The Orleans and Skyline publish a cap but no percentage; Horseshoe publishes nothing at all. These rows block Just the Facts from ranking.
 - Dress code and drinks policy are unpublished by every casino - ask both at all 17 rooms; this sheet is the only way those columns ever fill.
+- **[2026-08-07] One game question to settle at Golden Nugget**: we now hold BOTH a $3/6 limit and a $4/8 limit. The $4/8 is partner-confirmed; the $3/6 is not. Is the $3/6 still spread, or did the $4/8 replace it?
+- **[2026-08-07] One receipt to collect at ARIA**: who designated @ARIAPoker as the schedule source, and when. A designation we cannot attribute is not yet a source.
 
 ---
 
@@ -390,7 +400,11 @@ Visited ____/____/2026 at ____:____ by ________________
 - $1/3 NLH: **Y / N**
 - $2/5 NLH: **Y / N**
 - $5/10 NLH: **Y / N**
+- **[2026-08-07] $1/2 PLO: ALREADY CONFIRMED** (partner, 2026-08-07) - re-check only if it is NOT on the board
+- **[2026-08-07] $5/10 PLO: ALREADY CONFIRMED** (partner, 2026-08-07) - re-check only if it is NOT on the board
 - Running but NOT listed above: ________________
+
+_[2026-08-07] Both PLO rows carry a $5 minimum limp and a $20 straddle rule, and their RAKE comes from a different document than their stakes. If the floor contradicts either the limp or the straddle, say which one - they were sourced separately._
 
 ### Rake
 
@@ -434,7 +448,8 @@ Visited ____/____/2026 at ____:____ by ________________
 ### Cash games - is each actually spread (on the board or in rotation)?
 
 - $1/2 NLH: **Y / N**
-- $3/6 limit: **Y / N**
+- $3/6 limit: **Y / N** - **[2026-08-07] SETTLE THIS ONE**: still spread, or replaced by the $4/8 below?
+- **[2026-08-07] $4/8 limit: ALREADY CONFIRMED** (partner, 2026-08-07) - **rake still owed**: we hold NO cap, percentage or drop for it. Get all three.
 - Running but NOT listed above: ________________
 
 ### Rake
@@ -483,7 +498,7 @@ Visited ____/____/2026 at ____:____ by ________________
 - $3/5 NLH: **Y / N**
 - $4/8 limit: **Y / N**
 - $8/16 limit: **Y / N**
-- $4/8 Omaha hi/lo: **Y / N**
+- $4/8 Omaha hi/lo: **Y / N** - **[2026-08-07] ALREADY CONFIRMED** (partner, 2026-08-07) - re-check only if it is NOT on the board
 - Running but NOT listed above: ________________
 
 ### Rake
@@ -539,7 +554,7 @@ Visited ____/____/2026 at ____:____ by ________________
 - $4/8 stud hi/lo: **Y / N**
 - $12/24 stud hi/lo: **Y / N**
 - $4/8 Omaha hi/lo: **Y / N**
-- $8/16 Omaha hi/lo: **Y / N**
+- $8/16 Omaha hi/lo: **Y / N** - **[2026-08-07] ALREADY CONFIRMED** (partner, 2026-08-07) - re-check only if it is NOT on the board
 - $15/30 Omaha hi/lo: **Y / N**
 - Running but NOT listed above: ________________
 
@@ -788,7 +803,7 @@ Visited ____/____/2026 at ____:____ by ________________
 - $1/2 NLH: **Y / N**
 - $2/5 NLH: **Y / N**
 - $4/8 limit: **Y / N**
-- $4/8 Omaha hi/lo: **Y / N**
+- $4/8 Omaha hi/lo: **Y / N** - **[2026-08-07] ALREADY CONFIRMED** (partner, 2026-08-07) - re-check only if it is NOT on the board
 - Running but NOT listed above: ________________
 
 ### Rake

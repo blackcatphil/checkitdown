@@ -71,7 +71,7 @@ jobs:
           games=$(psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -c 'select count(*) from cash_games')
           echo "rooms=$rooms games=$games"
           [ "$rooms" = "17" ] || { echo "::error::expected 17 seeded rooms, got '$rooms' — migration or seed did not run"; exit 1; }
-          [ "$games" = "75" ] || { echo "::error::expected 75 seeded cash games, got '$games'"; exit 1; }
+          [ "$games" = "78" ] || { echo "::error::expected 78 seeded cash games, got '$games'"; exit 1; }
 
       # --- GATE 2: RLS + grants, against the real roles. ---
       - name: "test:rls (10 pgTAP assertions)"

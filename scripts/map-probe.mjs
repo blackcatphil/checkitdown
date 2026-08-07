@@ -14,8 +14,26 @@
  * canvas looks right" — the canvas looked right the whole time it was empty,
  * because an empty canvas over a dark background looks like a dark map.
  *
- *   node scripts/map-probe.mjs [url]        # default http://127.0.0.1:3100
+ *   node scripts/map-probe.mjs [url]        # default http://localhost:3100
  *   MAP_PROBE_RUNS=3 node scripts/map-probe.mjs   # cold/warm timing, n>1
+ *
+ * THE HOSTNAME IS LOAD-BEARING — it must match what `next dev` bound, and
+ * `localhost` is NOT `127.0.0.1` to an origin check. Next 16 blocks
+ * cross-origin requests to dev-only assets, and the two spellings are different
+ * origins, so browsing the same server by IP makes it **403 its own chunks**.
+ * The page still returns 200, the HTML still contains the map holder, and the
+ * only visible symptom is that client JS never boots: no canvas, no MapLibre,
+ * no error page. This probe then crashed inside a PNG decoder, because the
+ * no-canvas fallback is a 4-byte placeholder that cannot be inflated —
+ * a stack trace about zlib for a problem that was a hostname.
+ *
+ * Diagnosed 2026-08-07 by noticing the chunk 403'd to the browser and 200'd to
+ * curl. `curl` sends no `Origin`, so it is exempt from the very check that was
+ * failing — THE TOOL THAT SAID "the file is fine" WAS THE ONE TOOL THAT COULD
+ * NOT SEE THE BUG. If a dev asset 404s or 403s only in the browser, suspect the
+ * origin before the file. (`allowedDevOrigins` in `next.config.ts` is the
+ * supported way to widen this; matching the hostname is simpler and needs no
+ * production-facing config change.)
  */
 import { inflateSync } from 'node:zlib'
 import { statSync, writeFileSync } from 'node:fs'
@@ -116,7 +134,8 @@ function hueShare(shot) {
   return Object.fromEntries(Object.entries(bucket).map(([k, v]) => [k, +(v / n * 100).toFixed(2)]))
 }
 
-const BASE = process.argv[2] ?? process.env.BASE_URL ?? 'http://127.0.0.1:3100'
+/* `localhost`, not `127.0.0.1` — see the origin note in the header. */
+const BASE = process.argv[2] ?? process.env.BASE_URL ?? 'http://localhost:3100'
 const RUNS = Number(process.env.MAP_PROBE_RUNS ?? 1)
 const BUDGET_MS = Number(process.env.MAP_PROBE_BUDGET ?? 20000)
 
@@ -256,7 +275,29 @@ async function probe(browser, { cold }) {
      timeout and a stack trace when the map failed to mount — the one situation
      the probe exists to describe, reported as a tooling error. */
   const canvasEl = await page.$('canvas.maplibregl-canvas')
-  const shot = canvasEl ? await canvasEl.screenshot() : Buffer.alloc(4)
+  /* ...and the placeholder had to go too. The guard above stopped the Playwright
+     timeout, but a 4-byte stand-in still reached `decodePng`, so the run died on
+     `Z_BUF_ERROR: unexpected end of file` from zlib — a crash, wearing a
+     different stack trace. Every measurement below reads pixels; without a
+     canvas there is nothing to be wrong about, so say the one true thing and
+     stop. */
+  if (!canvasEl) {
+    const holder = await page.evaluate(() => {
+      const el = document.querySelector('[data-map-holder], .maplibregl-map')
+      return el ? `${el.clientWidth}x${el.clientHeight}` : 'holder not in the DOM either'
+    })
+    console.error(`\nNO MAP CANVAS at ${BASE} — MapLibre never constructed.`)
+    console.error(`  holder: ${holder}`)
+    console.error(`  console errors: ${errors.length}${errors.length ? ` — ${errors[0]}` : ''}`)
+    console.error(`  style: ${styleStatus ?? 'never requested'} · tiles requested: ${tiles.requested}`)
+    console.error('\n  If the page itself returns 200, check the ORIGIN before the code:')
+    console.error('  Next 16 403s dev-only chunks for a hostname it was not started on,')
+    console.error('  and `localhost` and `127.0.0.1` are different origins. Client JS then')
+    console.error('  never boots and there is no error page to notice.')
+    await ctx.close()
+    process.exit(1)
+  }
+  const shot = await canvasEl.screenshot()
 
   /* NO ROOM IS UNREACHABLE AT ANY ZOOM.
      The locator dot is dropped above MASS_ZOOM for rooms that have a mass, so

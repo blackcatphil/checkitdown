@@ -732,3 +732,136 @@ commit;
 --
 --   SKYLINE and BOULDER STATION are absent from his grid entirely.
 -- =====================================================================
+
+-- =====================================================================
+-- PARTNER APPLY — 2026-08-07. GAMES, and the first game-verified rows.
+-- =====================================================================
+-- Stamped with the morning it was applied (noon-Vegas convention), NOT
+-- bulk re-stamped: every fact touched below carries 08-07 and every fact
+-- left alone keeps its 08-06 date, so freshness ages honestly.
+--
+-- Three of these are the "ALT GAMES" gap the previous pass refused to
+-- guess at. His prose said "$4/8 Omaha/8" and the rule was that prose is
+-- not a stakes row; he has now given exact stakes, so the rows that
+-- ALREADY EXISTED become verified rather than being invented. That is
+-- the omission-over-false-presence rule paying out: the rows were right,
+-- and waiting cost nothing but a week.
+--
+-- A SECOND FLOOR SOURCE JOINS THE SHEET. The Wynn PLO structures come
+-- from a long-form review doc, and the split is the rake-receipt
+-- mechanism used exactly as designed: `source_url` cites the doc for the
+-- STAKES, `rake_source_url` cites the sheet for the RAKE. One row, two
+-- sources, each naming the document that actually carries the fact.
+-- =====================================================================
+
+begin;
+
+insert into sources (data_type, url, label, cadence_hours, status, last_fetched_at, last_ok_at)
+values (
+  'floor',
+  'https://docs.google.com/document/d/1jLMmebgG9kmzNWuT6lFu8hcgrszB052v8m-A3cfyRzQ/edit',
+  'Partner floor data — Long Form Reviews (boots on the ground)',
+  24, 'ok', timestamptz '2026-08-07 12:00:00-07', timestamptz '2026-08-07 12:00:00-07'
+)
+on conflict (url, data_type) do nothing;
+
+-- ---------------------------------------------------------------------
+-- THE THREE O8 ROWS HE CONFIRMED. Values unchanged — this is a
+-- verification, not a correction, and it is recorded the same way.
+-- These are the first GAME-verified rows in the product: `verified_at`
+-- on cash_games has been NULL for every row until this morning.
+--
+-- ONLY verified_at moves. The web citation and its fetch date STAY:
+-- the stakes fact came from that page, the partner confirmed it, and the
+-- confirmation is the stamp — not a re-sourcing. Repointing source_url
+-- at the sheet would erase where the fact came from, which is the
+-- child-provenance rule ("every row cites where ITS fact came from")
+-- violated in the flattering direction. This mirrors production exactly.
+-- ---------------------------------------------------------------------
+update cash_games c
+   set verified_at = timestamptz '2026-08-07 12:00:00-07'
+  from rooms r
+ where r.id = c.room_id
+   and (r.slug, c.stakes_label) in (
+     ('orleans',          '$8/16 Omaha hi/lo'),
+     ('santa-fe-station', '$4/8 Omaha hi/lo'),
+     ('south-point',      '$4/8 Omaha hi/lo')
+   );
+
+-- ---------------------------------------------------------------------
+-- GOLDEN NUGGET $4/8 LIMIT — a NEW game, verified on sight.
+-- RAKE FIELDS STAY NULL: his GN rake cell is empty, and a room that
+-- spreads a game we can see is a different claim from a room whose rake
+-- we know. NULL rake_type means "no figure", which the schema's
+-- rake_model_coherent check enforces and the page renders as a dash.
+-- ---------------------------------------------------------------------
+insert into cash_games (
+  room_id, game, small_bet, big_bet, stakes_label,
+  source_url, fetched_at, verified_at
+)
+select r.id, 'lhe'::game_kind, 4.00, 8.00, '$4/8 limit',
+       'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       timestamptz '2026-08-07 12:00:00-07', timestamptz '2026-08-07 12:00:00-07'
+from rooms r where r.slug = 'golden-nugget'
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------
+-- WYNN PLO — two new games from the review doc, with the structures he
+-- recorded. Rake is pot / cap $5 / drop $0, matching the Wynn rows
+-- already verified against the sheet, and cited to the SHEET via the
+-- rake receipt while the stakes cite the DOC.
+-- ---------------------------------------------------------------------
+insert into cash_games (
+  room_id, game, small_blind, big_blind, stakes_label,
+  rake_type, rake_cap, jackpot_drop, structure_note, straddle_rule,
+  source_url, fetched_at, verified_at,
+  rake_source_url, rake_fetched_at, rake_verified_at
+)
+select r.id, v.game::game_kind, v.sb, v.bb, v.label,
+       'pot', 5.00, 0.00, v.structure_note, v.straddle_rule,
+       'https://docs.google.com/document/d/1jLMmebgG9kmzNWuT6lFu8hcgrszB052v8m-A3cfyRzQ/edit',
+       timestamptz '2026-08-07 12:00:00-07', timestamptz '2026-08-07 12:00:00-07',
+       'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       timestamptz '2026-08-07 12:00:00-07', timestamptz '2026-08-07 12:00:00-07'
+from rooms r
+cross join (values
+  ('plo', 1.00, 2.00,  '$1/2 PLO',  '$5 minimum limp', null),
+  ('plo', 5.00, 10.00, '$5/10 PLO', null,              '$20 straddle')
+) as v(game, sb, bb, label, structure_note, straddle_rule)
+where r.slug = 'wynn-encore'
+on conflict do nothing;
+
+update cash_games c
+   set source_id = s.id
+  from sources s
+ where s.url = c.source_url and s.data_type = 'floor' and c.source_id is null;
+
+commit;
+
+-- =====================================================================
+-- THE SEED CHECKS ITSELF.
+--
+-- The seed and production have diverged twice: once silently, once
+-- reopened by a morning apply that landed straight on prod. A seed that
+-- "looks applied" and a seed that MATCHES are different states, and the
+-- difference is invisible until something reads a count. So the file
+-- asserts what it should have produced, and a reseed that drifts from
+-- production fails HERE rather than in a page nobody is looking at.
+-- =====================================================================
+do $$
+declare
+  n_rooms int; n_games int; n_gv int; n_rv int; n_src int;
+begin
+  select count(*) into n_rooms from rooms;
+  select count(*) into n_games from cash_games;
+  select count(*) into n_gv    from cash_games where verified_at is not null;
+  select count(*) into n_rv    from cash_games where rake_verified_at is not null;
+  select count(*) into n_src   from sources;
+
+  if (n_rooms, n_games, n_gv, n_rv, n_src) is distinct from (17, 78, 6, 33, 44) then
+    raise exception
+      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources (expected 17 / 78 / 6 / 33 / 44)',
+      n_rooms, n_games, n_gv, n_rv, n_src;
+  end if;
+  raise notice 'seed matches production: 17 rooms / 78 games / 6 game-verified / 33 rake-verified / 44 sources';
+end $$;
