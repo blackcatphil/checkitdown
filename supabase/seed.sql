@@ -552,3 +552,183 @@ update room_amenities ra
  where s.url = ra.source_url and s.data_type = 'amenities';
 
 commit;
+
+-- =====================================================================
+-- PARTNER FLOOR DATA — 2026-08-06. THE FIRST VERIFIED ROWS.
+--
+-- Everything above this line is CANDIDATE data: read off the web, every
+-- verified_at NULL. Everything below carries verified_at SET, because it
+-- came from the partner — a bracelet holder who is in these rooms
+-- constantly — via his SinCityGrinders grid in Drive.
+--
+-- THE RULING (Phil, 2026-08-05): what he puts in the documents is law.
+-- He is boots on the ground, so his data IS verification and it wins
+-- every conflict against a scraped or published source, including
+-- official casino pages. This amends — does not break — the seeding
+-- rule's "only a human on site sets verified_at": he is that human.
+--
+-- DATE RULE: this first pass is stamped with the day it was applied.
+-- From here, each morning's CHANGES carry that morning's date, and an
+-- UNCHANGED fact keeps its ORIGINAL date so freshness ages honestly.
+-- Never bulk re-stamp on a no-change morning.
+--
+-- His grid is registered as a `sources` row of its own (data_type
+-- 'floor') rather than edited in as an unattributed change, so every
+-- fact below has a receipt like every other fact in the product.
+-- =====================================================================
+
+begin;
+
+insert into sources (data_type, url, label, cadence_hours, status, last_fetched_at, last_ok_at)
+values (
+  'floor',
+  'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+  'Partner floor data — SinCityGrinders grid (boots on the ground)',
+  24, 'ok', timestamptz '2026-08-06 12:00:00-07', timestamptz '2026-08-06 12:00:00-07'
+)
+on conflict (url, data_type) do nothing;
+
+-- ---------------------------------------------------------------------
+-- RAKE. His shorthand is "cap + drop": Wynn 5+0, Venetian 5+2,
+-- Orleans 5+3, Santa Fe 5+3, GVR 5+3. He gives no PERCENTAGE, so
+-- rake_percent is left exactly as it was — corroborating a cap is not
+-- a statement about the percentage.
+-- ---------------------------------------------------------------------
+
+-- SANTA FE — a real conflict, resolved in his favour. Vegas Advantage
+-- said cap $6 / drop $2; the floor says $5 / $3.
+update cash_games c
+   set rake_cap = 5.00, jackpot_drop = 3.00,
+       rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       rake_fetched_at  = timestamptz '2026-08-06 12:00:00-07',
+       rake_verified_at = timestamptz '2026-08-06 12:00:00-07'
+  from rooms r
+ where r.id = c.room_id and r.slug = 'santa-fe-station';
+
+-- ORLEANS — a gain, not a correction: the drop was unknown, now $3.
+-- His $5 cap independently corroborates the Vegas Advantage figure that
+-- the Boyd page never carried (the one genuine split in the dataset).
+update cash_games c
+   set jackpot_drop = 3.00,
+       rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       rake_fetched_at  = timestamptz '2026-08-06 12:00:00-07',
+       rake_verified_at = timestamptz '2026-08-06 12:00:00-07'
+  from rooms r
+ where r.id = c.room_id and r.slug = 'orleans';
+
+-- WYNN / VENETIAN / GVR — he AGREES with what was scraped. Values
+-- unchanged; the rows become verified. Independent corroboration is
+-- worth exactly as much as a correction and is recorded the same way.
+update cash_games c
+   set rake_verified_at = timestamptz '2026-08-06 12:00:00-07',
+       rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       rake_fetched_at  = timestamptz '2026-08-06 12:00:00-07'
+  from rooms r
+ where r.id = c.room_id and r.slug in ('wynn-encore','venetian','green-valley-ranch');
+
+commit;
+
+-- =====================================================================
+-- PARKING + TABLESIDE FOOD — the two slugs his grid fills completely.
+--
+-- These were the coverage failure that kept the amenity filter out of
+-- v1: freeself matched ZERO rooms and tableside ZERO rooms, so a dimmed
+-- pin would have meant "we never checked" while looking exactly like
+-- "this room doesn't have it". His column answers both for 15 rooms,
+-- including explicit NOs — and a recorded NO is a finding, not a blank.
+-- =====================================================================
+
+begin;
+
+-- Free self-park. NOTE THE TWO ROOMS DELIBERATELY ABSENT: Wynn and
+-- Venetian read "Free" on his grid, but his own long-form review says
+-- the Wynn COMPS parking when you hand your ticket to the podium —
+-- which is `validated`, not free-to-everyone, exactly the distinction
+-- the seed already drew for Venetian. His grid is coarser than the
+-- schema here; "Free" means "you don't pay", true under either slug.
+-- So they get their existing validated rows VERIFIED below rather than
+-- a second claim that contradicts them. GENERAL RULE: where his column
+-- is coarser than a schema distinction, verify the precise row that
+-- already exists instead of flattening the data to his wording.
+insert into room_amenities (room_id, amenity_id, available, detail, source_url, fetched_at, verified_at)
+select r.id, a.id, true, 'Free self-parking',
+       'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       timestamptz '2026-08-06 12:00:00-07', timestamptz '2026-08-06 12:00:00-07'
+from rooms r cross join amenity_types a
+where a.slug = 'freeself'
+  and r.slug in ('orleans','south-point','santa-fe-station','green-valley-ranch',
+                 'red-rock','golden-nugget','westgate')
+on conflict (room_id, amenity_id) do update
+  set available = excluded.available, detail = excluded.detail,
+      source_url = excluded.source_url, fetched_at = excluded.fetched_at,
+      verified_at = excluded.verified_at;
+
+insert into room_amenities (room_id, amenity_id, available, detail, source_url, fetched_at, verified_at)
+select r.id, a.id, false, 'Paid parking — $25',
+       'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       timestamptz '2026-08-06 12:00:00-07', timestamptz '2026-08-06 12:00:00-07'
+from rooms r cross join amenity_types a
+where a.slug = 'freeself'
+  and r.slug in ('caesars-palace','bellagio','mgm-grand','aria','horseshoe','mandalay-bay')
+on conflict (room_id, amenity_id) do update
+  set available = excluded.available, detail = excluded.detail,
+      source_url = excluded.source_url, fetched_at = excluded.fetched_at,
+      verified_at = excluded.verified_at;
+
+-- Wynn + Venetian: the validated rows seeded from the web, now confirmed
+-- from the floor.
+update room_amenities ra
+   set verified_at = timestamptz '2026-08-06 12:00:00-07'
+  from rooms r, amenity_types a
+ where ra.room_id = r.id and ra.amenity_id = a.id
+   and a.slug = 'validated' and r.slug in ('wynn-encore','venetian');
+
+-- Tableside food: yes for five, an explicit no for ten.
+insert into room_amenities (room_id, amenity_id, available, detail, source_url, fetched_at, verified_at)
+select r.id, a.id, true, null,
+       'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       timestamptz '2026-08-06 12:00:00-07', timestamptz '2026-08-06 12:00:00-07'
+from rooms r cross join amenity_types a
+where a.slug = 'tableside'
+  and r.slug in ('wynn-encore','venetian','bellagio','south-point','aria')
+on conflict (room_id, amenity_id) do update
+  set available = excluded.available, source_url = excluded.source_url,
+      fetched_at = excluded.fetched_at, verified_at = excluded.verified_at;
+
+insert into room_amenities (room_id, amenity_id, available, detail, source_url, fetched_at, verified_at)
+select r.id, a.id, false, null,
+       'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       timestamptz '2026-08-06 12:00:00-07', timestamptz '2026-08-06 12:00:00-07'
+from rooms r cross join amenity_types a
+where a.slug = 'tableside'
+  and r.slug in ('caesars-palace','orleans','mgm-grand','santa-fe-station',
+                 'green-valley-ranch','red-rock','golden-nugget','horseshoe',
+                 'mandalay-bay','westgate')
+on conflict (room_id, amenity_id) do update
+  set available = excluded.available, source_url = excluded.source_url,
+      fetched_at = excluded.fetched_at, verified_at = excluded.verified_at;
+
+update room_amenities ra
+   set source_id = s.id
+  from sources s
+ where s.url = ra.source_url and s.data_type = 'floor' and ra.source_id is null;
+
+commit;
+
+-- =====================================================================
+-- WHAT HIS GRID CARRIES THAT IS DELIBERATELY *NOT* SEEDED HERE
+--
+--   ALT GAMES — his column is prose: "rare", "mixed games", "plo",
+--     "$4/8 Omaha/8". Writing cash_games rows from that risks FALSE
+--     PRESENCE, which sends someone across town for a game that is not
+--     spread — the failure this project treats as worse than omission.
+--     Nothing added, including the Wynn PLO named in his review.
+--     Needs exact stakes from him.
+--
+--   ATLAS OR BRAVO — the waitlist vendor per room (Wynn, Venetian and
+--     Westgate on PokerAtlas; the rest on Bravo). Real, complete data
+--     with NO COLUMN to land in: this is the parked waitlist_enabled /
+--     provider field. Needs a migration before it can be seeded.
+--
+--   SKYLINE and BOULDER STATION are absent from his grid entirely.
+-- =====================================================================

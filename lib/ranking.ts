@@ -134,6 +134,31 @@ function phrase(names: string[], one: string, many: string): string | null {
   return `${names.length} rooms ${many}`
 }
 
+/**
+ * EVERY room at rank 1, and how to name them.
+ *
+ * `ranked.find(isLeader)` returned the FIRST rank-1 room and the card crowned
+ * it — which was harmless only while at most one room could be verified at the
+ * best value. The partner floor data verified 31 rake figures at once and six
+ * rooms tied at the same cap, so the card named one of six and silently dropped
+ * five equally-best rooms: a superlative stating something untrue, in the one
+ * product whose premise is that it does not.
+ *
+ * A tie is a real answer, so it is reported as one, under the same
+ * enumerate-vs-summarise rule the exclusion lines use — name them while a name
+ * is useful, count them once it is not.
+ */
+export function leaders(ranked: Ranked[]): { names: string[]; label: string } | null {
+  const top = ranked.filter((r) => r.isLeader)
+  if (!top.length) return null
+  const names = top.map((r) => r.name)
+  if (names.length === 1) return { names, label: names[0] }
+  if (names.length <= ENUMERATE_MAX) {
+    return { names, label: `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` }
+  }
+  return { names, label: `${names.length} rooms tied` }
+}
+
 /** The line under a ranked column. Names what is missing and why, never a bare count. */
 export function exclusionLine(ex: Exclusion, metric: string): string | null {
   const parts = [

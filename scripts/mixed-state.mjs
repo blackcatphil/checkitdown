@@ -19,7 +19,19 @@
  *   npm run dev            # in another shell
  *   node scripts/mixed-state.mjs
  *
- * Always restores the clean seeded state (every verified_at back to NULL).
+ * RESTORES BY SNAPSHOT, NEVER BY ASSUMPTION. The first version put the database
+ * back with blanket UPDATEs — `set verified_at = null`, `set available = true` —
+ * which was correct only while the seed contained nothing verified and nothing
+ * absent. The partner floor data made both assumptions false, and every run
+ * would have wiped 31 rake-verified rows and flipped 16 confirmed absences to
+ * present: a test suite quietly deleting the product's first real data.
+ *
+ * So the columns a scenario is about to touch are copied to a snapshot schema
+ * first, and only the rows a scenario actually touched are written back. A
+ * scenario scoped to one room does not write to another room's rows at all.
+ * The suite ends by comparing the counts that matter against the pre-suite
+ * values, so a regression of this class fails loudly rather than silently
+ * destroying data.
  */
 import { execFileSync } from 'node:child_process'
 
@@ -33,27 +45,72 @@ const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 
-const resetStatus = () =>
-  sql(`update rooms set status = 'open', is_seasonal = false, closed_on = null;
-       update room_amenities set available = true;`)
+const SNAP = 'cid_mixed_state_snapshot'
 
-const reset = () =>
-  sql(`update rooms set status = 'open', is_seasonal = false, closed_on = null;
-       update room_amenities set available = true;
-       update rooms set verified_at = null;
-       update cash_games set verified_at = null, rake_verified_at = null;
-       update room_amenities set verified_at = null;`)
+/** The columns any scenario is allowed to mutate. Anything not listed here is
+ *  not restored, so adding a mutation means adding its column. */
+const snapshot = () => sql(`
+  drop schema if exists ${SNAP} cascade;
+  create schema ${SNAP};
+  create table ${SNAP}.rooms as
+    select id, status, is_seasonal, closed_on, verified_at from rooms;
+  create table ${SNAP}.cash_games as
+    select id, verified_at, rake_verified_at from cash_games;
+  create table ${SNAP}.room_amenities as
+    select room_id, amenity_id, available, verified_at from room_amenities;`)
+
+const dropSnapshot = () => sql(`drop schema if exists ${SNAP} cascade`)
+
+/* Every slug a scenario has written to. Restore walks this, so a scenario that
+   touches one room leaves every other room's rows untouched — including the
+   rows the partner data verified. */
+let touched = new Set()
+
+const list = (slugs) => slugs.map((s) => `'${s.replace(/'/g, "''")}'`).join(',')
+
+/** Mutate rows for these slugs, recording them so they can be put back. */
+const mutate = (slugs, q) => {
+  for (const s of slugs) touched.add(s)
+  if (q) sql(q)
+}
+
+/** Put back exactly the rows this scenario touched, from the snapshot. */
+const restore = () => {
+  if (touched.size === 0) return
+  const l = list([...touched])
+  sql(`
+    update rooms r set status = s.status, is_seasonal = s.is_seasonal,
+                       closed_on = s.closed_on, verified_at = s.verified_at
+      from ${SNAP}.rooms s where s.id = r.id and r.slug in (${l});
+    update cash_games c set verified_at = s.verified_at, rake_verified_at = s.rake_verified_at
+      from ${SNAP}.cash_games s where s.id = c.id
+       and c.room_id in (select id from rooms where slug in (${l}));
+    update room_amenities a set available = s.available, verified_at = s.verified_at
+      from ${SNAP}.room_amenities s
+      where s.room_id = a.room_id and s.amenity_id = a.amenity_id
+        and a.room_id in (select id from rooms where slug in (${l}));`)
+  touched = new Set()
+}
+
+/** The numbers that catch a blanket UPDATE. Compared before and after. */
+const census = () => sql(`
+  select
+    (select count(*) from rooms where verified_at is not null) || ' rooms-verified/'
+ || (select count(*) from cash_games where rake_verified_at is not null) || ' rake-verified/'
+ || (select count(*) from cash_games where verified_at is not null) || ' games-verified/'
+ || (select count(*) from room_amenities where verified_at is not null) || ' amenities-verified/'
+ || (select count(*) from room_amenities where available = false) || ' absences/'
+ || (select count(*) from rooms where status <> 'open' or is_seasonal) || ' off-roster'`)
 
 /** A floor visit confirms the room AND the facts in it, so verify both. */
 const verifyRooms = (slugs) => {
   if (!slugs.length) return
-  const list = slugs.map((s) => `'${s}'`).join(',')
-  sql(`
-    update rooms set verified_at = now() where slug in (${list});
+  mutate(slugs, `
+    update rooms set verified_at = now() where slug in (${list(slugs)});
     update cash_games set verified_at = now(), rake_verified_at = now()
-      where room_id in (select id from rooms where slug in (${list}));
+      where room_id in (select id from rooms where slug in (${list(slugs)}));
     update room_amenities set verified_at = now()
-      where room_id in (select id from rooms where slug in (${list}));`)
+      where room_id in (select id from rooms where slug in (${list(slugs)}));`)
 }
 
 /**
@@ -126,9 +183,9 @@ async function warm() {
      pages (revalidate=300), which looks exactly like a regression.
      So: flip one row, look for it, put it back. If the page does not move, say
      WHY rather than emitting a dozen misleading assertion failures. */
-  sql("update rooms set verified_at = now() where slug = 'horseshoe'")
+  mutate(['horseshoe'], "update rooms set verified_at = now() where slug = 'horseshoe'")
   const probe = await fetch(`${BASE}/rooms/horseshoe`, { cache: 'no-store' }).then((r) => r.text())
-  sql('update rooms set verified_at = null')
+  restore()
   if (!/VERIFIED ON SITE/.test(probe)) {
     throw new Error(
       `the server at ${BASE} did not reflect a database change.\n`
@@ -145,6 +202,47 @@ const check = (name, ok, detail = '') => {
   if (!ok) failures++
 }
 
+/**
+ * WHAT THE PAGE SHOULD RANK, computed from the same rule the page uses rather
+ * than from a fixture count.
+ *
+ * The old assertions hardcoded numbers that were only ever true because the
+ * seed contained nothing verified — "no rank badges at all", "exactly one
+ * ranked row". Real rake data arrived and every one of them broke while the
+ * page was behaving correctly. A count derived from the rule survives the next
+ * batch of floor data; a literal does not.
+ *
+ * Mirrors headlineRake(): only `pot` games with a cap are priced, the room's
+ * figure is the MINIMUM cap, and it ranks when a game AT that cap is
+ * rake-verified.
+ */
+const rankedSlugs = () => sql(`
+  select r.slug from rooms r
+  where r.status = 'open' and not r.is_seasonal
+    and exists (
+      select 1 from cash_games c
+      where c.room_id = r.id and c.rake_type = 'pot' and c.rake_cap is not null
+        and c.rake_cap = (select min(c2.rake_cap) from cash_games c2
+                           where c2.room_id = r.id and c2.rake_type = 'pot' and c2.rake_cap is not null)
+        and c.rake_verified_at is not null)
+  order by r.slug`).split('\n').filter(Boolean)
+
+/** Rooms tied at the best cap — every one of them is a true #1. */
+const leaderSlugs = () => sql(`
+  with ranked as (
+    select r.slug, (select min(c2.rake_cap) from cash_games c2
+                     where c2.room_id = r.id and c2.rake_type = 'pot' and c2.rake_cap is not null) cap
+    from rooms r
+    where r.status = 'open' and not r.is_seasonal
+      and exists (
+        select 1 from cash_games c
+        where c.room_id = r.id and c.rake_type = 'pot' and c.rake_cap is not null
+          and c.rake_cap = (select min(c2.rake_cap) from cash_games c2
+                             where c2.room_id = r.id and c2.rake_type = 'pot' and c2.rake_cap is not null)
+          and c.rake_verified_at is not null))
+  select slug from ranked where cap = (select min(cap) from ranked) order by slug`)
+  .split('\n').filter(Boolean)
+
 const ROOMS = sql('select slug from rooms order by name').split('\n').filter(Boolean)
 const RAKEABLE = sql(`
   select distinct r.slug from rooms r join cash_games c on c.room_id = r.id
@@ -152,30 +250,49 @@ const RAKEABLE = sql(`
   .split('\n').filter(Boolean)
 
 async function scenario(label, slugs, assertions) {
-  reset()
+  restore()
   verifyRooms(slugs)
   const view = await facts()
   console.log(`\n== ${label} (${slugs.length} verified) ==`)
   await assertions(view)
 }
 
+const BEFORE = census()
+snapshot()
+
 try {
+  console.log(`census before: ${BEFORE}`)
   await warm()
   console.log(`rooms=${ROOMS.length} rakeable=${RAKEABLE.length}`)
 
-  await scenario('ZERO — day one', [], ({ text, ranks }) => {
-    check('three zero-state cards, ONE line each', (text.match(/Nothing rankable on/g) ?? []).length === 3)
-    // The three cards said the same two paragraphs six times; the explanation
-    // now lives once below the row, and only collapses while they agree.
-    check('shared explanation printed once', (text.match(/An unverified figure is shown but never ranked/g) ?? []).length === 1)
+  /* NOT "day one" any more. The partner floor data verified 31 rake figures
+     without signing off a single room, so the baseline the product actually
+     ships is rake ranked and rooms unconfirmed — which is precisely the mixed
+     state this suite exists for, arriving for real. */
+  await scenario('BASELINE — rake confirmed on the floor, no room signed off', [], ({ text, ranks }) => {
+    const expect = rankedSlugs()
+    check('ranks exactly the rake-verified rooms', ranks.length === expect.length,
+      `page ${ranks.length}, rule ${expect.length}`)
+    check('no room is confirmed end to end', /No room has been checked end to end yet/.test(text))
+    /* The lede used to branch the WHOLE sentence on the room count and printed
+       "nothing is ranked" above ranked rows. Each clause now reports its own
+       number, so this asserts the two cannot contradict each other again. */
+    check('lede does not claim nothing is ranked while rows are ranked',
+      ranks.length === 0 || !/nothing is ranked/.test(text))
+    check('rake card is decided, food and tables are not',
+      (text.match(/Nothing rankable on/g) ?? []).length === 2,
+      'rake is verified by the partner data; food and tables gate on the room')
+    /* Documented behaviour: the shared line collapses ONLY while all three
+       cards say the same thing. They no longer do, so it must not print. */
+    check('shared explanation withheld once the cards diverge',
+      (text.match(/An unverified figure is shown but never ranked/g) ?? []).length === 0)
     check('no tilde on non-numeric cells', !/~Cocktail service|~Validated|~Free self-park/.test(text))
-    check('no rank badges at all', ranks.length === 0, `${ranks.length} found`)
-    check('lede admits nothing is confirmed', /Nothing here has been confirmed on site yet/.test(text))
-    check('footer says 0 of 17', /0 of 17 rooms are confirmed on site/.test(text))
+    check('footer says 0 of 17 rooms confirmed', /0 of 17 rooms are confirmed on site/.test(text))
   })
 
   await scenario('ONE — first floor visit', RAKEABLE.slice(0, 1), ({ text, ranks, rows }) => {
-    check('exactly one ranked row', ranks.length === 1 && ranks[0] === 1, `ranks=[${ranks}]`)
+    check('ranks exactly the rake-verified rooms', ranks.length === rankedSlugs().length,
+      `page ${ranks.length}, rule ${rankedSlugs().length}`)
     check('lede reports 1 of 17 confirmed', /1 of 17 rooms are confirmed on site/.test(text))
     check('exclusion SUMMARISES at 16', /16 rooms are not confirmed on site yet/.test(text))
     /* Added after a CI self-test: hardcoding winner={null} — the ORIGINAL bug —
@@ -191,16 +308,26 @@ try {
   })
 
   await scenario('THREE — mid floor visit', RAKEABLE.slice(0, 3), ({ text, ranks, rows }) => {
-    // bellagio $5, aria $6, boulder-station $6 -> #1, #2, #2. A tie shares a
-    // position and the next distinct value skips; there is correctly no #3.
-    check('three ranked rows', ranks.length === 3, `ranks=[${ranks}]`)
+    const expect = rankedSlugs()
+    const lead = leaderSlugs()
+    check('ranks exactly the rake-verified rooms', ranks.length === expect.length,
+      `page ${ranks.length}, rule ${expect.length}`)
     check('ranks ascend and start at 1', ranks[0] === 1 && ranks.every((r, i) => i === 0 || r >= ranks[i - 1]))
     check('tie shares a position', new Set(ranks).size < ranks.length, `ranks=[${ranks}]`)
-    check('exactly one leader', ranks.filter((r) => r === 1).length === 1)
+    /* TEAL MARKS EVERY TRUE #1, NOT THE FIRST OF THEM. Six rooms tie at the
+       same cap in the real data; each of them IS best-in-city, and the old
+       "exactly one" encoded a fixture where only one room could be verified. */
+    check('every tied leader is ranked #1', ranks.filter((r) => r === 1).length === lead.length,
+      `page ${ranks.filter((r) => r === 1).length}, rule ${lead.length}`)
     check('LOWEST RAKE still shows a winner at three verified',
       !/Nothing rankable on rake/.test(text))
     const tealRows = rows.filter((r) => r.includes('--cid-value'))
-    check('teal on exactly one row', tealRows.length === 1, `${tealRows.length} rows`)
+    check('teal on every leader and nowhere else', tealRows.length === lead.length,
+      `${tealRows.length} teal rows, ${lead.length} leaders`)
+    /* A superlative card must not crown one of several tied rooms. */
+    check('a tie is reported as a tie, not as a winner',
+      lead.length === 1 || new RegExp(`${lead.length} rooms tied`).test(text),
+      `${lead.length} rooms share the best cap`)
     check('exclusion still summarises at 14', /14 rooms are not confirmed on site yet/.test(text))
     const lastRanked = rows.findLastIndex((r) => />#\d/.test(r))
     const firstUnranked = rows.findIndex((r) => /Not ranked/.test(r))
@@ -211,9 +338,20 @@ try {
     check('exclusion ENUMERATES at 2 excluded', /[^.;—]{0,80} and [^.;—]{0,80} are not confirmed on site yet/.test(text))
     check('no bare count for the 2', !/2 rooms are not confirmed on site yet/.test(text))
     check('lede reports 15 confirmed', /15 of 17 rooms are confirmed on site/.test(text))
-    // Horseshoe is confirmed but publishes no rake, so it cannot be ranked.
-    check('confirmed != rankable is stated', /14 of those can be ranked on rake/.test(text), `ranks=${ranks.length}`)
-    check('ranked count is 14, not 15', ranks.length === 14, `${ranks.length}`)
+    /* CONFIRMED and RANKABLE stay different counts — Horseshoe is confirmed and
+       publishes no rake. The numbers themselves come from the rule now, because
+       the partner data changed which rooms rank without changing that point. */
+    const expect = rankedSlugs()
+    check('ranked count comes from the rule', ranks.length === expect.length,
+      `page ${ranks.length}, rule ${expect.length}`)
+    /* Horseshoe is confirmed on site and publishes no rake at all, so it can
+       never rank. That is the whole point of keeping the two counts apart, and
+       it survives whatever the partner data ranks elsewhere. */
+    const confirmedRankable = ROOMS.slice(0, 15).filter((s) => expect.includes(s)).length
+    check('a confirmed room that publishes no rake is not ranked', !expect.includes('horseshoe'))
+    check('the page states the overlap, not a subtraction of totals',
+      new RegExp(`${confirmedRankable} of those can be ranked on rake`).test(text),
+      `${confirmedRankable} of the 15 confirmed rooms are rankable`)
   })
 
   await scenario('SIXTEEN — single exclusion reads singular', ROOMS.slice(0, 16), ({ text }) => {
@@ -226,7 +364,7 @@ try {
     check('unpublished exclusion still names Horseshoe', /Horseshoe is confirmed but publish/.test(text))
   })
   await scenario('CLOSED room keeps a dated page, not a 404', [], async () => {
-    sql(`update rooms set status = 'closed', closed_on = date '2026-03-30' where slug = 'skyline'`)
+    mutate(['skyline'], `update rooms set status = 'closed', closed_on = date '2026-03-30' where slug = 'skyline'`)
     const res = await fetch(`${BASE}/rooms/skyline`, { cache: 'no-store' })
     check('page still resolves (not 404)', res.status === 200, `HTTP ${res.status}`)
     const t = (await res.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
@@ -234,7 +372,7 @@ try {
     check('says it is off the roster', /off the roster/.test(t))
     check('points at nearest open rooms', /NEAREST OPEN ROOMS/.test(t))
     check('lists three alternatives with distance', (t.match(/~\s*[\d.]+\s*km/g) ?? []).length === 3)
-    sql(`update rooms set status = 'open', closed_on = null where slug = 'skyline'`)
+    restore()
   })
 
   await scenario('SORT captions derive from the comparator', ['bellagio', 'aria', 'boulder-station'], async ({ text }) => {
@@ -263,34 +401,41 @@ try {
   // the shape; these are the same bug waiting for real data.
 
   await scenario('CLOSED room leaves the roster', [], async () => {
-    sql(`update rooms set status = 'closed', closed_on = date '2026-03-30' where slug = 'skyline'`)
+    mutate(['skyline'], `update rooms set status = 'closed', closed_on = date '2026-03-30' where slug = 'skyline'`)
     const { text, ranks } = await facts()
     check('roster drops to 16', /16 valley rooms/.test(text), 'closed room must not be a row')
     check('closed room is gone from the table', !/Skyline/.test(text))
-    check('ranks unaffected', ranks.length === 0)
-    resetStatus()
+    check('ranking still matches the rule with the room gone',
+      ranks.length === rankedSlugs().length, `page ${ranks.length}, rule ${rankedSlugs().length}`)
+    restore()
   })
 
   await scenario('SEASONAL room is off the roster by default', [], async () => {
-    sql("update rooms set is_seasonal = true where slug = 'skyline'")
+    mutate(['skyline'], "update rooms set is_seasonal = true where slug = 'skyline'")
     const { text } = await facts()
     check('roster drops to 16', /16 valley rooms/.test(text), 'locked decision, now enforced in the read path')
     check('seasonal room not counted', !/Skyline/.test(text))
-    resetStatus()
+    restore()
   })
 
   await scenario('TEMPORARILY CLOSED shows but cannot rank', ['bellagio'], async () => {
-    sql("update rooms set status = 'temporarily_closed' where slug = 'bellagio'")
+    mutate(['bellagio'], "update rooms set status = 'temporarily_closed' where slug = 'bellagio'")
     const { text, ranks } = await facts()
     check('still on the roster', /17 valley rooms/.test(text))
     check('still listed', /Bellagio/.test(text))
     check('flagged on the row', /TEMPORARILY CLOSED/.test(text))
-    check('verified but NOT ranked', ranks.length === 0, `ranks=[${ranks}] — cannot be best if you cannot play there`)
-    resetStatus()
+    /* The point is that THIS room cannot rank, not that nothing can — the
+       partner data legitimately ranks other rooms. `isRankable` gates on
+       status, so a temporarily closed room drops out of the rule too. */
+    const expect = rankedSlugs()
+    check('a room you cannot play in is not ranked',
+      !expect.includes('bellagio') && ranks.length === expect.length,
+      `bellagio in rule: ${expect.includes('bellagio')}, page ${ranks.length}, rule ${expect.length}`)
+    restore()
   })
 
   await scenario('CONFIRMED-ABSENT amenity never renders as present', ['wynn-encore'], async () => {
-    sql(`update room_amenities set available = false
+    mutate(['wynn-encore'], `update room_amenities set available = false
           where room_id = (select id from rooms where slug = 'wynn-encore')`)
     const { rows } = await facts()
     // Scope to the Wynn row — ARIA and Bellagio legitimately still show it.
@@ -299,16 +444,29 @@ try {
     const t = await roomPage('wynn-encore')
     check('room page does not list it either', !/Cocktail service/.test(t))
     check('room page reports confirmed absence', /Checked on site — no amenities/.test(t))
-    resetStatus()
+    restore()
   })
 
   // Horseshoe: no amenities, no house rules, and no rake figure. It is the room
   // where "checked" and "has nothing" have to be told apart.
-  await scenario('HORSESHOE UNCHECKED — empty blocks are gaps', [], async () => {
+  /* Horseshoe: no house rules, no rake figure, and two amenity rows that are
+     both CONFIRMED ABSENCES from the partner floor visit. It is the room where
+     "checked", "has nothing" and "not looked at yet" all have to be told apart
+     ON THE SAME PAGE, because they are now all true of different blocks. */
+  await scenario('HORSESHOE — an absence-only amenity check is a COMPLETED check', [], async () => {
     const t = await roomPage('horseshoe')
-    check('amenities read as NOT CHECKED', /Not yet checked on site/.test(t))
-    check('does not claim a completed check', !/Checked on site — no amenities/.test(t))
-    check('header says UNVERIFIED', /UNVERIFIED . SOURCED/.test(t))
+    check('its two absent amenities are not listed as present',
+      !/Free self-park/.test(t) && !/Tableside food/.test(t))
+    /* This is the behaviour the fixture used to hide. The amenity ROWS are
+       verified even though the ROOM is not signed off, so the amenities block
+       is a finding — "we looked, there is nothing" — not a gap. */
+    check('amenities read as a completed check', /Checked on site — no amenities/.test(t))
+    check('the absence is framed as the finding', /the absence is the fact/.test(t))
+    /* Blocks with no verified data behind them must still read as gaps: the
+       distinction is per-fact, and collapsing it would be the same error in the
+       other direction. */
+    check('house rules still read as a gap', /Not yet checked on site/.test(t))
+    check('the ROOM header still says UNVERIFIED', /UNVERIFIED . SOURCED/.test(t))
   })
 
   await scenario('HORSESHOE CHECKED — empty blocks are findings', ['horseshoe'], async () => {
@@ -322,10 +480,20 @@ try {
   })
 
 } finally {
-  reset()
-  const left = sql('select count(*) from rooms where verified_at is not null')
-  console.log(`\nrolled back — rooms still verified: ${left}`)
-  if (left !== '0') failures++
+  restore()
+  /* THE ASSERTION THAT CATCHES THIS WHOLE CLASS. Not "is everything back to
+     null" — that was the old assumption and it was only ever true because the
+     seed had nothing in it. The database must come back the way it went in. */
+  const AFTER = census()
+  console.log(`\ncensus before: ${BEFORE}`)
+  console.log(`census after:  ${AFTER}`)
+  if (AFTER !== BEFORE) {
+    console.log('   FAIL  the suite did not leave the database as it found it')
+    failures++
+  } else {
+    console.log('   PASS  database restored exactly — no verified row or confirmed absence was harmed')
+  }
+  dropSnapshot()
 }
 
 console.log(failures ? `\nFAILURES: ${failures}` : '\nAll mixed-state checks passed.')

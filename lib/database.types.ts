@@ -1092,6 +1092,21 @@ export type Database = {
         }
         Relationships: []
       }
+      source_kinds: {
+        Row: {
+          data_type: string | null
+          url: string | null
+        }
+        Insert: {
+          data_type?: string | null
+          url?: string | null
+        }
+        Update: {
+          data_type?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

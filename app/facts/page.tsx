@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
-import { applySort, exclusionLine, exclusions, type RoomFacts, type SortSpec } from '@/lib/ranking'
+import { applySort, exclusionLine, exclusions, leaders, type Ranked, type RoomFacts, type SortSpec } from '@/lib/ranking'
+import { inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { inRoster, isRankable, STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { supabase } from '@/lib/supabase'
 
@@ -31,6 +32,7 @@ type GameJoin = {
   jackpot_drop: number | null
   verified_at: string | null
   rake_verified_at: string | null
+  rake_source_url: string | null
 }
 type RoomRow = {
   slug: string
@@ -197,10 +199,15 @@ export default async function JustTheFacts({
     .from('rooms')
     .select(
       'slug,name,area,status,is_seasonal,table_count,verified_at,'
-      + 'cash_games(rake_type,rake_percent,rake_cap,jackpot_drop,verified_at,rake_verified_at),'
+      + 'cash_games(rake_type,rake_percent,rake_cap,jackpot_drop,verified_at,rake_verified_at,rake_source_url),'
       + 'room_amenities(available,verified_at,amenity_types(slug,label,grp))',
     )
     .order('name')
+
+  /* Sources that must never be rendered as a link, identified by data_type. */
+  const { data: privateRows } = await supabase
+    .from('source_kinds').select('url').eq('data_type', 'floor')
+  const priv: PrivateSources = new Set((privateRows ?? []).map((r) => r.url as string))
 
   if (error) {
     return (
@@ -232,6 +239,10 @@ export default async function JustTheFacts({
          exclusion — not an unverified one. Conflating the two would report a
          confirmed room as unchecked. */
       foodVerified: r.verified_at != null,
+      /* A rake figure confirmed by someone at the table, on a source a reader
+         cannot open. It gets stated, never linked. */
+      rakeInPerson: r.cash_games.find((g) => isPrivate(g.rake_source_url, priv) && g.rake_verified_at)
+        ?.rake_verified_at ?? null,
     }
   })
 
@@ -270,9 +281,13 @@ export default async function JustTheFacts({
   const tableRanked = tables.ranked
   const foodRanked = food.ranked
 
-  const rakeLeader = rakeRanked.find((r) => r.isLeader) ?? null
-  const tableLeader = tableRanked.find((r) => r.isLeader) ?? null
-  const foodLeader = foodRanked.find((r) => r.isLeader) ?? null
+  /* A TIE IS AN ANSWER. These were `.find(isLeader)`, which crowned whichever
+     tied room happened to sort first. */
+  const rakeLeader = leaders(rakeRanked)
+  const tableLeader = leaders(tableRanked)
+  const foodLeader = leaders(foodRanked)
+  const leadValue = (l: ReturnType<typeof leaders>, ranked: Ranked[]) =>
+    l ? ranked.find((r) => r.name === l.names[0])! : null
 
   /* The table is ranked by rake — the head says so and the order agrees. */
   const rankBySlug = new Map(rakeRanked.map((r) => [r.slug, r]))
@@ -283,7 +298,16 @@ export default async function JustTheFacts({
      publishes no rake figure at all, so it holds a verified date and a dash. */
   const confirmedCount = rooms.filter((r) => r.verified_at != null).length
   const rankedCount = rakeRanked.filter((r) => r.rank != null).length
-  const confirmedNotRankable = confirmedCount - rankedCount
+  /* COUNT THE OVERLAP, DO NOT SUBTRACT THE TOTALS.
+     This was `confirmedCount - rankedCount`, which compares two different
+     populations: rake ranking is ROW-level (rake_verified_at) and confirmation
+     is ROOM-level (verified_at), so a room can rank without being confirmed and
+     vice versa. With fifteen rooms confirmed the subtraction read zero — while
+     Horseshoe sat confirmed and unrankable and an unconfirmed room ranked in its
+     place. Two errors cancelling is not agreement. */
+  const rankedSlugSet = new Set(rakeRanked.filter((r) => r.rank != null).map((r) => r.slug))
+  const confirmedRanked = rooms.filter((r) => r.verified_at != null && rankedSlugSet.has(r.slug)).length
+  const confirmedNotRankable = confirmedCount - confirmedRanked
 
   /* If all three cards would print the same exclusion, print it once. They
      diverge as verification lands — rake, food and tables get confirmed at
@@ -306,14 +330,26 @@ export default async function JustTheFacts({
           margin: '0 0 var(--cid-space-8)',
         }}
       >
+        {/* THE LEDE DESCRIBES THE TABLE UNDER IT, and the two are computed from
+            different things: ranking gates on rake_verified_at per ROW, the
+            confirmed count on verified_at per ROOM. Branching the whole
+            sentence on the room count printed "nothing is ranked" directly
+            above five ranked rows the moment partner floor data landed —
+            rake figures confirmed by someone standing at the table, in rooms
+            not yet signed off as a whole. Each clause now reports its own
+            number. */}
         Every published fact we hold on {total} valley rooms, ranked by rake with the
-        cheapest first. {confirmedCount === 0
-          ? 'Nothing here has been confirmed on site yet, so every figure is shown tilde’d and nothing is ranked — the ranks fill in as rooms are checked.'
+        cheapest first. {rankedCount === 0
+          ? 'No rake figure has been confirmed on site yet, so every figure is shown tilde’d and nothing is ranked — the ranks fill in as rooms are checked.'
+          : `${rankedCount} of ${total} rake figures are confirmed on site and ranked; the rest are shown tilde’d and sort below the ranking.`}
+        {' '}
+        {confirmedCount === 0
+          ? 'No room has been checked end to end yet.'
           : `${confirmedCount} of ${total} rooms are confirmed on site${
               confirmedNotRankable > 0
-                ? `, and ${rankedCount} of those can be ranked on rake — the rest publish no rake figure to rank`
-                : ' and can be ranked'
-            }. Unconfirmed rooms are shown tilde’d and sort below the ranking.`}
+                ? `, and ${confirmedRanked} of those can be ranked on rake — the rest publish no rake figure to rank`
+                : ''
+            }.`}
       </p>
 
       {compareSet.size > 0 && (
@@ -343,7 +379,9 @@ export default async function JustTheFacts({
           label="LOWEST RAKE"
           metric="rake"
           total={total}
-          winner={rakeLeader ? { name: rakeLeader.name, value: bySlug.get(rakeLeader.slug)!.rake.label! } : null}
+          winner={rakeLeader
+            ? { name: rakeLeader.label, value: bySlug.get(leadValue(rakeLeader, rakeRanked)!.slug)!.rake.label! }
+            : null}
           caption={rake.caption}
           exclusion={sharedExclusion ? null : exRake}
         />
@@ -351,7 +389,9 @@ export default async function JustTheFacts({
           label="BEST FOOD"
           metric="food"
           total={total}
-          winner={foodLeader ? { name: foodLeader.name, value: bySlug.get(foodLeader.slug)!.food! } : null}
+          winner={foodLeader
+            ? { name: foodLeader.label, value: bySlug.get(leadValue(foodLeader, foodRanked)!.slug)!.food! }
+            : null}
           caption={food.caption}
           exclusion={sharedExclusion ? null : exFood}
         />
@@ -359,7 +399,9 @@ export default async function JustTheFacts({
           label="MOST TABLES"
           metric="table count"
           total={total}
-          winner={tableLeader ? { name: tableLeader.name, value: `${tableLeader.value} tables` } : null}
+          winner={tableLeader
+            ? { name: tableLeader.label, value: `${leadValue(tableLeader, tableRanked)!.value} tables` }
+            : null}
           caption={tables.caption}
           exclusion={sharedExclusion ? null : exTables}
         />
@@ -429,6 +471,17 @@ export default async function JustTheFacts({
               ) : verified ? (
                 <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-text-3)' }}>
                   {new Date(r.verified_at!).toISOString().slice(0, 10)}
+                </span>
+              ) : d.rakeInPerson ? (
+                /* CONFIRMED IN PERSON, NO LINK. The room is not signed off end
+                   to end, but its rake was read off the board by a person — and
+                   the source behind it is private, so the receipt is words. */
+                <span
+                  className="num"
+                  style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-text-3)' }}
+                  title={inPersonReceipt(d.rakeInPerson)}
+                >
+                  IN PERSON {new Date(d.rakeInPerson).toISOString().slice(0, 10)}
                 </span>
               ) : (
                 <span className="num cid-unverified" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)' }}>

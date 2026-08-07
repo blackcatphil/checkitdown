@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { STATUS_LABEL, type RoomStatus } from '@/lib/roster'
+import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { supabase } from '@/lib/supabase'
 
 import { CorrectionForm } from './CorrectionForm'
@@ -122,12 +123,18 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       + 'loyalty_program,comp_rate_hourly,comp_notes,dress_code,drinks_note,'
       + 'source_url,fetched_at,verified_at,'
       + 'cash_games(stakes_label,game,min_buy_in,max_buy_in,is_uncapped,rake_type,rake_percent,'
-      + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet),'
+      + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet,rake_source_url,rake_verified_at),'
       + 'room_amenities(available,detail,menu_url,source_url,verified_at,amenity_types(slug,label,grp)),'
       + 'house_rules(label,value)',
     )
     .eq('slug', slug)
     .maybeSingle()
+
+  /* WHICH SOURCES CANNOT BE LINKED, read from the sources table rather than
+     matched on a URL — the next private source will be on another host. */
+  const { data: privateRows } = await supabase
+    .from('source_kinds').select('url').eq('data_type', 'floor')
+  const priv: PrivateSources = new Set((privateRows ?? []).map((r) => r.url as string))
 
   if (!data) notFound()
   const room = data as unknown as {
@@ -143,6 +150,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       is_uncapped: boolean; rake_type: string | null; rake_percent: number | null
       rake_cap: number | null; jackpot_drop: number | null; structure_note: string | null
       big_blind: number | null; big_bet: number | null
+      rake_source_url: string | null; rake_verified_at: string | null
     }>
     room_amenities: Array<{
       available: boolean; detail: string | null; menu_url: string | null
@@ -229,6 +237,19 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
 
   /* available=false is a CONFIRMED ABSENCE, not a listing. */
   const present = room.room_amenities.filter((a) => a.available)
+
+  /* WHETHER THE AMENITIES WERE CHECKED IS AN AMENITY FACT, NOT A ROOM FACT.
+     This gated on room.verified_at, which was indistinguishable from correct
+     while the only way to verify anything was to sign off a whole room. The
+     partner floor data verifies rows: Horseshoe now carries two amenity rows,
+     both available=false, both confirmed on the floor — a completed check whose
+     finding is "neither of these is here". Gating on the room reported that as
+     a GAP, which inverts the meaning of the only real amenity data we have. */
+  const amenitiesCheckedAt = room.room_amenities
+    .map((a) => a.verified_at)
+    .filter((v): v is string => v != null)
+    .sort()
+    .at(-1) ?? room.verified_at
   const games = [...room.cash_games].sort(
     (a, b) => (Number(a.big_blind ?? a.big_bet ?? 0)) - (Number(b.big_blind ?? b.big_bet ?? 0)),
   )
@@ -241,6 +262,19 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     ['DRESS CODE', room.dress_code],
     ['DRINKS', room.drinks_note],
   ]
+
+  /* Facts whose receipt is a private floor visit. Grouped by what was confirmed
+     so the reader gets one sentence per kind of fact, each with its own date —
+     rake and amenities are confirmed on separate visits soon enough. */
+  const floorRake = room.cash_games.filter((g) => isPrivate(g.rake_source_url, priv) && g.rake_verified_at)
+  const floorAmenities = room.room_amenities.filter((a) => isPrivate(a.source_url, priv) && a.verified_at)
+  const floorReceipts: string[] = []
+  if (floorRake.length) {
+    floorReceipts.push(`Rake: ${inPersonReceipt(floorRake[0].rake_verified_at)}`)
+  }
+  if (floorAmenities.length) {
+    floorReceipts.push(`Amenities: ${inPersonReceipt(floorAmenities[0].verified_at)}`)
+  }
 
   const notCheckedTitle = room.verified_at
     ? 'Checked on site — not published for this room'
@@ -347,7 +381,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.15fr) minmax(0,1fr)', gap: 'var(--cid-space-7)' }}>
         <Block
           label="AMENITIES"
-          empty={present.length === 0 ? <EmptyBlock what="amenities" checkedAt={room.verified_at} /> : undefined}
+          empty={present.length === 0 ? <EmptyBlock what="amenities" checkedAt={amenitiesCheckedAt} /> : undefined}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
             {present.map((a) => (
@@ -382,13 +416,23 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           {room.verified_at
             ? 'Someone has stood in this room and confirmed what is here — including what is not. A dash on a checked room means the room does not publish it, not that we skipped it.'
             : 'Every figure on this page is sourced and none is verified — we read it from a published page, we have not stood in the room. Ranked columns elsewhere exclude this room until someone does.'}
-          {room.source_url && (
+          {room.source_url && !isPrivate(room.source_url, priv) && hostOf(room.source_url) && (
             <>
               {' '}
-              Source: <a href={room.source_url} rel="nofollow noopener" target="_blank">{new URL(room.source_url).hostname}</a>.
+              Source: <a href={room.source_url} rel="nofollow noopener" target="_blank">{hostOf(room.source_url)}</a>.
             </>
           )}
+          {/* A PRIVATE SOURCE GETS WORDS, NOT A LINK. Offering a reader a URL
+              they cannot open is a receipt that behaves like a locked door. */}
+          {room.source_url && isPrivate(room.source_url, priv) && (
+            <> {inPersonReceipt(room.verified_at)}</>
+          )}
         </p>
+        {floorReceipts.length > 0 && (
+          <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
+            {floorReceipts.join(' ')}
+          </p>
+        )}
         <CorrectionForm roomId={room.id} roomName={room.name} />
       </section>
     </main>

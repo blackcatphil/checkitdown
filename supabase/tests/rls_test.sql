@@ -44,6 +44,7 @@ insert into expected_access(relname, access) values
   ('tournament_instances','public_read'),
   ('promotions','public_read'),
   ('room_freshness','public_read'),
+  ('source_kinds','public_read'),
   ('sources','service_only'),
   ('pending_changes','service_only'),
   ('change_log','service_only'),
