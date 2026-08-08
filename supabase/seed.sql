@@ -946,6 +946,112 @@ end $$;
 commit;
 
 -- =====================================================================
+-- PARTNER APPLY — 2026-08-08. SOUTH POINT CORROBORATED, RED ROCK CORRECTED.
+-- =====================================================================
+-- Stamped with the morning it was applied (noon-Vegas convention), NOT bulk
+-- re-stamped: the nine rows below carry 08-08 and every other fact keeps
+-- its 08-06 or 08-07 date, so freshness ages honestly.
+--
+-- TWO SHAPES OF THE SAME MORNING, AND THEY ARE NOT THE SAME EDIT.
+--
+--   SOUTH POINT is CORROBORATION. His sheet reads 5+3, which is exactly what
+--   the seeded rows already said. Nothing about the rake changes, so nothing
+--   about the rake's PROVENANCE changes either: the cap and drop still came
+--   off Vegas Advantage's South Point page, and that page is still where a
+--   reader should go to check them. Only `rake_verified_at` moves.
+--
+--   RED ROCK is a CORRECTION. His sheet reads 5+3 where the web said 6+2, and
+--   partner data is law (the 2026-08-05 ruling), so the values change AND the
+--   receipt follows them to the sheet. A row whose figure came from the sheet
+--   must cite the sheet; that is the same rule, pointing the other way.
+--
+-- THE RULE IS ONE RULE: A ROW CITES WHERE ITS OWN FACT CAME FROM. Repointing
+-- South Point's rake receipt at the sheet would erase the page the figure was
+-- actually read from and claim a re-sourcing that did not happen — the
+-- child-provenance rule violated in the flattering direction, which is how it
+-- always gets violated. This mirrors the O8 verify in 1edeb7d exactly.
+--
+-- NOTE THE DIVERGENCE FROM THE 08-06 BLOCK ABOVE, which DID repoint
+-- rake_source_url onto the sheet for Wynn/Venetian/GVR on a pure
+-- corroboration. 08-07 reasoned that through and landed the other way. This
+-- follows 08-07. The three 08-06 rooms are not rewritten here — prod carries
+-- them as they stand and the seed's job is to match prod, not to improve on
+-- it — but they are the odd ones out, and they are a cleanup to raise, not a
+-- precedent to copy.
+--
+-- RAKE_PERCENT DOES NOT MOVE ON EITHER ROOM. His shorthand is "cap + drop"
+-- and says nothing about a percentage; Red Rock's 10.00 is still the web's
+-- figure, uncorroborated and uncontradicted. Correcting a cap is not a
+-- statement about the percent, and rewriting it here would be inventing.
+-- =====================================================================
+
+begin;
+
+-- SOUTH POINT — all 6 rows (3 NLH, 2 LHE, 1 O8). STAMP ONLY. rake_cap,
+-- jackpot_drop, source_url, rake_source_url, fetched_at and rake_fetched_at
+-- are all deliberately absent from this SET clause.
+update cash_games c
+   set rake_verified_at = timestamptz '2026-08-08 12:00:00-07'
+  from rooms r
+ where r.id = c.room_id and r.slug = 'south-point';
+
+-- RED ROCK — all 3 rows ($1/3 NLH, $3/5 NLH, $4/8 limit). Cap 6 -> 5,
+-- drop 2 -> 3, and the receipt moves to the sheet because the figures did.
+-- The URL is copied from the `sources` row inserted above, not retyped: the
+-- rake receipt is matched to that row by string equality, and a typo here
+-- produces a citation pointing at nothing while every count still passes.
+update cash_games c
+   set rake_cap = 5.00, jackpot_drop = 3.00,
+       rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit',
+       rake_fetched_at  = timestamptz '2026-08-08 12:00:00-07',
+       rake_verified_at = timestamptz '2026-08-08 12:00:00-07'
+  from rooms r
+ where r.id = c.room_id and r.slug = 'red-rock';
+
+-- THE GUARD NAMES THE ROOM, NOT THE TOTAL. Both statements above are
+-- `where r.slug = '...'`, and a mistyped slug updates ZERO rows in silence.
+-- The self-check at the bottom would catch the shortfall and report it as a
+-- rake-verified count that is nine too low, which is true and useless — it
+-- names the number, not the room. This asserts the SHAPE of each room's
+-- result, so a wrong slug, a half-applied correction or a South Point row
+-- that quietly acquired a sheet citation each fail here saying which.
+do $$
+declare
+  n_sp int; n_sp_receipt int; n_rr int;
+begin
+  -- South Point: 6 rows stamped 08-08, every one still citing its own page.
+  select count(*) into n_sp
+    from cash_games c join rooms r on r.id = c.room_id
+   where r.slug = 'south-point'
+     and c.rake_verified_at = timestamptz '2026-08-08 12:00:00-07';
+  if n_sp <> 6 then
+    raise exception 'south-point: expected 6 rake-verified rows at 2026-08-08, got %', n_sp;
+  end if;
+
+  select count(*) into n_sp_receipt
+    from cash_games c join rooms r on r.id = c.room_id
+   where r.slug = 'south-point' and c.rake_source_url is not null;
+  if n_sp_receipt <> 0 then
+    raise exception
+      'south-point: % row(s) carry a rake_source_url — corroboration must not re-source the figure', n_sp_receipt;
+  end if;
+
+  -- Red Rock: 3 rows at cap 5 / drop 3 / percent 10, cited to the sheet.
+  select count(*) into n_rr
+    from cash_games c join rooms r on r.id = c.room_id
+   where r.slug = 'red-rock'
+     and c.rake_cap = 5.00 and c.jackpot_drop = 3.00 and c.rake_percent = 10.00
+     and c.rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit'
+     and c.rake_fetched_at  = timestamptz '2026-08-08 12:00:00-07'
+     and c.rake_verified_at = timestamptz '2026-08-08 12:00:00-07';
+  if n_rr <> 3 then
+    raise exception 'red-rock: expected 3 rows at cap 5 / drop 3 / percent 10 cited to the sheet, got %', n_rr;
+  end if;
+end $$;
+
+commit;
+
+-- =====================================================================
 -- THE SEED CHECKS ITSELF.
 --
 -- The seed and production have diverged twice: once silently, once
@@ -968,10 +1074,10 @@ begin
   select count(*) into n_fmt   from room_formats;
 
   if (n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt)
-     is distinct from (17, 78, 6, 33, 44, 15, 2) then
+     is distinct from (17, 78, 6, 42, 44, 15, 2) then
     raise exception
-      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources / % waitlist / % formats (expected 17 / 78 / 6 / 33 / 44 / 15 / 2)',
+      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources / % waitlist / % formats (expected 17 / 78 / 6 / 42 / 44 / 15 / 2)',
       n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt;
   end if;
-  raise notice 'seed matches production: 17 rooms / 78 games / 6 game-verified / 33 rake-verified / 44 sources / 15 waitlist / 2 formats';
+  raise notice 'seed matches production: 17 rooms / 78 games / 6 game-verified / 42 rake-verified / 44 sources / 15 waitlist / 2 formats';
 end $$;
