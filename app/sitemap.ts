@@ -89,12 +89,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
      shut and where to go instead, and the person who needs that most is
      somebody arriving from a search result months later. Omitting it turns a
      useful page into a 404 for exactly the reader it was built for.
-     Seasonal is the same argument with a return date: WSOP·Paris is modelled
-     and comes back when the series runs.
-     So: no status filter, matching generateStaticParams. There is no closed or
-     seasonal row in the database today, which is precisely why this needs a
-     test rather than a comment — `test:mixed` closes a room and asserts it
-     stays. */
+     Seasonal is the same argument with a return date, and the BRANCH is what
+     exists here — not a row. There is no seasonal room in the database and
+     never has been: WSOP·Paris was never seeded, and Phil ruled on 2026-08-07
+     that it stays off the roster and gets its own dedicated page when the
+     series comes round, rather than becoming an eighteenth roster row.
+     The machinery is kept deliberately. A seasonal room is a real future case,
+     the branch costs nothing to carry, and it is already proven — `test:mixed`
+     flips a room to `is_seasonal` and asserts the URL survives. Deleting it
+     would trade a tested path for an untested one the first time a series room
+     appears, and the failure mode is silence: the room simply would not be in
+     the sitemap.
+     So: no status filter, matching generateStaticParams. Both branches have
+     zero live coverage, which is exactly why they are tested rather than
+     described — `test:mixed` closes a room, then seasons it, and asserts it
+     stays listed either way. */
   const roomUrls: MetadataRoute.Sitemap = rooms.map((r) => ({
     url: `${SITE_URL}/rooms/${r.slug}`,
     lastModified: stampFor(r) ?? undefined,

@@ -12,8 +12,20 @@
 --     The NULLs are the deliverable: they are the in-person to-do list.
 --
 -- Roster: the 17 permanent valley rooms per Vegas Advantage's open-rooms
--- list (2026-03-04). Paris/WSOP is the 18th and is deliberately absent —
--- it is is_seasonal and off the roster by default.
+-- list (2026-03-04). Paris/WSOP is the 18th and is deliberately absent,
+-- and "absent" means ABSENT: there is no row for it and never has been.
+--
+-- An earlier note here said it was is_seasonal and off the roster by
+-- default, which described a row that was never written. Phil ruled on
+-- 2026-08-07 that WSOP stays out of the roster entirely and gets its own
+-- dedicated page when the series comes round next year — a different
+-- surface with a different shape, not a room hidden behind a flag. That
+-- supersedes the 2026-08-03 "seed it as seasonal" ruling.
+--
+-- The is_seasonal COLUMN and every branch reading it stay. A seasonal
+-- room is a real future case, the branch is already proven by test:mixed,
+-- and removing it would trade a tested path for an untested one on the
+-- day a series room finally arrives.
 --
 -- ---------------------------------------------------------------------
 -- CONFLICTS, AND HOW THEY WERE ADJUDICATED

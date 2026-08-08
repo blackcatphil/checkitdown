@@ -1715,8 +1715,13 @@ gold taking a filled action, gold text too dark for a surface.
   a knock makes rings, which is also a map ping.
 - **Type:** Instrument Serif (identity) / Archivo (UI) / IBM Plex Mono (every
   number, tabular).
-- **Roster:** 17 permanent valley rooms. WSOP-Paris is `is_seasonal`, off the
-  roster and all counts by default, restored when the series is live.
+- **Roster:** 17 permanent valley rooms. ~~WSOP-Paris is `is_seasonal`, off the
+  roster and all counts by default, restored when the series is live.~~
+  **SUPERSEDED 2026-08-07 — see "WSOP is not a row" below.** WSOP-Paris is not
+  a row at all and never was; it gets a dedicated page next season. Struck
+  through rather than deleted for the same reason as the gold ban: the original
+  framing is what four comments were written against, and a decision that
+  quietly disappears reads as drift.
 - **Provenance:** two states only — verified (date shown) and unverified
   (tilde'd, dotted rule, never ranked). When an unverified figure is excluded
   from a "best" column, **name the room and the reason**, never "1 room skipped".
@@ -2250,6 +2255,67 @@ One assertion was **printing a false statement while passing**: its detail
 string described the failure case, so a green line read "all 21 entries read
 2026-08-07" over a sitemap holding three distinct dates. A true assertion
 stating something false is still output nobody can trust.
+
+## WSOP is not a row, and four comments said it was (2026-08-07)
+
+**The ruling.** WSOP-Paris stays OUT of the roster and is not deleted. When the
+series comes round next year it gets a **dedicated page** — a different surface
+with a different shape (a dated series, not a room you can walk into tonight) —
+rather than an eighteenth roster row hidden behind a flag.
+
+This **supersedes the 2026-08-03 ruling** to seed it as `is_seasonal: true`.
+That row was never written, so nothing in the database changes: there is no
+seasonal room today and there has never been one.
+
+### The seasonal machinery is KEPT, and that is not sentimentality
+
+The column, `inRoster()`'s seasonal arm, the panel's "include series-only rooms"
+toggle and the sitemap's no-status-filter all stay. A seasonal room is a real
+future case — a series room is exactly the shape this product will meet again —
+and the branch is **already proven**: `test:mixed` flips a room to
+`is_seasonal` and asserts it stays listed and off the roster.
+
+Deleting it would trade a tested path for an untested one on the day a series
+room finally arrives, and the failure mode is silence: the room would simply not
+appear, which is the false-absence class this product exists to avoid. Carrying
+a proven branch costs nothing; re-deriving it under time pressure costs the
+thing itself.
+
+### The defect was documentation, in four places
+
+Each comment described a modelled row that does not exist:
+
+| File | Was |
+|---|---|
+| `app/sitemap.ts` | "WSOP·Paris is modelled and comes back when the series runs" |
+| `supabase/seed.sql` | "it is is_seasonal and off the roster by default" |
+| `lib/roster.ts` | "WSOP·Paris is modelled, never deleted, and returns when the series runs" |
+| `supabase/migrations/00000000000001_initial_schema.sql` | see below — **not edited** |
+
+`lib/roster.ts` was **not in the brief**. It carried the same claim in the same
+words, found by grepping for the assertion rather than for the three filenames —
+which is the general lesson: a wrong comment propagates by being copied, so the
+fix has to search for the sentence, not the list.
+
+### The migration is deliberately left wrong
+
+**`supabase/migrations/00000000000001_initial_schema.sql`, lines 86–87** still
+read:
+
+```sql
+-- WSOP-Paris: seasonal, off the roster and all counts by default,
+-- restored when the series is live. Modelled, never deleted.
+```
+
+That comment is **superseded, and it stays**. The migration is applied to local,
+CI and production; an applied migration is a *record of what ran*, and editing
+it makes the file stop matching the database it produced. The schema itself is
+correct — `is_seasonal` exists, defaults false, and is right to keep. Only the
+prose is stale.
+
+So the correction lives here, named to the file and line, for whoever reads that
+comment next. If a future migration ever alters that column for another reason,
+the comment can be corrected there — in a file that has not run yet.
 
 ## Open items — recorded, not built (2026-08-07)
 

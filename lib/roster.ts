@@ -27,7 +27,12 @@ export type RosterRoom = {
  *   not rows.
  * - `is_seasonal` / `seasonal` is OFF the roster, the pin set and every count by
  *   default — a locked product decision that until now existed only in prose.
- *   WSOP·Paris is modelled, never deleted, and returns when the series runs.
+ *   NO SEASONAL ROW EXISTS. WSOP·Paris was never seeded, and the 2026-08-07
+ *   ruling keeps it out of the roster for good: it gets a dedicated page when
+ *   the series runs, not a row behind a flag. This branch is therefore a
+ *   guarantee about a future room rather than a description of a current one,
+ *   and it is kept for exactly that reason — `test:mixed` proves it, so a
+ *   series room arriving later cannot silently vanish from the roster.
  * - `temporarily_closed` STAYS on the roster. It is a real room with a real
  *   reason to look it up, and hiding it reads as "we don't have it". It is
  *   shown and flagged — but see `isRankable`.
