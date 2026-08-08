@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { SITE_URL } from '@/lib/site'
+
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -8,7 +10,9 @@ export const metadata: Metadata = {
      canonical and OG URL resolves against this; without it they resolve
      against whatever host served the page — which was the .vercel.app
      deployment URL, a spelling of the site we never want indexed. */
-  metadataBase: new URL('https://checkitdown.com'),
+  /* Shared with the sitemap and robots.txt so the three cannot drift into
+     advertising two spellings of the same site. */
+  metadataBase: new URL(SITE_URL),
   title: 'Check It Down — every poker room in the Las Vegas valley',
   description:
     'Independent map and rankings of every poker room in the Las Vegas valley. '

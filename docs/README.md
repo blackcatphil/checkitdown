@@ -1558,6 +1558,11 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 | Roster: 17 rooms, WSOP·Paris seasonal and off all counts | code + test | `inRoster()`; `test:mixed` seasonal scenario |
 | Amenity filter: unknown is never counted as a match | code + test | `amenityState()`, `combineStates()`; `amenity-filter.test.mjs`; `test:map` three-state pixels |
 | Provenance copy tracks the rows, never a static claim | code + test | `provenanceState()`; `provenance.test.mjs`; `test:mixed` 17-room sweep |
+| The sitemap holds one entry per room, derived from the table | code + test | `app/sitemap.ts`; `test:mixed` count equality + per-slug check |
+| A closed or seasonal room keeps its URL | code + test | no status filter; `test:mixed` closes and seasons Bellagio |
+| lastmod is a provenance stamp, never the build time | code + test | `latestVerified()`; `test:mixed` distinct-dates + moves-with-the-data |
+| No query string or disallowed path is ever advertised | code + test | `app/sitemap.ts` filter; `test:mixed` |
+| /admin and /auth are uncrawlable | code + test | `CRAWL_DISALLOW`; `test:mixed` robots.txt assertions |
 | Hero badge derives from the same state as the block | code + test | `provenanceBadge()`; `test:mixed` badge sweep |
 | No verified figure carries the `~` unverified marker | code + test | `Figure`; `test:mixed` SQL-derived tilde count, all 17 rooms |
 | A dash's title rides the stamp on THAT figure | code + test | `notCheckedTitle()`; `test:mixed` Orleans carries both titles |
@@ -2161,6 +2166,90 @@ both directions. The other described a bare-section case that the receipt fix
 removed. And the harness's own **liveness probe was keyed to the badge string**,
 so changing the copy made it report the server was dead; it now compares
 rendered bytes across a flip and cannot rot with the wording.
+
+## Nothing could find the long tail (2026-08-07)
+
+The site went live with `metadataBase` set and **no `robots.ts` and no
+`sitemap.ts`** — both paths 404'd. Room detail is the entire SEO long tail:
+seventeen pages that answer *"what is the rake at the Orleans"*, and nothing
+pointed at any of them.
+
+Both files are the kind nobody proof-reads. They are therefore asserted rather
+than eyeballed.
+
+### Derived from the database, never listed
+
+`app/sitemap.ts` queries `rooms` exactly the way `generateStaticParams` does. A
+hardcoded list works the day it is written and then quietly omits the
+eighteenth room — the provenance-sentence failure again, in a file no human
+opens, so it would be wrong for months. `test:mixed` asserts **equality**
+between the sitemap's room count and the table's, not a lower bound: a stale
+list would satisfy "at least".
+
+### lastmod is provenance, and `new Date()` is forbidden
+
+A build-time stamp tells a crawler that all twenty-one pages changed the moment
+it fetched them. Trivial to write, tidy-looking, and a lie repeated on every
+deploy until nothing the site emits is believed. It is the
+number-copied-forward class in a format no reviewer opens.
+
+So it is `latestVerified()` over the room's facts — **the same helper the
+provenance block and the hero badge use**, so a date shown to a reader and a
+date handed to a crawler cannot disagree. Live output:
+
+| lastmod | rooms |
+|---|---|
+| 2026-08-07 | 6 |
+| 2026-08-06 | 9 |
+| 2026-08-03 | 2 — Skyline and Boulder Station, falling back to `fetched_at` |
+
+The fallback is `??`, **not** `max(...)`. A later fetch on an already-verified
+room would push the date forward even if the fetch changed nothing.
+Understating lastmod costs a slower re-crawl; overstating it is the failure
+being fixed.
+
+### Closed and seasonal rooms are IN, and this is the one place the roster rules do not apply
+
+`inRoster()` keeps closed rooms off the map and out of every count, because the
+roster answers *"where can you play tonight"*. A sitemap answers a different
+question: which URLs exist and are worth serving. A closed room's page is not a
+stub — it is a **dated closure notice** naming when it shut and where to go
+instead, and the reader who needs it most is somebody arriving from a search
+result months later. Omitting it turns a useful page into a 404 for exactly the
+person it was built for.
+
+**There is no closed or seasonal row in the database today**, so this branch has
+zero live coverage — which is the reason to test it rather than to comment it.
+`test:mixed` closes Bellagio, asserts the URL survives and still answers 200,
+then flips it to seasonal and asserts the same.
+
+### robots.txt refuses the admin surface, and the reason is not secrecy
+
+`/admin` already refuses strangers — RLS returns nothing without an admin row
+behind the JWT. But it answers **200** while doing it, and a 200 is a URL: one
+that gets indexed, ranks for the site's own name, and hands a searcher a page
+that will never work for them. Refusing to serve DATA and refusing to be LISTED
+are different problems with different fixes. `/auth` is the magic-link callback,
+and a crawler fetching a one-time login URL is a crawler consuming it.
+
+The disallow list lives in `lib/site.ts` beside the sitemap's copy, so a path
+cannot be disallowed in one file and advertised in the other. `SITE_URL` moved
+there too — `metadataBase`, every `<loc>` and the `Sitemap:` line are three
+files edited on different days, and two spellings of the host is not a broken
+link but a second site, indexed separately.
+
+### Every branch proved red
+
+| Reverted | Failure |
+|---|---|
+| One room filtered out | `sitemap 16, database 17` + the slug named |
+| Roster filter applied | closed room vanishes, count drops |
+| `lastModified: new Date()` | 1 distinct date across 21 entries; the stamp stops tracking a floor visit |
+
+One assertion was **printing a false statement while passing**: its detail
+string described the failure case, so a green line read "all 21 entries read
+2026-08-07" over a sitemap holding three distinct dates. A true assertion
+stating something false is still output nobody can trust.
 
 ## Open items — recorded, not built (2026-08-07)
 

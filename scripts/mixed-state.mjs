@@ -327,6 +327,14 @@ const expectedTildes = () => new Map(sql(`
     return [slug, Number(n)]
   }))
 
+/** The sitemap as the crawler receives it — parsed, not regexed for a slug. */
+async function sitemapUrls() {
+  const res = await fetch(`${BASE}/sitemap.xml`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`GET /sitemap.xml -> ${res.status}`)
+  const xml = await res.text()
+  return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
+}
+
 const countTildes = (raw) => ((raw.match(/<main[\s\S]*?<\/main>/)?.[0] ?? '').match(/>~/g) ?? []).length
 const RAKEABLE = sql(`
   select distinct r.slug from rooms r join cash_games c on c.room_id = r.id
@@ -821,6 +829,133 @@ try {
         'printing [0] understates the moment a second visit lands')
       restore()
     }
+  })
+
+  /* ────────────────────────────────────────────────────────────────────
+     THE SITEMAP. Both files 404'd from launch, so the long tail — the
+     seventeen room pages that answer "what is the rake at the Orleans" —
+     was unfindable. A sitemap is also the one surface nobody proof-reads,
+     which is exactly why it gets asserted rather than eyeballed.
+     ──────────────────────────────────────────────────────────────────── */
+
+  await scenario('SITEMAP — one entry per room, derived not listed', [], async () => {
+    const urls = await sitemapUrls()
+    const rooms = urls.filter((u) => u.includes('/rooms/'))
+    const inDb = Number(sql('select count(*) from rooms'))
+
+    /* A SITEMAP THAT SILENTLY DROPS A ROOM is the false-absence failure this
+       product exists to avoid, in the one place no human looks. Equality, not
+       "at least" — a stale hardcoded list would also pass a lower bound. */
+    check('the sitemap has exactly as many room URLs as there are rooms',
+      rooms.length === inDb, `sitemap ${rooms.length}, database ${inDb}`)
+
+    const slugs = new Set(sql('select slug from rooms').split('\n').filter(Boolean))
+    const missing = [...slugs].filter((sl) => !rooms.some((u) => u.endsWith(`/rooms/${sl}`)))
+    check('and every slug is present, not merely the right count', missing.length === 0, missing.join(', '))
+
+    check('the static pages are listed too',
+      ['', '/facts', '/tournaments', '/promos'].every(
+        (p) => urls.some((u) => u.endsWith(`checkitdown.com${p}`))))
+
+    /* NO QUERY STRINGS. `/facts?compare=` is noindex,follow — listing one here
+       would hand a crawler two contradicting instructions. */
+    check('no URL carries a query string', !urls.some((u) => u.includes('?')),
+      urls.filter((u) => u.includes('?')).join(', '))
+    check('no /admin or /auth path is advertised',
+      !urls.some((u) => /\/(admin|auth)(\/|$)/.test(u)),
+      urls.filter((u) => /\/(admin|auth)(\/|$)/.test(u)).join(', '))
+  })
+
+  await scenario('SITEMAP — lastmod is a real stamp, never the build time', [], async () => {
+    const res = await fetch(`${BASE}/sitemap.xml`, { cache: 'no-store' })
+    const xml = await res.text()
+    const stamps = [...xml.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1].slice(0, 10))
+    check('every URL carries a lastmod', stamps.length > 0)
+
+    /* `new Date()` would make every entry today and identical. Real provenance
+       varies, because the rooms were confirmed on different days. */
+    /* The detail described the FAILURE and printed on success too, so a passing
+       line read "all 21 entries read 2026-08-07" over a sitemap holding three
+       distinct dates. A true assertion stating something false is still a page
+       of output nobody can trust. */
+    check('lastmod is NOT uniform across the site', new Set(stamps).size > 1,
+      `${new Set(stamps).size} distinct dates across ${stamps.length} entries`)
+    const today = sql('select current_date').trim()
+    check('not every page claims it changed today',
+      stamps.filter((d) => d === today).length < stamps.length,
+      'a sitemap stamped with the build time is a lie told to a crawler')
+
+    /* THE STAMP TRACKS THE DATA. Move one room's verification and its lastmod
+       must move with it — that is what makes it provenance rather than
+       decoration. */
+    mutate(['orleans'], `
+      update cash_games set rake_verified_at = timestamptz '2026-09-09 12:00:00-07'
+        where room_id = (select id from rooms where slug = 'orleans')
+          and rake_verified_at is not null;`)
+    const moved = await fetch(`${BASE}/sitemap.xml`, { cache: 'no-store' }).then((r) => r.text())
+    const entry = moved.match(/<loc>[^<]*\/rooms\/orleans<\/loc>\s*<lastmod>([^<]+)</)
+    check('a later floor visit moves that room\'s lastmod',
+      entry?.[1]?.startsWith('2026-09-09'), entry?.[1] ?? 'no entry')
+    restore()
+  })
+
+  await scenario('SITEMAP — every listed URL is fetchable and indexable', [], async () => {
+    const urls = await sitemapUrls()
+    const bad = []
+    const noindexed = []
+    for (const u of urls) {
+      /* The sitemap advertises the production host; this suite runs against a
+         local server, so only the path travels. */
+      const path = u.replace(/^https:\/\/checkitdown\.com/, '') || '/'
+      const res = await fetch(`${BASE}${path}`, { cache: 'no-store' })
+      if (!res.ok) { bad.push(`${path} -> ${res.status}`); continue }
+      const body = await res.text()
+      /* A page telling crawlers to skip it has no business being requested for
+         indexing. Two instructions, disagreeing, and the crawler picks. */
+      if (/<meta name="robots"[^>]*noindex/i.test(body)) noindexed.push(path)
+    }
+    check('every URL in the sitemap returns 200', bad.length === 0, bad.join(', '))
+    check('and none of them is noindex', noindexed.length === 0, noindexed.join(', '))
+  })
+
+  /* CLOSED ROOMS STAY LISTED. The roster rules deliberately do not apply here:
+     /rooms/<slug> for a closed room is a DATED CLOSURE NOTICE, and the reader
+     who needs it most arrives from a search result months later. There is no
+     closed row in the database today, so the branch has no live coverage —
+     which is the reason to make one rather than to trust the comment. */
+  await scenario('SITEMAP — a closed room keeps its URL', [], async () => {
+    const before = (await sitemapUrls()).length
+    check('no closed or seasonal room exists in the seed today',
+      Number(sql("select count(*) from rooms where status <> 'open' or is_seasonal")) === 0)
+
+    mutate(['bellagio'], `
+      update rooms set status = 'closed', closed_on = date '2026-03-01' where slug = 'bellagio';`)
+    const closed = await sitemapUrls()
+    check('the closed room is STILL in the sitemap',
+      closed.some((u) => u.endsWith('/rooms/bellagio')),
+      'a dead link tells a searcher nothing; the closure notice tells them when and where else')
+    check('and the count is unchanged — nothing was dropped', closed.length === before)
+
+    const res = await fetch(`${BASE}/rooms/bellagio`, { cache: 'no-store' })
+    check('and that URL still answers 200', res.ok, String(res.status))
+
+    mutate(['bellagio'], "update rooms set status = 'open', closed_on = null, is_seasonal = true where slug = 'bellagio'")
+    const seasonal = await sitemapUrls()
+    check('a SEASONAL room is listed too — it comes back when the series runs',
+      seasonal.some((u) => u.endsWith('/rooms/bellagio')))
+    restore()
+  })
+
+  await scenario('ROBOTS — allows the site, refuses the admin surface', [], async () => {
+    const res = await fetch(`${BASE}/robots.txt`, { cache: 'no-store' })
+    check('robots.txt is served at all', res.ok, `${res.status} — it 404'd from launch until 2026-08-07`)
+    const txt = await res.text()
+    check('crawling is allowed by default', /^Allow: \/$/m.test(txt))
+    /* 200-with-nothing is still a URL in an index. RLS refusing to hand over
+       data is a different problem from the page being listed at all. */
+    check('/admin is disallowed', /^Disallow: \/admin$/m.test(txt))
+    check('/auth is disallowed', /^Disallow: \/auth$/m.test(txt))
+    check('the sitemap is advertised', /^Sitemap: https:\/\/checkitdown\.com\/sitemap\.xml$/m.test(txt))
   })
 
 } finally {

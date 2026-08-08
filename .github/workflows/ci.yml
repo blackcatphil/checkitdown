@@ -159,7 +159,7 @@ jobs:
             || { echo "::error::mixed-state suite did not pass"; exit 1; }
           n=$(grep -c '^   PASS' /tmp/mixed.log || true)
           echo "assertions passed: $n"
-          [ "$n" -ge 108 ] || { echo "::error::only $n assertions ran (expected >= 108) — the suite shrank, which is a silent regression"; exit 1; }
+          [ "$n" -ge 128 ] || { echo "::error::only $n assertions ran (expected >= 128) — the suite shrank, which is a silent regression"; exit 1; }
 
       - name: Assert the database was left clean
         run: |
