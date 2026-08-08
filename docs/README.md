@@ -338,7 +338,7 @@ Constraints now carry their test:
 | Dress code / drinks / house rules 0/17 | searched every room's own site plus the partner floor sheet for a published dress code, drinks policy or house-rules document, 2026-08-07 | **TRUE** — no room on the sheet publishes house rules; the only house-rules documents found anywhere were **out-of-state** rooms; the one first-party dress code that exists (Venetian) governs the **casino floor**, not the poker room |
 | OSM heights are either right or absent | counted `height=` vs `building:levels=` across 1,283 corridor buildings, then read the named short ones | **FALSE** — 72% of tagged buildings are levels-only, and 40 named buildings ≤3 storeys include *"Hotel MGM Grand Las Vegas"* at **2**. **0 buildings carry `building:part`**, so podium-vs-tower is undetectable from the tiles |
 | Bravo (the other waitlist vendor) blocks automated fetching | `curl -sL -A "<Chrome UA>"` on `/`, `/rooms`, `/rooms/las-vegas`, 2026-08-07 | **TRUE** — root `403` with Cloudflare's *"Just a moment"* challenge; both room paths `404` from Cloudflare. **Redirects had to be followed to see it**: without `-L` the root returns `302` and reads as merely redirected. With PokerAtlas already measured at `403`, **both** waitlist vendors are now tested rather than assumed |
-| Vegas Advantage is static — usable as a citation, useless as a detector | read `dateModified` from the Wynn and ARIA pages, 2026-08-07 | **TRUE** — both stamped `2025-04-19`, unchanged for **~15.6 months**. It is the source behind much of our seeded rake and remains perfectly good for that, but a page that never moves cannot signal a change; pointing the detector at it would buy a permanent, meaningless silence |
+| ~~Vegas Advantage is static — useless as a detector~~ | first read from **two** pages (Wynn, ARIA); re-read across **all 16** pages we cite, 2026-08-07 | **NARROWED — the two pages were right, the generalisation was not tested.** Eleven of sixteen are stamped `2025-04-19`, but Horseshoe moved `2026-05-28`, the index `2026-04-12`, Caesars Palace and Green Valley Ranch `2025-12-21`, MGM Grand `2025-07-31`. Most of the site is static; the site is not. **Same error shape as the X-cache claim the row below corrects — measure two, state a property of the set.** See `research/source-health.md` |
 | X/Twitter is unreadable unauthenticated | five paths against `@ARIAPoker`, Chrome UA, redirects followed, 2026-08-07 | **TRUE** — `x.com` `200` but a JS shell with **zero** post-text nodes; `cdn.syndication` and `nitter.net` `200` with **empty bodies**; `oembed` `200` but a content-free widget stub. The fifth, `syndication.twitter.com/srv/timeline-profile`, returns `200`, 542 KB and **106 parseable posts** — an undocumented endpoint that can be removed without notice. **Facebook is walled too**: two poker pages `400` under the same UA (2026-08-07). **Designated social channels are for people to read, not pipelines** |
 | ~~That endpoint serves a frozen cache~~ | re-tested across **11 accounts** in one minute, 2026-08-07 | **PARTLY FALSE — narrowed same day.** The `@ARIAPoker` reading (newest 2025-11-03) was real, but generalising it to the endpoint was not tested. `@WSOP` came back **current to that day** and `@PokerNews` to the day before, while `@SPPokr` lagged 15 months. Staleness is **per account**, and nothing in the response says which you hold — *worse* than uniformly frozen, because it is sometimes right. It also means the cache **cannot establish activity**: a 15-month-old newest post is equally consistent with a dormant account and an unrefreshed cache. See `research/dark-thirteen-channels.md` §1 |
 | `test:map` cannot run beside a live `next dev` of the same checkout | ran `npx next dev -p 3100` while a dev server held `:3000`, 2026-08-07 | **TRUE** — Next 16's single-instance guard prints *"You can access the existing server at :3000, or run kill …"* and **exits without listening**, so the probe navigates to a port with nothing on it and dies on the nav timeout — twice, identically. The failure names a URL, not the guard, which is why it reads as a probe bug. Workaround is the one the morning session used: run the probe from a **git worktree** (different directory, own instance) and leave the person's server alone |
@@ -1559,6 +1559,12 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 | Roster: 17 rooms, WSOP·Paris seasonal and off all counts | code + test | `inRoster()`; `test:mixed` seasonal scenario |
 | Amenity filter: unknown is never counted as a match | code + test | `amenityState()`, `combineStates()`; `amenity-filter.test.mjs`; `test:map` three-state pixels |
 | Provenance copy tracks the rows, never a static claim | code + test | `provenanceState()`; `provenance.test.mjs`; `test:mixed` 17-room sweep |
+| No room data is ever served from cache | code + test | `public/sw.js`; `test:pwa` asserts no page HTML is cached, proved red |
+| Offline shows an honest state, never yesterday's figures | code + test | `app/offline`; `test:pwa` |
+| All 17 rooms reachable and non-overlapping at 390px | code + test | `VALLEY_Z_PHONE`; `test:mobile` |
+| No surface overflows a 390px viewport | test | `test:mobile` across all five surfaces |
+| The rank qualifier survives the table-to-cards change | code + test | `.cid-rank-q`; `test:mobile` |
+| Manifest colours and icons come from the tokens | code + test | `lib/tokens-server.ts`, `make-icons.mjs`; `test:pwa` |
 | The sitemap holds one entry per room, derived from the table | code + test | `app/sitemap.ts`; `test:mixed` count equality + per-slug check |
 | A closed or seasonal room keeps its URL | code + test | no status filter; `test:mixed` closes and seasons Bellagio |
 | lastmod is a provenance stamp, never the build time | code + test | `latestVerified()`; `test:mixed` distinct-dates + moves-with-the-data |
@@ -2317,6 +2323,142 @@ prose is stale.
 So the correction lives here, named to the file and line, for whoever reads that
 comment next. If a future migration ever alters that column for another reason,
 the comment can be corrected there — in a file that has not run yet.
+
+## Phones, and the map that was 88 pixels wide (2026-08-07)
+
+Phil: *"most people are going to be using this app on their phone once they
+leave their rooms."* Mobile-first and the PWA were dropped in the 2026-08-03
+pivot for **scope**, not because the reasoning changed — the original scoping
+said it plainly: no laptops in Vegas.
+
+### The measurement that had to come first
+
+The brief said to measure the map on a phone before committing to it as the
+landing view, and a mobile-specific entry view was a legitimate answer. It is
+not needed — but only because the first measurement found something else:
+
+```
+BEFORE   canvas 88x780    2 of 17 rooms on screen
+AFTER    canvas 390x780   17 of 17
+```
+
+**The map was not slow on a phone. It was nearly absent.** The landing grid is
+`302px panel + remainder`; at 390px that leaves the canvas **88 pixels**. Every
+"is the map too heavy for mobile" instinct would have been answered against a
+sliver of a map.
+
+With the layout fixed, at 390px / DPR 3 / 4× CPU throttle:
+
+| | |
+|---|---|
+| Time to first extrusion | **~3.0 s** |
+| Frame interval at drag | median 44 ms, p95 57 ms (~22 fps) |
+| Long tasks | 17–21, worst ~520 ms |
+
+**The verdict: the map holds up as the landing view.** Three seconds to a
+building on a throttled mid-range stand-in is defensible for the heaviest screen
+in the app, and drag stays interactive. The long tasks are the honest weak
+point — a ~500 ms task is a visibly frozen tap — and that is the number to watch
+if anything else joins the first paint. Throttling is an approximation and is
+labelled as one: it is not a specific handset, and the useful signal is the
+shape, three seconds rather than twelve.
+
+### Two real bugs the measurement exposed, and two of mine
+
+**Inline styles beat media queries.** The columns were an inline
+`gridTemplateColumns`, so `@media` could not override them and the canvas stayed
+302px after the "fix". The grid moved to CSS. Nothing in a stylesheet can win
+against an inline style, no matter what query it sits in.
+
+**The whole valley does not fit a phone at z10.** WHOLE VALLEY showed 15 of 17 —
+**Red Rock and Skyline**, the west and east extremes, projected off-screen. The
+narrower canvas crops the same camera, and every previous measurement was taken
+at 1440px. `VALLEY_Z_PHONE = 9.6` is the first step that fits all seventeen.
+
+**The debug badge swallowed the sheet handle.** `pointer-events: none` now — an
+instrument that can change behaviour when switched on is the same class as the
+badge counting as pixel movement in the dim measurement.
+
+**And my own probe was wrong twice.** It reported 2 overlapping pins at 390px;
+they were 2 rooms counted twice, because `querySourceFeatures` returns a point
+near a tile boundary from **both** tiles. The tell was that the number did not
+move across cluster radii 50, 64, 80 and 96 — a real crowding problem responds
+to clustering. It also demanded all 17 rooms at the *landing* camera, which the
+desktop probe never does.
+
+### The header was the whole overflow
+
+Every page measured **494px of scroll width against 390** — the same 494 on all
+four, because it was the shared header: brand, four nav items and
+"17 ROOMS · VERIFIED DAILY", all `nowrap`, in a row that cannot shrink. A
+page-by-page hunt would have found four symptoms of one cause.
+
+44px targets apply to **standalone controls**. Inline links inside a sentence are
+exempt under WCAG 2.5.8, and that is the rule rather than a concession —
+stretching the receipts on room detail would damage the prose to satisfy a
+number that was never about them. (`min-height` does not apply to inline boxes
+anyway, so the naive rule silently did nothing.) A checkbox's target is its
+label, which is what a finger actually hits.
+
+### /facts becomes cards without losing what a rank means
+
+The head row is hidden at phone width, which takes the column names with it —
+including **"# BY RAKE"**. Rank is tied to the active sort and a bare "#3" with
+no head is a number attached to nothing, so the qualifier rides each card and
+CSS reveals it only where the header is gone. Above the breakpoint the wrapper
+is `display: contents`, so the desktop table is the same eight grid children it
+always was.
+
+## No offline caching of room data
+
+Installability wants a service worker with a fetch handler, and the instinct is
+to cache for offline. **That instinct is wrong for this product specifically.**
+
+A cached rake figure served tomorrow is a stale fact presented as current — the
+exact failure this product exists to prevent, and **worse than a blank screen
+because it looks fine**. No dotted rule, no tilde and no "checked on" date can
+save a number the browser handed back from disk: every provenance marker on the
+page was rendered at cache time and is now part of the lie.
+
+| | |
+|---|---|
+| Shell — hashed build assets, icons, manifest, offline page | cache-first |
+| Pages | **network-first, never cached** |
+| Data | **network only** — no read, no write, no revalidate |
+
+There is deliberately **no `stale-while-revalidate` anywhere in `sw.js`**. It is
+the right pattern for an avatar and the wrong one for a rake cap, and having it
+present for "safe" resources is how it gets applied to an unsafe one later.
+
+Offline renders an honest offline state — *"we can't reach the data"* — showing
+no figures at all. Same family as "not yet checked on site".
+
+**Asserted, and proved red.** `scripts/pwa-probe.mjs` checks that no page HTML is
+in the cache at all — the strongest form, because a page never stored cannot be
+served stale. Making the worker cache navigations produced 5 failures, the
+decisive one being offline serving the cached Orleans page *with its cash-games
+figures* instead of the offline state.
+
+One assertion had to be rewritten: `fromServiceWorker === false` fails on a
+worker that fetches the network and passes the response through, which is what
+this one does. The flag says "the worker answered", not "answered from disk", so
+it could not tell the safe case from the dangerous one. It now asks the cache
+directly whether it holds the URL.
+
+### Icons and colours are generated from the tokens
+
+An installed app keeps its icon until someone reinstalls it, so a hardcoded hex
+would outlive the palette by months on every phone that added the site — and the
+blue/gold palette is landing underneath this work. `scripts/make-icons.mjs`
+draws them from `colors.css`; `lib/tokens-server.ts` reads the same file for
+`theme_color` and `background_color`. Nothing in this pass contains a colour
+value.
+
+Maskable is a **separate file**, not a second purpose on the same one: Android
+crops to the launcher's shape and guarantees only the middle 80%, so one file
+declared `any maskable` gets clipped on Android or floats undersized elsewhere.
+iOS ignores the manifest for most of this and reads its own meta tags, so both
+are stated.
 
 ## Open items — recorded, not built (2026-08-07)
 

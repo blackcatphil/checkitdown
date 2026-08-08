@@ -106,6 +106,13 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   z-index: 5; font: var(--cid-tag); color: var(--cid-dim);
   background: var(--cid-ink-700); border: 1px solid var(--cid-line-1);
   border-radius: var(--cid-r-sm); padding: var(--cid-space-2) var(--cid-space-4);
+  /* AN INSTRUMENT MUST NOT BLOCK THE THING IT MEASURES. At 390px the badge
+     landed exactly on the bottom sheet's handle and swallowed the tap — the
+     mobile probe failed to open the sheet and reported a timeout against a
+     layout that was correct. The badge is flag-gated and never ships, which is
+     precisely why it must not be able to change behaviour when it is on: the
+     same class as the badge counting as pixel movement in the dim measurement. */
+  pointer-events: none;
 }
 
 /* Says WHICH empty state this is. "No buildings here" and "buildings have
@@ -213,4 +220,178 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   border-top: 1px solid var(--cid-gold-300); border-radius: var(--cid-r-sm);
   min-height: var(--cid-target); display: grid; place-items: center;
   border-bottom: none;
+}
+
+/* The landing split: filter panel beside the map. Declared here rather than
+   inline so the phone media query can replace it — an inline style wins over a
+   stylesheet rule no matter what query it sits in. */
+.cid-mapgrid {
+  display: grid;
+  grid-template-columns: var(--cid-panel-w) minmax(0, 1fr);
+}
+
+/* THE CELL WRAPPER IS INVISIBLE ABOVE THE BREAKPOINT.
+   `display: contents` removes the wrapper from layout entirely, so the eight
+   grid children of .cid-trow are the same eight elements they always were and
+   the desktop table is byte-for-byte the layout it was before cards existed.
+   The wrapper only becomes a box inside the phone media query. */
+.cid-cell { display: contents; }
+/* The rank qualifier rides every card but is the column head on desktop, where
+   printing it on each row would repeat "BY RAKE" seventeen times. */
+.cid-rank-q { display: none; }
+
+/* =====================================================================
+   PHONE — 2026-08-07. Phil: "most people are going to be using this app
+   on their phone once they leave their rooms."
+
+   MEASURED BEFORE IT WAS WRITTEN. `scripts/mobile-probe.mjs` at 390px
+   found the desktop grid leaving the map canvas **88px wide** — 390 minus
+   a 302px panel that never collapsed — with 2 of 17 rooms on screen and a
+   pair of pins overlapping. The map was not slow on a phone; it was
+   nearly absent. Everything below follows from that one number.
+
+   TOKEN-ONLY. No colour value appears here, so the blue/gold palette
+   landing underneath does not touch this file. Sizes come from
+   --cid-* tokens for the same reason.
+
+   The breakpoint is a token (--cid-bp-phone) but @media cannot read a
+   custom property, so 860px is written literally in the query and the
+   token carries the reason. If one moves, move both.
+   ===================================================================== */
+@media (max-width: 860px) {
+  /* ---- LANDING MAP: panel becomes a bottom sheet over a full-bleed map */
+  .cid-mapgrid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+  /* Both children occupy the single cell; the sheet sits above the map. */
+  .cid-mapgrid > * { grid-area: 1 / 1; }
+
+  .cid-mappanel {
+    position: relative;
+    z-index: 3;
+    align-self: end;
+    width: 100%;
+    max-height: var(--cid-sheet-max);
+    border-right: none;
+    border-top: 1px solid var(--cid-line-2);
+    border-radius: var(--cid-r-md) var(--cid-r-md) 0 0;
+    box-shadow: var(--cid-shadow-pop);
+    /* The collapsed sheet still shows the count line — the one thing worth
+       reading without opening anything. */
+    transition: max-height var(--cid-dur) var(--cid-ease);
+  }
+  .cid-mappanel[data-open="false"] {
+    max-height: var(--cid-sheet-peek);
+    overflow: hidden;
+  }
+  /* The handle is the whole affordance: no drag gesture, no double-tap.
+     A button, because it is one. */
+  .cid-sheet-handle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: var(--cid-target);
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--cid-text-3);
+    font: var(--cid-tag);
+    letter-spacing: var(--cid-track-nav);
+    cursor: pointer;
+  }
+
+  /* ---- /facts: the table becomes stacked cards.
+     The head row carries the column names, so it cannot simply be hidden —
+     each cell re-labels itself from the same strings. */
+  .cid-thead { display: none; }
+
+  .cid-trow {
+    grid-template-columns: 1fr;
+    gap: var(--cid-space-2);
+    padding: var(--cid-space-5);
+    min-height: 0;
+    border-bottom: 1px solid var(--cid-line-2);
+  }
+  /* On desktop the wrapper is invisible (display: contents) and the cell is
+     the grid item. Here it becomes the row of the card. */
+  .cid-cell {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--cid-space-4);
+    min-height: var(--cid-target);
+  }
+  .cid-cell::before {
+    content: attr(data-h);
+    font: var(--cid-label);
+    letter-spacing: var(--cid-track-nav);
+    color: var(--cid-dim);
+    flex: none;
+  }
+  /* Rank and room name lead the card and need no label — the rank carries
+     its qualifier in the card head instead, because "#3" without "BY RAKE"
+     is a number attached to nothing. */
+  .cid-cell[data-lead]::before { content: none; }
+  .cid-cell[data-lead] { justify-content: flex-start; min-height: 0; gap: var(--cid-space-3); }
+  /* The room name is the card's PRIMARY target — it is how you open the room —
+     so it gets the full 44px even though it looks like a heading. */
+  .cid-cell[data-h="ROOM"] { min-height: var(--cid-target); align-items: center; }
+  .cid-cell[data-h="ROOM"] a { display: flex; align-items: center; min-height: var(--cid-target); }
+  .cid-rank-q {
+    display: inline;
+    font: var(--cid-label);
+    letter-spacing: var(--cid-track-nav);
+    color: var(--cid-dim);
+  }
+
+  /* ---- Everything else: one column, reachable targets */
+  .cid-page { padding-left: var(--cid-gutter); padding-right: var(--cid-gutter); }
+  .cid-stack-2 { grid-template-columns: 1fr !important; }
+  /* Three fact tiles across 390px gives each ~120px, which truncates
+     "$2.00/hr" and the club name. Two is the most that stays readable. */
+  .cid-tiles { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  .cid-super { grid-template-columns: 1fr !important; }
+  .cid-viewbtn, .cid-check, .cid-inline-btn { min-height: var(--cid-target); }
+
+  /* A popup that overflows a 390px screen cannot be dismissed. */
+  .maplibregl-popup-content { min-width: 0; max-width: calc(100vw - var(--cid-space-7)); }
+
+  /* THE HEADER WAS THE WHOLE OVERFLOW. Every page measured 494px of scroll
+     width against a 390px viewport, and it was the same 494 everywhere —
+     brand + four nav items + "17 ROOMS · VERIFIED DAILY", all `nowrap`, in a
+     row that cannot shrink. A page-by-page hunt would have found four symptoms
+     of one cause.
+     The trust line is what goes: it is the least useful of the three at 390px
+     and the only one that is not navigation. */
+  .cid-header-tag { display: none; }
+  .cid-nav { gap: var(--cid-space-5); overflow-x: auto; scrollbar-width: none; }
+  .cid-nav::-webkit-scrollbar { display: none; }
+  /* 44px of TAP TARGET on every link in the bar. The nav items are small type
+     by design; the target is not the type. */
+  .cid-nav a, .cid-brand { min-height: var(--cid-target); display: inline-flex; align-items: center; }
+
+  /* STANDALONE CONTROLS get the 44px floor. Buttons and block-level links —
+     the things you aim at.
+     INLINE LINKS INSIDE A SENTENCE DO NOT, and that is the rule rather than a
+     concession: WCAG 2.5.8 exempts a link whose target is inline in a block of
+     text, because enlarging it would break the line it lives in. The receipts
+     on room detail ("vegasadvantage.com" mid-sentence) are exactly that case,
+     and stretching them would damage the prose to satisfy a number that was
+     never about them. `min-height` does not apply to inline boxes anyway, so
+     the naive rule silently did nothing — worth knowing before someone
+     "fixes" it with `display: inline-block`. */
+  .cid-page button, .cid-mappanel a, .cid-mappanel button {
+    min-height: var(--cid-target);
+  }
+  /* A 13px checkbox is a control, not prose. */
+  .cid-mappanel input[type="checkbox"] { width: 22px; height: 22px; }
+
+  /* THE NOTCH AND THE HOME INDICATOR. `viewportFit: 'cover'` lets the app draw
+     under both, which is what makes an installed app look installed — and also
+     what puts the bottom of the sheet under the home indicator unless the inset
+     is added back. */
+  .cid-mappanel { padding-bottom: calc(var(--cid-space-6) + env(safe-area-inset-bottom)); }
+  .cid-page { padding-bottom: calc(var(--cid-space-9) + env(safe-area-inset-bottom)); }
 }

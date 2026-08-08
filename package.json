@@ -14,6 +14,9 @@
     "check:worker": "node scripts/sync-map-worker.mjs --check",
     "prebuild": "node scripts/sync-map-worker.mjs",
     "test:map": "node scripts/map-probe.mjs",
+    "test:mobile": "node scripts/mobile-probe.mjs",
+    "test:pwa": "node scripts/pwa-probe.mjs",
+    "icons": "node scripts/make-icons.mjs",
     "test:flicker": "STEP=0.002 N=10 node scripts/flicker.mjs"
   },
   "dependencies": {

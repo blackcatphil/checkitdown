@@ -1,7 +1,10 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 
+import { ServiceWorker } from './ServiceWorker'
+
 import { SITE_URL } from '@/lib/site'
+import { readServerToken } from '@/lib/tokens-server'
 
 import './globals.css'
 
@@ -17,6 +20,43 @@ export const metadata: Metadata = {
   description:
     'Independent map and rankings of every poker room in the Las Vegas valley. '
     + 'Every fact carries a source and a verified date.',
+  /* iOS IGNORES THE MANIFEST FOR MOST OF THIS. Android reads `name`, `icons`
+     and `display` from the web manifest; iOS reads its own meta tags and its
+     own `apple-touch-icon` link, and silently falls back to a screenshot of the
+     page as the icon when they are missing. Both have to be stated. */
+  appleWebApp: {
+    capable: true,
+    title: 'Check It Down',
+    /* The status bar sits ON the page in standalone mode. `black-translucent`
+       plus `viewportFit: 'cover'` below means the app owns the full screen and
+       the safe-area insets keep content out from under the notch. */
+    statusBarStyle: 'black-translucent',
+  },
+  icons: {
+    icon: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+}
+
+/**
+ * There was NO viewport meta tag at all before 2026-08-07, which is why the
+ * desktop layout was being rendered at desktop width and scaled down on a
+ * phone rather than reflowing. Every media query in `globals.css` depends on
+ * this line existing.
+ *
+ * `maximumScale` and `userScalable` are deliberately NOT set: capping zoom is
+ * an accessibility failure, and the 44px targets mean nobody should need it
+ * anyway.
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  /* Draws under the notch and the home indicator; `env(safe-area-inset-*)` in
+     globals.css keeps content clear of both. */
+  viewportFit: 'cover',
+  /* Same token the manifest uses, so the browser chrome and the installed app
+     cannot disagree about what colour this product is. */
+  themeColor: readServerToken('--cid-ink-800'),
 }
 
 /* VERIFIED DAILY is the trust signal and never drops out of the header. */
@@ -62,6 +102,7 @@ function SiteHeader() {
         >
           <Link
             href="/"
+            className="cid-brand"
             style={{
               font: 'var(--cid-room-name)',
               color: 'var(--cid-text)',
@@ -71,7 +112,7 @@ function SiteHeader() {
           >
             Check It Down
           </Link>
-          <nav style={{ display: 'flex', gap: 'var(--cid-space-6)', minWidth: 0 }}>
+          <nav className="cid-nav" style={{ display: 'flex', gap: 'var(--cid-space-6)', minWidth: 0 }}>
             {nav.map(([label, href]) => (
               <Link
                 key={href}
@@ -90,7 +131,7 @@ function SiteHeader() {
           </nav>
         </div>
         <span
-          className="cid-label"
+          className="cid-label cid-header-tag"
           style={{ whiteSpace: 'nowrap', minWidth: 0, flex: '0 1 auto' }}
         >
           17 ROOMS · VERIFIED DAILY
@@ -104,6 +145,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <ServiceWorker />
         <SiteHeader />
         {children}
       </body>

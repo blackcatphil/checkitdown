@@ -83,3 +83,8 @@ screens/
 
 # Operational, not structural: who holds admin is not version-controlled.
 scripts/bootstrap-admin.sql
+
+# Casino tournament and promo documents collected for research. NOT COMMITTED:
+# this repo is PUBLIC, and these are the properties own copyrighted material.
+# Reference them by URL and fetched date; never republish the files.
+tournament schedules/

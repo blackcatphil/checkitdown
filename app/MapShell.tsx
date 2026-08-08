@@ -95,6 +95,14 @@ const DEG_PER_SEC = 0.9
 
 const VALLEY: [number, number] = [-115.1709, 36.1309]
 const VALLEY_Z = 10
+/* THE WHOLE VALLEY DOES NOT FIT A PHONE AT z10. Measured 2026-08-07 at 390px:
+   Red Rock and Skyline — the west and east extremes of the roster — project
+   off-screen, so "WHOLE VALLEY" showed 15 of 17. The narrower canvas crops the
+   same camera, and nothing in the desktop measurements could have caught it
+   because they were all taken at 1440px.
+   9.6 is the first step that fits all seventeen; 9.3 and 9.0 also fit, and are
+   further away than they need to be. */
+const VALLEY_Z_PHONE = 9.6
 const STRIP: [number, number] = [-115.1726, 36.1120]
 const STRIP_Z = 14.5
 const CLUSTER_RADIUS = 50
@@ -236,6 +244,10 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
   const rosterRef = useRef<MapRoom[]>([])
   const [checked, setChecked] = useState<string[]>([])
   const [amenChecked, setAmenChecked] = useState<string[]>([])
+  /* Closed on arrival. The map is the landing view; a sheet covering it on
+     first paint would answer a question nobody asked yet. Desktop ignores this
+     entirely — the panel is always open above the breakpoint. */
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [season, setSeason] = useState(false)
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(STRIP_Z)
@@ -1091,6 +1103,38 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
     map.triggerRepaint()
   }, [stateOf, ready])
 
+  /* THE SHEET MUST NOT SIT ON TOP OF THE PINS.
+     "The compare tray must not cover the map's bottom edge where pins sit" is a
+     constraint that predates mobile and gets worse on a phone, where the panel
+     becomes a bottom sheet over the map rather than a column beside it.
+     Answered with the camera, not with CSS: `setPadding` tells MapLibre which
+     part of the canvas is actually visible, so centring, `fitBounds` and the
+     valley view all place rooms in the uncovered region instead of under the
+     sheet. Shrinking the canvas instead would give back the 88px problem in a
+     smaller form.
+     Read from the same tokens the CSS uses, so the breakpoint and the sheet
+     height cannot drift apart. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    const css = getComputedStyle(document.documentElement)
+    const px = (name: string, fallback: number) => {
+      const v = parseFloat(css.getPropertyValue(name))
+      return Number.isFinite(v) ? v : fallback
+    }
+    const bp = px('--cid-bp-phone', 860)
+    const apply = () => {
+      const phone = window.matchMedia(`(max-width: ${bp}px)`).matches
+      /* Only the COLLAPSED height. An expanded sheet is a deliberate act by the
+         reader, who is looking at the sheet rather than the map; re-framing the
+         camera under their finger would be the map arguing back. */
+      map.setPadding({ top: 0, left: 0, right: 0, bottom: phone ? px('--cid-sheet-peek', 92) : 0 })
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    return () => window.removeEventListener('resize', apply)
+  }, [ready])
+
   /* Cluster properties are computed at LOAD time, so `hits` cannot be
      repainted when the filter changes — the data has to be re-set. */
   useEffect(() => {
@@ -1119,10 +1163,19 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
     stopDrift()
     mapRef.current?.easeTo({ center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18 })
   }, [stopDrift])
+  /* The breakpoint decides the zoom, read from the same token the CSS uses so
+     the two cannot drift. */
+  const valleyZoom = useCallback(() => {
+    if (typeof window === 'undefined') return VALLEY_Z
+    const bp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cid-bp-phone'))
+    const limit = Number.isFinite(bp) ? bp : 860
+    return window.matchMedia(`(max-width: ${limit}px)`).matches ? VALLEY_Z_PHONE : VALLEY_Z
+  }, [])
+
   const goValley = useCallback(() => {
     stopDrift()
-    mapRef.current?.easeTo({ center: VALLEY, zoom: VALLEY_Z, pitch: 0, bearing: 0 })
-  }, [stopDrift])
+    mapRef.current?.easeTo({ center: VALLEY, zoom: valleyZoom(), pitch: 0, bearing: 0 })
+  }, [stopDrift, valleyZoom])
 
   const toggle = (k: string) =>
     setChecked((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]))
@@ -1135,14 +1188,38 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
   const in3d = zoom >= MIN_3D_ZOOM
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'var(--cid-panel-w) minmax(0,1fr)', height: 'calc(100vh - var(--cid-header-h))' }}>
+    <div
+      /* THE COLUMNS LIVE IN CSS, NOT HERE. An inline `gridTemplateColumns` beats
+         any stylesheet rule including one inside a media query, so the phone
+         layout silently did nothing: the canvas measured 302px at a 390px
+         viewport because the desktop columns were still in force and both
+         children were stacked into the 302px one. Only `height` stays inline —
+         nothing overrides it. */
+      className="cid-mapgrid"
+      style={{ height: 'calc(100dvh - var(--cid-header-h))' }}
+    >
       <aside
+        className="cid-mappanel"
+        data-open={sheetOpen ? 'true' : 'false'}
         style={{
           background: 'var(--cid-ink-700)', borderRight: '1px solid var(--cid-line-2)',
           padding: 'var(--cid-space-6)', overflowY: 'auto',
           display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-6)',
         }}
       >
+        {/* THE SHEET HANDLE, phone only (CSS hides it above the breakpoint).
+            A button with a label, not a drag gesture: dragging has no keyboard
+            equivalent and no discoverability, and the 2026-08-03 ruling already
+            banned touch paths that depend on gestures a mouse cannot make. */}
+        <button
+          type="button"
+          className="cid-sheet-handle"
+          aria-expanded={sheetOpen}
+          onClick={() => setSheetOpen((v) => !v)}
+        >
+          <span>{filtering ? summaryLine(counts) : `${roster.length} ROOMS`}</span>
+          <span aria-hidden>{sheetOpen ? 'CLOSE ▾' : 'FILTERS ▴'}</span>
+        </button>
         <div>
           <p className="num" style={{ font: 'var(--cid-num-lg)', margin: 0 }}>
             {filtering ? summaryLine(counts) : `${roster.length} rooms`}

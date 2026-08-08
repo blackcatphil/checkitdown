@@ -40,4 +40,8 @@
   .kr, .kt { animation: none !important }
   .kr1 { opacity: .62 !important }
   .cid-ping { animation: none !important; opacity: 0 !important }
+  /* The bottom sheet still opens and closes — it just stops sliding. A
+     control that refuses to move is broken; one that moves instantly is
+     honoured. */
+  .cid-mappanel { transition: none !important }
 }

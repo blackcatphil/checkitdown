@@ -485,7 +485,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       </header>
 
       <Block label="THE FACTS">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
+        <div className="cid-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
           {facts.map(([label, value]) => (
             <div key={label} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-2)' }}>
               <span className="cid-label">{label}</span>
@@ -535,7 +535,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           a single column rather than leaving a hole where it used to be. The
           table, the query and the floor-visit checklist are all untouched: this
           is a display decision, and one recorded rule brings the block back. */}
-      <div style={{
+      <div className="cid-stack-2" style={{
         display: 'grid',
         gridTemplateColumns: coverage.houseRules ? 'minmax(0,1.15fr) minmax(0,1fr)' : 'minmax(0,1fr)',
         gap: 'var(--cid-space-7)',

@@ -368,6 +368,7 @@ export default async function JustTheFacts({
       )}
 
       <section
+        className="cid-super"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
@@ -436,34 +437,46 @@ export default async function JustTheFacts({
               key={r.slug}
               style={dimmed ? { opacity: 'var(--cid-dim-row)' } : undefined}
             >
-              <span
-                className="num"
-                style={{
-                  font: 'var(--cid-rank)',
-                  color: rk.isLeader ? 'var(--cid-value)' : rk.rank != null ? 'var(--cid-text-2)' : 'var(--cid-disabled)',
-                }}
-                title={rk.rank == null ? 'Not ranked — not confirmed on site' : undefined}
-              >
-                {rk.rank != null ? `#${rk.rank}` : EMDASH}
+              {/* THE RANK CARRIES ITS QUALIFIER ON A CARD.
+                  On the table the qualifier is the column head — "# BY RAKE" —
+                  and the head row is hidden at phone width. A bare "#3" with no
+                  head is a number attached to nothing, and rank is meaningless
+                  without the sort it belongs to. So the head text rides the
+                  cell and CSS reveals it only where the header is gone. */}
+              <span className="cid-cell" data-lead data-h={rake.head}>
+                <span
+                  className="num"
+                  style={{
+                    font: 'var(--cid-rank)',
+                    color: rk.isLeader ? 'var(--cid-value)' : rk.rank != null ? 'var(--cid-text-2)' : 'var(--cid-disabled)',
+                  }}
+                  title={rk.rank == null ? 'Not ranked — not confirmed on site' : undefined}
+                >
+                  {rk.rank != null ? `#${rk.rank}` : EMDASH}
+                </span>
+                <span className="cid-rank-q" aria-hidden>{rake.head.replace(/^#\s*/, '')}</span>
               </span>
-              <Link
-                href={`/rooms/${r.slug}`}
-                style={{
-                  font: 'var(--cid-room-name)',
-                  color: 'var(--cid-text)',
-                  borderBottom: 'none',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {r.name}
-              </Link>
-              <Cell value={d.rake.label} leader={rk.isLeader} checked={verified} />
-              <Cell value={d.drop} checked={verified} />
-              <Cell value={d.parking} checked={verified} numeric={false} />
-              <Cell value={d.food} checked={verified} numeric={false} />
-              <Cell value={r.table_count != null ? String(r.table_count) : null} checked={verified} />
+              <span className="cid-cell" data-lead data-h="ROOM">
+                <Link
+                  href={`/rooms/${r.slug}`}
+                  style={{
+                    font: 'var(--cid-room-name)',
+                    color: 'var(--cid-text)',
+                    borderBottom: 'none',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {r.name}
+                </Link>
+              </span>
+              <span className="cid-cell" data-h="RAKE"><Cell value={d.rake.label} leader={rk.isLeader} checked={verified} /></span>
+              <span className="cid-cell" data-h="DROP"><Cell value={d.drop} checked={verified} /></span>
+              <span className="cid-cell" data-h="PARKING"><Cell value={d.parking} checked={verified} numeric={false} /></span>
+              <span className="cid-cell" data-h="FOOD"><Cell value={d.food} checked={verified} numeric={false} /></span>
+              <span className="cid-cell" data-h="TABLES"><Cell value={r.table_count != null ? String(r.table_count) : null} checked={verified} /></span>
+              <span className="cid-cell" data-h="VERIFIED">
               {STATUS_LABEL[r.status] ? (
                 <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-accent-300)' }}>
                   {STATUS_LABEL[r.status]}
@@ -488,6 +501,7 @@ export default async function JustTheFacts({
                   UNVERIFIED
                 </span>
               )}
+              </span>
             </div>
           )
         })}

@@ -25,6 +25,15 @@
   --cid-table-cols: 112px minmax(0,1.55fr) minmax(0,1.2fr) minmax(0,.62fr)
                     minmax(0,1.25fr) minmax(0,1.55fr) minmax(0,.78fr) minmax(0,1fr);
 
+  /* PHONE. The breakpoint is where the 302px panel plus a usable map stops
+     fitting — below this the landing view is a sheet over a full-bleed map, not
+     a narrower version of the desktop split. Measured, not guessed: at 390px
+     the desktop grid left the canvas 88px wide and only two of seventeen rooms
+     on screen. */
+  --cid-bp-phone: 860px;
+  --cid-sheet-peek: 92px;     /* collapsed bottom sheet — handle + summary */
+  --cid-sheet-max: 62vh;      /* expanded; never swallows the whole map */
+
   --cid-r-sm: 3px;            /* actions, chips — nearly square */
   --cid-r-md: 4px;
   --cid-r-pill: 999px;        /* pins only */
