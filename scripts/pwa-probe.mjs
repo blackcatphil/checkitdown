@@ -23,10 +23,23 @@ import { chromium, devices } from 'playwright'
 const BASE = process.argv[2] ?? process.env.BASE_URL ?? 'http://localhost:3100'
 
 let failed = 0
+let skipped = 0
 const ok = (cond, msg, detail = '') => {
   console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${msg}${detail ? ` — ${detail}` : ''}`)
   if (!cond) failed++
 }
+/**
+ * A SKIPPED ASSERTION MUST BE LOUDER THAN A PASSING ONE.
+ *
+ * The alternative — running the cache assertions anyway when no worker is
+ * registered — is worse than skipping and worse than failing. They all PASS
+ * vacuously: "no page HTML is in the cache" is trivially true of an EMPTY
+ * cache, and "everything cached is a shell asset" is true of nothing. Measured,
+ * with `sw.js` removed: three green lines that had checked nothing at all.
+ * That is a suite quietly shrinking, which is the exact thing the CI floors
+ * exist to catch, so the count is printed and the reason is named.
+ */
+const skip = (msg, why) => { console.log(`  SKIP  ${msg} — ${why}`); skipped++ }
 
 const browser = await chromium.launch()
 const ctx = await browser.newContext({ ...devices['iPhone 13'], viewport: { width: 390, height: 844 } })
@@ -74,10 +87,38 @@ ok(meta.touch.length > 0, 'apple-touch-icon is linked')
 ok(meta.theme === manifest?.theme_color,
   'the meta theme-color and the manifest agree', `${meta.theme} vs ${manifest?.theme_color}`)
 
-/* ── 2/3/4. The cache ────────────────────────────────────────────────────── */
+/* ── 2/3/4. The cache ──────────────────────────────────────────────────────
+   EVERYTHING BELOW HAS ONE PRECONDITION: a registered, controlling service
+   worker. Without it there is no cache policy to test, so the honest outcome
+   is a named skip rather than a crash or a row of hollow passes.
+   MEASURED 2026-08-07 — the worker registers under a plain `next dev`, from
+   cold, with no warm-up: 23/23 on a server whose only prior request was `/`.
+   So this is not a dev-versus-production skip. It fires when the worker is
+   genuinely unavailable — `sw.js` missing or 404, an unsupported browser, or a
+   server serving a build made before the file existed. Reproduced by removing
+   `public/sw.js`: the old version FAILED the registration check, then passed
+   three cache assertions against an empty cache, then threw on the offline
+   navigation. */
 await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 20000 })
   .catch(() => {})
 const controlled = await page.evaluate(() => navigator.serviceWorker?.controller != null)
+
+if (!controlled) {
+  const swRes = await page.request.get(`${BASE}/sw.js`).catch(() => null)
+  const why = swRes && swRes.ok()
+    ? 'no controlling worker (sw.js is served, so the browser refused or was still installing)'
+    : `sw.js is not being served (${swRes ? swRes.status() : 'request failed'})`
+  console.log('')
+  skip('the service worker is registered and controlling the page', why)
+  skip('NO page HTML is in the cache', 'no worker, so no cache to inspect — this would pass vacuously')
+  skip('everything cached is a shell asset', 'same: an empty cache satisfies it and proves nothing')
+  skip('a data page comes off the network', 'no worker to bypass')
+  skip('OFFLINE renders the honest offline state', 'the offline fallback is the worker\'s job')
+  skip('offline shows NO figures', 'same')
+  await browser.close()
+  console.log(`\n  ${skipped} assertion(s) skipped, ${failed} failed\n`)
+  process.exit(failed ? 1 : 0)
+}
 ok(controlled, 'the service worker is registered and controlling the page')
 
 /* Visit a data-bearing page so that, if the worker were going to cache one, it
@@ -141,8 +182,13 @@ ok(hasFigure, 'and it renders its figures')
 
 /* 3. OFFLINE renders the honest state, and no figures. */
 await ctx.setOffline(true)
-await page.goto(`${BASE}/rooms/orleans`, { waitUntil: 'load' }).catch(() => {})
-const offline = await page.evaluate(() => document.body.textContent ?? '')
+/* `waitUntil: 'load'` can reject AND leave a navigation in flight, so the next
+   `page.evaluate` runs against a context that is being torn down — "Execution
+   context was destroyed". Waiting for `domcontentloaded` and then settling
+   avoids reading mid-navigation. */
+await page.goto(`${BASE}/rooms/orleans`, { waitUntil: 'domcontentloaded' }).catch(() => {})
+await page.waitForTimeout(800)
+const offline = await page.evaluate(() => document.body.textContent ?? '').catch(() => '')
 ok(/can.{0,3}t reach the data/i.test(offline),
   'offline renders the honest offline state')
 ok(!/CASH GAMES/.test(offline) && !/\$\d+\/\d+/.test(offline),
@@ -150,5 +196,5 @@ ok(!/CASH GAMES/.test(offline) && !/\$\d+\/\d+/.test(offline),
 await ctx.setOffline(false)
 
 await browser.close()
-console.log('')
+console.log(`\n  ${failed} failed${skipped ? `, ${skipped} skipped` : ''}\n`)
 process.exit(failed ? 1 : 0)

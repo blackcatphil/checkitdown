@@ -160,6 +160,21 @@ never changes **cannot detect a change**, so pointing the detector at it and
 watching for a diff would produce a permanent, comfortable silence that means
 nothing. Use it to corroborate; do not use it to monitor.
 
+> **NARROWED 2026-08-07 — the sample above is two pages.** `source-health.md`
+> read `dateModified` from **all sixteen** Vegas Advantage pages we cite.
+> Eleven are `2025-04-19` as measured here, but **Horseshoe moved 2026-05-28**,
+> the open-rooms index `2026-04-12`, Caesars Palace and Green Valley Ranch
+> `2025-12-21`, MGM Grand `2025-07-31`. *"Most of this site is static"* is
+> supported; *"this site is static"* was not tested.
+>
+> The corroborate-don't-monitor conclusion survives — a site that moves on five
+> pages of sixteen, unpredictably, is still not a change detector. But the
+> reason is now *"it moves rarely and without pattern"* rather than *"it never
+> moves"*, and those justify different things.
+>
+> **Same error shape as the X-cache correction above: two instances measured, a
+> property of the set asserted.** Twice in two days.
+
 ### South Point still serves-but-empty — re-confirmed
 
 The tournament survey recorded South Point's page as serving without tournament

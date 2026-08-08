@@ -199,3 +199,72 @@ jobs:
           # configuration rather than a build with a debug handle in it.
           [ "$n" -ge 8 ] \
             || { echo "::error::only $n map assertions ran (expected >= 8)"; exit 1; }
+
+      # --- GATE 5: the phone, and the promise not to cache a fact. ---
+      #
+      # Placed AFTER the Chromium install on purpose: both probes drive
+      # Playwright, and putting them above it fails on a missing browser rather
+      # than on anything about the app.
+      #
+      # THE SERVICE WORKER REGISTERS UNDER `next dev` — measured 2026-08-07 on a
+      # cold server whose only prior request was `/`: 23 of 23, nothing skipped.
+      # So this gate needs no production server and no second port; it runs
+      # against the same dev server as gates 3 and 4. That question was settled
+      # by measurement rather than assumed, because the obvious guess — "service
+      # workers are a production thing" — would have bought a `next start` step
+      # and a second port for no reason.
+      - name: "test:mobile (390px: the phone layout, and the map if the handle exists)"
+        env:
+          BASE_URL: http://localhost:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:mobile 2>&1 | tee /tmp/mobile.log
+          grep -q '0 failed' /tmp/mobile.log \
+            || { echo "::error::the mobile probe reported failures"; exit 1; }
+          # THE 494px HEADER IS WHY THIS GATE EXISTS. Every page overflowed a
+          # 390px viewport by the same amount, because the cause was one shared
+          # header rather than four page bugs.
+          grep -q 'PASS  facts: no horizontal overflow' /tmp/mobile.log \
+            || { echo "::error::the overflow assertions did not run — they are the point of this gate"; exit 1; }
+          grep -q 'PASS  facts: the rank qualifier survives on the card' /tmp/mobile.log \
+            || { echo "::error::the rank-qualifier assertion did not run — a bare '#3' with no sort is a number attached to nothing"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/mobile.log || true)
+          echo "mobile assertions: $n"
+          # 13 here, not 16: first-extrusion, the 17-room count and the pin
+          # overlap check all read `window.__cid_map`, which exists only under
+          # NEXT_PUBLIC_MAP_DEBUG=1. CI probes the SHIPPING configuration, so
+          # those three SKIP with a named reason and the five-surface checks —
+          # the ones that caught the header — run in full.
+          [ "$n" -ge 13 ] \
+            || { echo "::error::only $n mobile assertions ran (expected >= 13) — the suite shrank"; exit 1; }
+          # A skip must stay a skip. If these ever stop being skipped without
+          # the floor moving, something changed configuration silently.
+          s=$(grep -c '^  SKIP' /tmp/mobile.log || true)
+          echo "mobile assertions skipped (need MAP_DEBUG): $s"
+
+      - name: "test:pwa (installable, and the worker refuses to cache a fact)"
+        env:
+          BASE_URL: http://localhost:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:pwa 2>&1 | tee /tmp/pwa.log
+          grep -q '0 failed' /tmp/pwa.log \
+            || { echo "::error::the PWA probe reported failures"; exit 1; }
+          # THE OFFLINE ASSERTIONS ARE WHY THIS GATE EXISTS. A cached rake
+          # figure served tomorrow is a stale fact presented as current, and it
+          # is worse than a blank screen because it looks fine. If these two
+          # ever stop RUNNING, the gate is green and the promise is unguarded.
+          grep -q 'PASS  offline renders the honest offline state' /tmp/pwa.log \
+            || { echo "::error::the offline-state assertion did not run — that promise is the reason this gate exists"; exit 1; }
+          grep -q "PASS  and shows NO figures" /tmp/pwa.log \
+            || { echo "::error::the no-stale-figures assertion did not run — same"; exit 1; }
+          grep -q 'PASS  NO page HTML is in the cache' /tmp/pwa.log \
+            || { echo "::error::the cache-contents assertion did not run — it is the strongest form of the promise"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/pwa.log || true)
+          echo "pwa assertions: $n"
+          # 23 — the full local count. Nothing here is flag-gated: the worker
+          # registers under `next dev`, so unlike the map gate this floor is not
+          # reduced. If it ever drops, the worker stopped registering and the
+          # probe will say so on its SKIP lines rather than passing vacuously.
+          [ "$n" -ge 23 ] \
+            || { echo "::error::only $n pwa assertions ran (expected >= 23) — check the SKIP lines above"; exit 1; }

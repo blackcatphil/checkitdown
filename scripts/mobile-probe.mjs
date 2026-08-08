@@ -46,7 +46,10 @@ const CPU_THROTTLE = Number(process.env.MOBILE_PROBE_CPU ?? 4)
 const PHONE = { width: 390, height: 844 }
 
 let failed = 0
+let skipped = 0
 const ok = (cond, msg) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${msg}`); if (!cond) failed++ }
+/** Named, counted, and never silent — see the note beside MAP_DEBUG below. */
+const skip = (msg, why) => { console.log(`  SKIP  ${msg} — ${why}`); skipped++ }
 
 const browser = await chromium.launch()
 const ctx = await browser.newContext({
@@ -77,11 +80,41 @@ const t0 = Date.now()
 await page.goto(BASE, { waitUntil: 'load' })
 const loadAt = Date.now() - t0
 
+/**
+ * THE MAP MEASUREMENTS NEED `window.__cid_map`, WHICH IS FLAG-GATED.
+ *
+ * It is exposed only under `NEXT_PUBLIC_MAP_DEBUG=1`. Without it every camera
+ * reading here is `undefined.getZoom()` — the first version simply threw, which
+ * is the worst outcome: a suite that dies looks identical to a suite that found
+ * something.
+ *
+ * `map-probe.mjs` already solved this — it prints a line naming what was
+ * skipped and lowers its CI floor with the reason beside the number — so this
+ * does the same. What it must NOT do is skip everything: the FIVE-SURFACE
+ * checks (overflow, tap targets, cards, the rank qualifier) need no handle at
+ * all, and they are the assertions that caught the 494px header. Those run in
+ * every configuration.
+ */
+/* WAIT FOR THE CANVAS FIRST, in every configuration. MapShell is a dynamic
+   `ssr:false` import, so immediately after `load` there is no canvas yet and no
+   handle either — reading either one at that moment reports "none" for a map
+   that is merely still arriving. The first version did exactly that and failed
+   the viewport assertion against a map that mounts fine. */
+await page.waitForSelector('canvas.maplibregl-canvas', { timeout: 25000 }).catch(() => {})
+
+/* Then give the handle its own window. It is assigned during map construction,
+   after the canvas exists, so a single immediate check would report "no
+   MAP_DEBUG" on a server that has it. */
+const hasMapHandle = await page
+  .waitForFunction(() => typeof window.__cid_map !== 'undefined', null, { timeout: 6000 })
+  .then(() => true)
+  .catch(() => false)
+
 /* TIME TO FIRST EXTRUSION. Polls the live map for a rendered mass feature
    rather than waiting a fixed interval — the number has to be the moment the
    thing appeared, not the moment we decided to look. */
 let firstExtrusion = null
-const deadline = Date.now() + 30000
+const deadline = Date.now() + (hasMapHandle ? 30000 : 0)
 while (Date.now() < deadline) {
   const n = await page.evaluate(() => {
     const m = window.__cid_map
@@ -98,7 +131,7 @@ const geom = canvas ? await canvas.boundingBox() : null
 /* FRAME INTERVAL WHILE THE CAMERA MOVES. A still map is cheap on any device;
    the cost lands on drag, which is the only way to see a phone struggle. */
 let frames = null
-if (canvas) {
+if (canvas && hasMapHandle) {
   await page.evaluate(() => {
     window.__cid_frames = []
     const m = window.__cid_map
@@ -142,19 +175,22 @@ longTasks.push(...(await page.evaluate(() => window.__cid_long ?? [])))
    that sets its own zoom tests the number it just typed; clicking "WHOLE
    VALLEY" tests what a reader gets. The first version jumped to z10 and found
    15 of 17 — a true reading of a camera the app no longer uses on a phone. */
-const sheet = await page.$('.cid-sheet-handle')
-if (sheet) await sheet.click()
-await page.waitForTimeout(400)
-const valleyBtn = await page.$('button.cid-viewbtn:has-text("WHOLE VALLEY")')
-if (valleyBtn) await valleyBtn.click()
-await page.waitForTimeout(3000)
-const valleyZoom = await page.evaluate(() => window.__cid_map.getZoom())
+let valleyZoom = null
+if (hasMapHandle) {
+  const sheet = await page.$('.cid-sheet-handle')
+  if (sheet) await sheet.click()
+  await page.waitForTimeout(400)
+  const valleyBtn = await page.$('button.cid-viewbtn:has-text("WHOLE VALLEY")')
+  if (valleyBtn) await valleyBtn.click()
+  await page.waitForTimeout(3000)
+  valleyZoom = await page.evaluate(() => window.__cid_map.getZoom())
+}
 
 /* THE DESKTOP ASSERTIONS, AT 390px. Reachability is measured by SCREEN
    PROJECTION, not getBounds().contains() — at pitch, a room can be inside the
    geographic bounds and project off-screen, which is how Orleans once counted
    as "in view" at x = -465. */
-const reach = await page.evaluate(() => {
+const reach = !hasMapHandle ? null : await page.evaluate(() => {
   const m = window.__cid_map
   if (!m) return null
   const src = m.getSource('rooms')
@@ -199,7 +235,7 @@ const reach = await page.evaluate(() => {
   return { pins: pins.length, clusters: clusters.length, clustered, overlaps, collisions, dupes, src: Boolean(src) }
 })
 
-const masses = await page.evaluate(() => {
+const masses = !hasMapHandle ? 0 : await page.evaluate(() => {
   const m = window.__cid_map
   try { return m.queryRenderedFeatures({ layers: ['rooms-fp'] }).length } catch { return 0 }
 })
@@ -211,17 +247,26 @@ console.log(`  FIRST EXTRUSION       ${firstExtrusion == null ? 'NEVER (30s)' : 
 console.log(`  canvas                ${geom ? `${Math.round(geom.width)}x${Math.round(geom.height)}` : 'none'}`)
 console.log(`  long tasks (>50ms)    ${longTasks.length}${longTasks.length ? ` — worst ${Math.max(...longTasks)} ms, total ${longTasks.reduce((a, b) => a + b, 0)} ms` : ''}`)
 if (frames) console.log(`  frame interval @ drag median ${frames.median} ms · p95 ${frames.p95} ms · worst ${frames.worst} ms (${frames.n} frames)`)
-console.log(`  valley zoom           ${valleyZoom?.toFixed?.(2) ?? '—'} (phone step; desktop is 10)`)
+if (valleyZoom != null) console.log(`  valley zoom           ${valleyZoom.toFixed(2)} (phone step; desktop is 10)`)
 if (reach) console.log(`  rooms                 ${reach.pins} pins + ${reach.clustered} clustered in ${reach.clusters} clusters · ${masses} masses`
   + `${reach.dupes ? ` (${reach.dupes} cross-tile duplicates deduped)` : ''}`)
 
 console.log('')
+/* The canvas is measured from the DOM, so it needs no handle and always runs —
+   and it is the assertion that caught the 88px map. */
 ok(geom != null && geom.width > 0, `the map has a viewport at ${PHONE.width}px (canvas is not 0x0)`)
-ok(firstExtrusion != null, 'a building mass renders at all on a phone viewport')
-ok(reach != null && reach.pins + reach.clustered === 17,
-  `all 17 rooms are accounted for at 390px (${reach ? reach.pins + reach.clustered : '?'})`)
-ok(reach != null && reach.overlaps === 0,
-  `zero overlap between rendered pins at 390px${reach?.collisions?.length ? ` — ${reach.collisions.join(', ')}` : ''}`)
+
+if (!hasMapHandle) {
+  skip('a building mass renders at all on a phone viewport', 'no window.__cid_map (build with NEXT_PUBLIC_MAP_DEBUG=1)')
+  skip('all 17 rooms are accounted for at 390px', 'same — the camera and source cannot be read')
+  skip('zero overlap between rendered pins at 390px', 'same')
+} else {
+  ok(firstExtrusion != null, 'a building mass renders at all on a phone viewport')
+  ok(reach != null && reach.pins + reach.clustered === 17,
+    `all 17 rooms are accounted for at 390px (${reach ? reach.pins + reach.clustered : '?'})`)
+  ok(reach != null && reach.overlaps === 0,
+    `zero overlap between rendered pins at 390px${reach?.collisions?.length ? ` — ${reach.collisions.join(', ')}` : ''}`)
+}
 
 /* ── THE OTHER FOUR SURFACES ──────────────────────────────────────────────
    The map was the risky one, so it is measured first and hardest. But the
@@ -268,4 +313,5 @@ for (const [path, label] of [
 }
 
 await browser.close()
+console.log(`\n  ${failed} failed${skipped ? `, ${skipped} skipped` : ''}\n`)
 process.exit(failed ? 1 : 0)
