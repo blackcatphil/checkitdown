@@ -422,16 +422,29 @@ does not.
 
 ## Build order
 
-1. ~~Apply the schema~~ ✅ done, locally
-2. ~~Seed data — 17 rooms, researched by hand~~ ✅ done — candidate data, all
-   unverified. The floor visit is what promotes it
-3. **Next.js app reading from the DB** ← current step. Landing map (Tier A pins
-   + Tier B massing), Just the Facts, room detail, tournaments and promos are
-   built; the compare tray and the six surfaces' polish continue
-4. Tier-1 scrapers for stable published sources — *but see the blocked-hosts
-   constraint below; a third of the Strip can never have one*
-5. Admin review queue (the `pending_changes` surface)
+1. ~~Apply the schema~~ ✅ done — locally, and by hand on the hosted project
+   (migrations do not auto-apply there; see the hosted-Supabase note above)
+2. ~~Seed data — 17 rooms, researched by hand~~ ✅ done. It landed as candidate
+   data with every `verified_at` NULL, and the partner applies have since
+   promoted part of it — live counts are the seed self-check tuple in
+   `supabase/seed.sql`. The floor visit is still what promotes a row
+3. ~~**Next.js app reading from the DB**~~ ✅ built and deployed. Landing map
+   (Tier A pins + Tier B massing), Just the Facts, room detail, tournaments,
+   promos, the phone layout and the PWA are live at checkitdown.com; the compare
+   tray and the six surfaces' polish continue
+4. **Tier-1 scrapers for stable published sources** ← current step. Started:
+   `scripts/detect-changes.mjs` covers the four fetchable sources (Wynn,
+   Venetian, Orleans, Westgate) and *proposes* rather than writes — *and see the
+   blocked-hosts constraint below; a third of the Strip can never have one*
+5. ~~Admin review queue (the `pending_changes` surface)~~ ✅ done in `31cc6ca` —
+   `/admin/review`, approve and reject through SECURITY DEFINER RPCs. It shipped
+   ahead of step 4 on purpose: the detector proposes, so it needed somewhere for
+   a proposal to land before it was worth running
 6. Cowork (Tier 2) — last, because it maintains what already exists
+
+*This list used to mark step 3 as the current step and leave step 5 unstruck,
+both false from `31cc6ca` onward. A build-order marker is a STATE claim — it
+goes stale on the commit that passes it, and no count moves when it does.*
 
 ## The seeding rule
 
@@ -1785,9 +1798,14 @@ gold taking a filled action, gold text too dark for a surface.
   **The obvious wrong fix is lowering the interval** — it trades the cheapness of
   the long tail for a shorter wrong-window, and still leaves one. Invalidate on
   the event; do not shorten the guess.
-  *Not yet wired, because nothing writes verification yet.* The hook points are
-  the admin review queue (build-order step 5) and whatever records a floor
-  visit — both must call it, and this entry exists so neither ships without it.
+  *Wired in `31cc6ca`*, by the first writer this codebase acquired: the admin
+  review queue calls `revalidatePath` on the approved room, `/facts` and
+  `/admin/review` — see [`app/admin/review/actions.ts`](../app/admin/review/actions.ts).
+  This entry used to read *"not yet wired, because nothing writes verification
+  yet"*, true when written and false from that commit. **The decision is not
+  struck through, because it was not reversed — it was met.** The second hook
+  point is still open: whatever records a floor visit must call it too, and this
+  entry stays so that one does not ship without it.
 - **Enumerate while exclusions are the exception; summarise once they are the
   norm.** "Name the room and the reason, never a count" exists because *"1 room
   skipped"* is a hedge — it hides *which* room and denies the reader the chance
@@ -1874,11 +1892,16 @@ gold taking a filled action, gold text too dark for a surface.
 - **Editorial content is labelled as editorial** and only exists where judgement
   fills a real gap (nobody publishes whether a daily tournament fires; rake and
   parking are published, so Just the Facts stays purely sourced).
-- **Mobile is deferred, not abandoned.** Double-click has no touch equivalent, so
-  the popup always carries an explicit OPEN FULL DETAILS affordance and nothing
-  depends on hover alone. The parked mobile screens are stale in **scope**, not
-  just palette — when mobile comes, do a fresh responsive pass from the current
-  six surfaces rather than re-skinning the old ones.
+- **Mobile shipped in `6efb7f9`** — the 390px layout, the manifest and the
+  service worker, gated by `test:mobile` and `test:pwa`. See "Phones, and the map
+  that was 88 pixels wide" below. This entry used to read *"mobile is deferred,
+  not abandoned"*, which held right up to that commit. The constraint it carried
+  still stands and is why the touch pass was cheap: double-click has no touch
+  equivalent, so the popup always carries an explicit OPEN FULL DETAILS
+  affordance and nothing depends on hover alone. The old parked mobile screens
+  were stale in **scope**, not just palette, and the responsive pass was done
+  fresh from the current six surfaces rather than re-skinning them — which is
+  what this entry told the next person to do.
 
 ## Vendor and formats — storing what we cannot yet show (2026-08-07)
 
@@ -2476,16 +2499,22 @@ declared `any maskable` gets clipped on Android or floats undersized elsewhere.
 iOS ignores the manifest for most of this and reads its own meta tags, so both
 are stated.
 
-## Open items — recorded, not built (2026-08-07)
+## Open items — recorded, not built (2026-08-07, updated 2026-08-08)
 
-Two things arrived that are real but have nowhere correct to land yet. Both are
-**blocked on the same parked decision** — the vendor/format migration — and both
-are written down here rather than half-built, because a feature started against
-an unmade decision is harder to unwind than a note.
+Two things arrived that were real but had nowhere correct to land. **The
+migration they were blocked on has since shipped** — `...005` added
+`room_waitlist` and `room_formats`, and both facts are now stored (see "Vendor
+and formats" above). What is still open is narrower than it was, and the entries
+below are updated rather than deleted, because the reason each was *not*
+half-built is the useful part.
 
-| Open item | What we have | Blocked on |
+*This section used to open "both are blocked on the same parked decision — the
+vendor/format migration", and described dbbp as having "no column". Both were
+false from `756bf16` onward.*
+
+| Open item | What we have | Still blocked on |
 |---|---|---|
-| **dbbp at Venetian and South Point** | Two rooms listed running it in the sheet's **Alt Games** column (relayed 2026-08-07) — read as **double-board bomb pots**, a game *format*, which is exactly why it has no column: formats beyond stakes are what the parked migration exists to model | The parked vendor/format migration. A format needs a home — a flag or a formats table — before any row can claim it |
+| **dbbp at Venetian and South Point** | **Now stored** — `room_formats`, both rooms, partner-verified, `label` NULL so nothing renders. Read as **double-board bomb pots**, a game *format* | The **word**, not the column. `slug` is TEXT precisely so the guess is cheap to correct, and the NULL label is the render gate: confirm the expansion on the floor and one `UPDATE` makes the block appear |
 | **Atlas-or-Bravo** | **Now stored** — `room_waitlist`, 15 of 17 rooms, 3 PokerAtlas and 12 Bravo. Both vendors measured shut (`403` each). Skyline and Boulder Station are absent rather than false: the sheet says nothing about them | A per-room reason to trust a list. `enabled` defaults false everywhere and the button ships hidden. With both vendors unfetchable the question is "which, if either, do we deal with" — a partnership question, not an engineering one |
 
 Two cautions attached to the dbbp line specifically:
@@ -2503,9 +2532,11 @@ Two cautions attached to the dbbp line specifically:
   second-hand claim is worth writing down and worth *not* citing.
 
 The rule this follows: **a fact with no correct column is recorded beside the
-decision that will create one, never wedged into a wrong one.** Nothing here
-should be built until the migration decides what formats and vendors look like
-in the schema. (And if the floor comes back saying dbbp *is* the progressive,
+decision that will create one, never wedged into a wrong one.** It paid out —
+the migration arrived and both facts landed in columns shaped for them, with
+nothing to unwind. Neither renders yet, and that is still the finished state
+rather than a half-built one. (And if the floor comes back saying dbbp *is* the
+progressive,
 it moves to §2 of the sustainability doc as a fast field — a number that moves
 needs a feed, not a snapshot.)
 
