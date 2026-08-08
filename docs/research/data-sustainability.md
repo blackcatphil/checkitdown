@@ -86,20 +86,38 @@ with a Chrome UA and redirects followed:
 | `cdn.syndication.twimg.com/timeline/profile` | `200` with a **zero-byte body** | no |
 | `nitter.net/ARIAPoker` | `200` with a **zero-byte body** (same with and without `-L`) | no |
 | `publish.twitter.com/oembed` | `200`, 432 B — a widget stub: one `<a>` and a `widgets.js` tag, no post text | no |
-| `syndication.twitter.com/srv/timeline-profile` | `200`, 542 KB, **106 parseable posts** — but newest **2025-11-03**, and **zero from 2026** | **no — stale** |
+| `syndication.twitter.com/srv/timeline-profile` | `200`, 542 KB, **106 parseable posts** — but newest **2025-11-03**, and **zero from 2026** | **no — see the correction below** |
 
 The fifth is the interesting one, and the trap. It parses. It returns a hundred
 real posts with real text. Anything checking "did we get data?" would pass. But
-for an account that posts *daily*, the newest item is nine months old and 2026 is
-empty — **it is a frozen cache wearing the shape of a live feed.** That is the
-same failure class as Vegas Advantage above: a `200` that is perfectly readable
-and no longer true. It is also an unofficial, undocumented endpoint that can be
-removed without notice, so even the stale data is not a foundation.
+**for this account** the newest item is nine months old and 2026 is empty, so
+what came back is a cache wearing the shape of a live feed — the same failure
+class as Vegas Advantage above: a `200` that is perfectly readable and no longer
+true. It is also an unofficial, undocumented endpoint that can be removed without
+notice, so even the stale data is not a foundation.
+
+*(The original wording here — "it is a frozen cache" — stated a property of the
+ENDPOINT from one account's reading. Scoped to the account it was measured on;
+see the correction below.)*
 
 *(Two results differ from the brief that prompted this test: nitter was expected
 to `503` and oembed to `301`. Measured, nitter returns `200` with an empty body
 and oembed `200` with a content-free stub. **Different status codes, identical
 verdict** — recorded as measured rather than as briefed.)*
+
+> **CORRECTED 2026-08-07 (same day).** The row above says the fifth path is
+> "stale", and the conclusion drawn was that the ENDPOINT serves a frozen cache.
+> The `@ARIAPoker` measurement was right; the generalisation was never tested.
+> Re-run across eleven accounts in one minute, `@WSOP` returned posts from **that
+> same day** and `@PokerNews` from the day before, while `@SPPokr` lagged fifteen
+> months. **Freshness is per account and unsignalled.**
+>
+> Two consequences. It is *more* hazardous than a frozen cache, because it is
+> sometimes correct and never says so. And this window **cannot establish
+> whether an account is active** — a fifteen-month-old newest post is equally
+> consistent with a dormant account and a cache nobody refreshed, so the
+> @ARIAPoker daily-posting report above is not contradicted by its own stale
+> entry. Full table: `dark-thirteen-channels.md` §1.
 
 **Conclusion: designated social channels are human-readable or paid-API-readable
 only. Nothing in Check It Down scrapes socials, and nothing should pretend to.**
