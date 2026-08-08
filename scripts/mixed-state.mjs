@@ -212,10 +212,16 @@ async function warm() {
      pages (revalidate=300), which looks exactly like a regression.
      So: flip one row, look for it, put it back. If the page does not move, say
      WHY rather than emitting a dozen misleading assertion failures. */
+  /* THE SENTINEL IS "IT CHANGED", NOT A PHRASE. This looked for the literal
+     "VERIFIED ON SITE", so the day the badge copy changed the probe reported
+     THE SERVER WAS DEAD — a liveness check coupled to product wording, failing
+     loudly about the wrong thing. Comparing the rendered bytes either side of a
+     flip asks the actual question and cannot rot with the copy. */
+  const before = await fetch(`${BASE}/rooms/horseshoe`, { cache: 'no-store' }).then((r) => r.text())
   mutate(['horseshoe'], "update rooms set verified_at = now() where slug = 'horseshoe'")
   const probe = await fetch(`${BASE}/rooms/horseshoe`, { cache: 'no-store' }).then((r) => r.text())
   restore()
-  if (!/VERIFIED ON SITE/.test(probe)) {
+  if (probe === before) {
     throw new Error(
       `the server at ${BASE} did not reflect a database change.\n`
       + '   It is serving prerendered output — a production build, or another\n'
@@ -288,6 +294,40 @@ const verifiedFactRooms = () => new Set(sql(`
 
 const SAYS_NONE = /Nothing here is confirmed in person yet/
 const SAYS_SOME = /Everything else comes from published sources/
+const BADGE_UNVERIFIED = /UNVERIFIED · SOURCED/
+const BADGE_PARTIAL = /SOME FACTS CONFIRMED ON SITE/
+const BADGE_VERIFIED = /VERIFIED ON SITE \d{4}-\d{2}-\d{2}/
+const RECEIPT = /Confirmed in person on/
+
+/* HOW MANY TILDES THE PAGE OUGHT TO CARRY, derived in SQL from the columns
+   rather than from the component. Independent derivation is the point: a helper
+   shared with the renderer would agree with it by construction and prove
+   nothing. `~` is only ever emitted immediately after a tag, so `>~` counts
+   figures and cannot catch a tilde inside prose or a URL.
+   Mirrors, deliberately: room-level tiles ride the room's stamp; buy-ins ride
+   the game's `verified_at`; rake and drop ride `rake_verified_at`. DRESS CODE
+   and DRINKS are absent because roster coverage hides those tiles. */
+const expectedTildes = () => new Map(sql(`
+  select r.slug || '|' ||
+    ((case when r.verified_at is null then
+        (r.table_count is not null)::int + (r.hours_note is not null)::int
+      + (r.comp_rate_hourly is not null)::int + (r.loyalty_program is not null)::int
+      else 0 end)
+    + coalesce((select sum(
+        (case when g.verified_at is null then
+           (g.min_buy_in is not null)::int + ((g.is_uncapped or g.max_buy_in is not null))::int
+         else 0 end)
+      + (case when g.rake_verified_at is null then
+           ((g.rake_type is not null and g.rake_cap is not null))::int
+         + (g.jackpot_drop is not null)::int
+         else 0 end))
+        from cash_games g where g.room_id = r.id), 0))
+  from rooms r`).split('\n').filter(Boolean).map((l) => {
+    const [slug, n] = l.split('|')
+    return [slug, Number(n)]
+  }))
+
+const countTildes = (raw) => ((raw.match(/<main[\s\S]*?<\/main>/)?.[0] ?? '').match(/>~/g) ?? []).length
 const RAKEABLE = sql(`
   select distinct r.slug from rooms r join cash_games c on c.room_id = r.id
    where c.rake_type = 'pot' and c.rake_cap is not null order by 1`)
@@ -516,7 +556,14 @@ try {
     check('the house rules block is gone while coverage is zero', !/HOUSE RULES/.test(t))
     check('and so is the dress code tile', !/DRESS CODE/.test(t))
     check('and drinks', !/>DRINKS</.test(t))
-    check('the ROOM header still says UNVERIFIED', /UNVERIFIED . SOURCED/.test(t))
+    /* Was asserting the badge said UNVERIFIED — which was the BUG, not the
+       intent. The intent is that a room whose amenity rows are verified while
+       the room itself is not signed off must not be presented as a verified
+       room. It must also no longer be presented as an unverified one, because
+       two of its facts are confirmed. Both halves are asserted. */
+    check('the header does NOT claim the ROOM is verified', !BADGE_VERIFIED.test(t))
+    check('...nor that nothing here is', !BADGE_UNVERIFIED.test(t))
+    check('it says only that some facts are', BADGE_PARTIAL.test(t))
   })
 
   await scenario('HORSESHOE CHECKED — empty blocks are findings', ['horseshoe'], async () => {
@@ -639,19 +686,22 @@ try {
     check('and it comes BACK when the rows are restored', SAYS_SOME.test(back),
       'a block that cannot return is a block nobody notices is missing')
 
-    /* THE BARE-SECTION CASE. Skyline cites no private source, so verifying it
-       leaves neither a receipt nor a remainder — the one room shape where the
-       section header could be left standing over nothing. */
+    /* SKYLINE CITES NO PRIVATE SOURCE, and it used to be the bare-section case:
+       verifying it produced neither receipt nor remainder, leaving the header
+       over nothing. It no longer is, and the reason is the fix — receipts gate
+       on VERIFICATION, not on whether the source can be linked, so a room
+       confirmed against published pages is receipted like any other. The
+       header-conditional stays as a guard for a room with no games and no
+       amenities; this asserts the case that used to trip it now behaves. */
     verifyRooms(['skyline'])
-    const bare = await roomPage('skyline')
-    check('a room with no private source has no receipt to show',
-      !/Confirmed in person on/.test(bare))
-    check('...and no remainder either', !SAYS_SOME.test(bare) && !SAYS_NONE.test(bare))
-    check('so the header does not stand alone over nothing',
-      !/WHERE THIS CAME FROM/.test(bare))
-    check('the correction form is still offered', /REPORT A CORRECTION/.test(bare))
+    const sky = await roomPage('skyline')
+    check('a room verified against PUBLIC sources is still receipted',
+      RECEIPT.test(sky), 'privacy decides linking, not whether a visit happened')
+    check('...and has no remainder left to explain', !SAYS_SOME.test(sky) && !SAYS_NONE.test(sky))
+    check('so the header has something under it', /WHERE THIS CAME FROM/.test(sky))
+    check('the correction form is still offered', /REPORT A CORRECTION/.test(sky))
     restore()
-    check('and the header returns with the sentence', /WHERE THIS CAME FROM/.test(await roomPage('skyline')))
+    check('and the remainder returns when the stamps go', SAYS_NONE.test(await roomPage('skyline')))
   })
 
   /* THE PRIVATE SOURCE, on the unverified side. Seeded data never produces
@@ -673,6 +723,104 @@ try {
     check('no docs.google.com href anywhere on the page',
       !/href="[^"]*docs\.google\.com/.test(raw))
     restore()
+  })
+
+  /* ────────────────────────────────────────────────────────────────────
+     THE OTHER TWO EXPRESSIONS OF THE SAME STATE. The provenance block was
+     computed per fact; the hero badge and the tilde still read
+     `room.verified_at` — NULL on every room — so Wynn wore "UNVERIFIED ·
+     SOURCED" and 40 tildes above three in-person receipts. Three renderings
+     of one truth, disagreeing on the same screen.
+     ──────────────────────────────────────────────────────────────────── */
+
+  await scenario('BADGE — never UNVERIFIED above a receipt', [], async () => {
+    const bad = []
+    const tally = { verified: 0, partial: 0, unverified: 0 }
+    for (const slug of ROOMS) {
+      const t = await roomPage(slug)
+      const unver = BADGE_UNVERIFIED.test(t)
+      tally[unver ? 'unverified' : BADGE_PARTIAL.test(t) ? 'partial' : 'verified']++
+      if (unver && RECEIPT.test(t)) bad.push(slug)
+      /* And the converse: a partial badge must not overclaim. */
+      if (BADGE_PARTIAL.test(t) && BADGE_VERIFIED.test(t)) bad.push(`${slug} (both badges)`)
+    }
+    check('NO room shows the UNVERIFIED badge while a receipt appears below it',
+      bad.length === 0, bad.join(', '))
+    check('the badge agrees with the block on every room',
+      tally.unverified === ROOMS.length - verifiedFactRooms().size,
+      `${tally.unverified} unverified badges, ${ROOMS.length - verifiedFactRooms().size} rooms with no verified row`)
+    console.log(`   badges: ${tally.verified} verified · ${tally.partial} partial · ${tally.unverified} unverified`)
+  })
+
+  await scenario('TILDE — no verified figure carries the unverified marker', [], async () => {
+    const expected = expectedTildes()
+    const wrong = []
+    for (const slug of ROOMS) {
+      const got = countTildes(await roomPageRaw(slug))
+      if (got !== expected.get(slug)) wrong.push(`${slug} ${got}≠${expected.get(slug)}`)
+    }
+    check('every room renders exactly the tildes its unverified figures earn',
+      wrong.length === 0, wrong.join(', '))
+
+    /* THE SPLIT, ON ONE ROW. Wynn's NLH rows have rake_verified_at set and
+       verified_at null: the rake and drop cells must be clean while the
+       buy-ins beside them are tilded. A room-level gate cannot express this
+       at all — it tildes the whole row or none of it. */
+    const before = countTildes(await roomPageRaw('wynn-encore'))
+    mutate(['wynn-encore'], `
+      update cash_games set rake_verified_at = null
+        where room_id = (select id from rooms where slug = 'wynn-encore');`)
+    const after = countTildes(await roomPageRaw('wynn-encore'))
+    check('un-verifying ONLY the rake adds tildes to the rake cells alone',
+      after > before, `${before} -> ${after}`)
+    restore()
+    check('and removes them again when the stamps come back',
+      countTildes(await roomPageRaw('wynn-encore')) === before)
+
+    /* THE DASH TITLE RIDES THE SAME STAMP. A dash means "checked, publishes
+       none" or "nobody looked", and only the stamp on THAT figure separates
+       them. Orleans carries both on one page — rake confirmed, stakes not —
+       which a room-level gate cannot produce: it would print one title for
+       every dash on the page. */
+    const orleans = await roomPageRaw('orleans')
+    check('a dash on a CONFIRMED figure reports a finding',
+      /Checked on site — not published for this room/.test(orleans))
+    check('...while a dash on an unchecked figure still says so',
+      /Not yet checked on site/.test(orleans))
+  })
+
+  await scenario('RECEIPTS — the latest stamp, and stakes get their own line', [], async () => {
+    const t = await roomPage('wynn-encore')
+    check('floor-verified STAKES are receipted', /Games: Confirmed in person on/.test(t),
+      '"Everything else" needs an antecedent that does not depend on amenity coverage')
+    check('rake still is', /Rake: Confirmed in person on/.test(t))
+
+    /* THE DATE IS THE LATEST, not whichever row PostgREST returned first — and
+       PROVING that needs more than one arrangement. The first version put the
+       late stamp on a single row and passed against `[0]` as well as against
+       `max`, because that row happened to BE the first one: a control that
+       could not detect the effect it was named after.
+       So it runs the same check twice, moving the late stamp to a different
+       row each time. `max` prints the late date both times; `[0]` cannot, for
+       any fixed ordering, unless both rows are first. */
+    const ids = sql(`
+      select id from cash_games
+       where room_id = (select id from rooms where slug = 'wynn-encore')
+         and rake_verified_at is not null order by id`).split('\n').filter(Boolean)
+    check('Wynn has at least two rake-verified rows to distinguish', ids.length >= 2, `${ids.length}`)
+    for (const [n, id] of [ids[0], ids[ids.length - 1]].entries()) {
+      mutate(['wynn-encore'], `
+        update cash_games set rake_verified_at = timestamptz '2026-01-01 12:00:00-07'
+          where room_id = (select id from rooms where slug = 'wynn-encore')
+            and rake_verified_at is not null;
+        update cash_games set rake_verified_at = timestamptz '2026-09-09 12:00:00-07'
+          where id = '${id}';`)
+      const moved = await roomPage('wynn-encore')
+      check(`a later visit on row ${n === 0 ? 'FIRST' : 'LAST'} moves the printed date`,
+        /Rake: Confirmed in person on 2026-09-09/.test(moved),
+        'printing [0] understates the moment a second visit lands')
+      restore()
+    }
   })
 
 } finally {

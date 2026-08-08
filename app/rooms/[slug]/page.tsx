@@ -4,7 +4,10 @@ import { notFound } from 'next/navigation'
 import { STATUS_LABEL, type RoomStatus } from '@/lib/roster'
 import { coverageFrom } from '@/lib/coverage'
 import type { Fact } from '@/lib/provenance'
-import { PROVENANCE_COPY, provenanceState, unverifiedSources } from '@/lib/provenance'
+import {
+  notCheckedTitle, PROVENANCE_COPY, provenanceBadge,
+  provenanceState, unverifiedSources,
+} from '@/lib/provenance'
 import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { supabase } from '@/lib/supabase'
 
@@ -303,17 +306,41 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     ...(coverage.drinks ? [['DRINKS', room.drinks_note] as [string, string | null]] : []),
   ]
 
-  /* Facts whose receipt is a private floor visit. Grouped by what was confirmed
-     so the reader gets one sentence per kind of fact, each with its own date —
-     rake and amenities are confirmed on separate visits soon enough. */
-  const floorRake = room.cash_games.filter((g) => isPrivate(g.rake_source_url, priv) && g.rake_verified_at)
-  const floorAmenities = room.room_amenities.filter((a) => isPrivate(a.source_url, priv) && a.verified_at)
+  /* WHAT WAS CONFIRMED, one line per kind of fact, each with its own date.
+     Rake, stakes and amenities are confirmed on separate visits soon enough.
+
+     GATED ON VERIFICATION, NOT ON SOURCE PRIVACY. These read "Confirmed in
+     person on ..." — a claim about whether somebody stood there, which is what
+     `verified_at` records. Privacy decides whether a source gets an HREF, and
+     that is settled in the sources line below. Conflating the two left three
+     rooms (Orleans, Santa Fe, South Point) with floor-confirmed stakes and no
+     receipt anywhere, because their stakes cite a public page.
+
+     THE STAKES LINE IS THE ONE THAT WAS MISSING, and its absence was invisible:
+     "Everything else comes from published sources" only keeps an antecedent
+     while SOMETHING above it has been confirmed, and that held only because
+     amenity coverage happens to reach every partly-verified room. Correct by
+     accident of a different table. A room verified on stakes alone would have
+     printed "Everything else" with nothing for "else" to refer to. */
+  const latestOf = <T,>(rows: readonly T[], get: (r: T) => string | null): string | null =>
+    rows.map(get).filter((v): v is string => v != null).sort().at(-1) ?? null
+
+  const floorRake = room.cash_games.filter((g) => g.rake_verified_at)
+  const floorStakes = room.cash_games.filter((g) => g.verified_at)
+  const floorAmenities = room.room_amenities.filter((a) => a.verified_at)
   const floorReceipts: string[] = []
+  if (floorStakes.length) {
+    floorReceipts.push(`Games: ${inPersonReceipt(latestOf(floorStakes, (g) => g.verified_at))}`)
+  }
+  /* THE LATEST STAMP, not `[0]`'s. The array is in whatever order PostgREST
+     returned it, so the printed date was the first row's — a date that moves
+     when rows are reordered and understates the moment a second visit lands.
+     `amenitiesCheckedAt` three blocks up already did this correctly. */
   if (floorRake.length) {
-    floorReceipts.push(`Rake: ${inPersonReceipt(floorRake[0].rake_verified_at)}`)
+    floorReceipts.push(`Rake: ${inPersonReceipt(latestOf(floorRake, (g) => g.rake_verified_at))}`)
   }
   if (floorAmenities.length) {
-    floorReceipts.push(`Amenities: ${inPersonReceipt(floorAmenities[0].verified_at)}`)
+    floorReceipts.push(`Amenities: ${inPersonReceipt(latestOf(floorAmenities, (a) => a.verified_at))}`)
   }
 
   /* EVERY FACT THE PAGE RENDERS, WITH ITS OWN RECEIPT.
@@ -334,13 +361,13 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
      permanent unverified remainder that no floor visit could ever clear —
      Golden Nugget's $4/8 is exactly that row today. */
   const provFacts: Fact[] = [
-    { kind: 'room', verified: room.verified_at != null, sourceUrl: room.source_url },
+    { kind: 'room', verifiedAt: room.verified_at, sourceUrl: room.source_url },
     ...games.flatMap((g) => {
       const statesRake = g.rake_cap != null || g.rake_percent != null || g.jackpot_drop != null
       return [
-        { kind: `game:${g.stakes_label}`, verified: g.verified_at != null, sourceUrl: g.source_url },
+        { kind: `game:${g.stakes_label}`, verifiedAt: g.verified_at, sourceUrl: g.source_url },
         ...(statesRake
-          ? [{ kind: `rake:${g.stakes_label}`, verified: g.rake_verified_at != null, sourceUrl: g.rake_source_url }]
+          ? [{ kind: `rake:${g.stakes_label}`, verifiedAt: g.rake_verified_at, sourceUrl: g.rake_source_url }]
           : []),
       ]
     }),
@@ -353,28 +380,61 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
        remove, reintroduced one line down. */
     ...room.room_amenities.map((a) => ({
       kind: `amenity:${a.amenity_types?.slug ?? '?'}`,
-      verified: a.verified_at != null,
+      verifiedAt: a.verified_at,
       sourceUrl: a.source_url,
     })),
     ...(coverage.houseRules
       ? room.house_rules.map((r) => ({
-        kind: `rule:${r.label}`, verified: r.verified_at != null, sourceUrl: r.source_url,
+        kind: `rule:${r.label}`, verifiedAt: r.verified_at, sourceUrl: r.source_url,
       }))
       : []),
     ...formats.map((f) => ({
-      kind: `format:${f.slug}`, verified: f.verified_at != null, sourceUrl: f.source_url,
+      kind: `format:${f.slug}`, verifiedAt: f.verified_at, sourceUrl: f.source_url,
     })),
   ]
   const provState = provenanceState(provFacts)
+  const badge = provenanceBadge(provState, provFacts, room.fetched_at)
   const provSources = unverifiedSources(
     provFacts,
     (u) => isPrivate(u, priv),
     hostOf,
   )
 
-  const notCheckedTitle = room.verified_at
-    ? 'Checked on site — not published for this room'
-    : 'Not yet checked on site'
+  /**
+   * ONE FIGURE, WITH ITS OWN RECEIPT.
+   *
+   * `~` plus `cid-unverified` IS the unverified marker, so a confirmed figure
+   * must not wear it — Wynn shipped 40 tildes over four in-person rake
+   * receipts. The stamp passed in decides, and it is the stamp for THIS figure:
+   * a game's buy-ins ride `verified_at`, its rake and drop ride
+   * `rake_verified_at`, and the partner cited those to different documents on
+   * one row. So a rake cell can be clean while the buy-ins beside it are
+   * tilded, which looks odd until you remember it is the truth.
+   *
+   * A verified figure gains NO COLOUR, it only loses the marker. Teal is spent
+   * on the true #1 in the ranked table and on the fully-verified badge;
+   * repainting every confirmed number here would spread it until it stops
+   * meaning anything. Absence of the marker is the signal.
+   */
+  function Figure({ value, verifiedAt }: { value: string | null; verifiedAt: string | null }) {
+    if (value == null) {
+      return (
+        <span
+          className="num"
+          style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }}
+          title={notCheckedTitle(verifiedAt)}
+        >
+          {EMDASH}
+        </span>
+      )
+    }
+    if (verifiedAt != null) {
+      return <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-text)', justifySelf: 'start', alignSelf: 'flex-start' }}>{value}</span>
+    }
+    return (
+      <span className="num cid-unverified" style={{ font: 'var(--cid-num)', justifySelf: 'start', alignSelf: 'flex-start' }}>~{value}</span>
+    )
+  }
 
   function rake(g: (typeof games)[number]) {
     if (g.rake_type == null) return null
@@ -408,21 +468,20 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
         {room.property && room.property !== room.name && (
           <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-3)', margin: 0 }}>{room.property}</p>
         )}
-        {room.verified_at ? (
-          <p
-            className="num"
-            style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', marginTop: 'var(--cid-space-5)', display: 'inline-block', color: 'var(--cid-value)' }}
-          >
-            VERIFIED ON SITE {new Date(room.verified_at).toISOString().slice(0, 10)}
-          </p>
-        ) : (
-          <p
-            className="num cid-unverified"
-            style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', marginTop: 'var(--cid-space-5)', display: 'inline-block' }}
-          >
-            UNVERIFIED · SOURCED {room.fetched_at ? new Date(room.fetched_at).toISOString().slice(0, 10) : EMDASH}
-          </p>
-        )}
+        {/* THE SAME STATE THE BLOCK AT THE FOOT OF THE PAGE COMPUTES. This read
+            `room.verified_at`, NULL on all seventeen rooms, so Wynn wore
+            "UNVERIFIED · SOURCED" above three in-person receipts. */}
+        <p
+          className={badge.tone === 'unverified' ? 'num cid-unverified' : 'num'}
+          style={{
+            font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)',
+            marginTop: 'var(--cid-space-5)', display: 'inline-block',
+            ...(badge.tone === 'verified' ? { color: 'var(--cid-value)' } : {}),
+            ...(badge.tone === 'partial' ? { color: 'var(--cid-text)' } : {}),
+          }}
+        >
+          {badge.text}
+        </p>
       </header>
 
       <Block label="THE FACTS">
@@ -430,13 +489,9 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           {facts.map(([label, value]) => (
             <div key={label} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-2)' }}>
               <span className="cid-label">{label}</span>
-              {value == null ? (
-                <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title={notCheckedTitle}>
-                  {EMDASH}
-                </span>
-              ) : (
-                <span className="num cid-unverified" style={{ font: 'var(--cid-num)', alignSelf: 'flex-start' }}>~{value}</span>
-              )}
+              {/* Room-level facts, so they ride the ROOM's stamp — the one
+                  column that legitimately governs them. */}
+              <Figure value={value} verifiedAt={room.verified_at} />
             </div>
           ))}
         </div>
@@ -457,18 +512,18 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
               <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-text)' }}>
                 {g.stakes_label} <span style={{ color: 'var(--cid-dim)' }}>{g.game.toUpperCase()}</span>
               </span>
+              {/* THE SPLIT, cell by cell. Buy-ins are part of the stakes and
+                  ride `verified_at`; rake and drop are the rake figures and
+                  ride `rake_verified_at`. Golden Nugget's $4/8 is the case that
+                  makes this visible: stakes confirmed, rake never stated. */}
               {[
-                g.min_buy_in != null ? `$${Number(g.min_buy_in)}` : null,
-                g.is_uncapped ? 'Uncapped' : g.max_buy_in != null ? `$${Number(g.max_buy_in)}` : null,
-                rake(g),
-                g.jackpot_drop != null ? `$${Number(g.jackpot_drop)}` : null,
-              ].map((v, j) =>
-                v == null ? (
-                  <span key={j} className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }} title={notCheckedTitle}>{EMDASH}</span>
-                ) : (
-                  <span key={j} className="num cid-unverified" style={{ font: 'var(--cid-num)', justifySelf: 'start' }}>~{v}</span>
-                ),
-              )}
+                [g.min_buy_in != null ? `$${Number(g.min_buy_in)}` : null, g.verified_at],
+                [g.is_uncapped ? 'Uncapped' : g.max_buy_in != null ? `$${Number(g.max_buy_in)}` : null, g.verified_at],
+                [rake(g), g.rake_verified_at],
+                [g.jackpot_drop != null ? `$${Number(g.jackpot_drop)}` : null, g.rake_verified_at],
+              ].map(([v, stamp], j) => (
+                <Figure key={j} value={v} verifiedAt={stamp} />
+              ))}
             </div>
           ))}
         </div>

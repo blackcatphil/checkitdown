@@ -24,14 +24,27 @@
  * look for it.
  */
 
-/** One displayed fact and its receipt. `sourceUrl` may be null — some facts are
- *  rendered without one, and pretending otherwise would invent a citation. */
+/**
+ * One displayed fact and its receipt.
+ *
+ * THE STAMP IS THE FACT, not a boolean beside one. This carried
+ * `verified: boolean` and a separate date would have had to travel next to it
+ * for the badge — two fields that can disagree, describing one thing. Every
+ * verification column in the schema is a `timestamptz`, so nothing is lost by
+ * keeping the stamp and deriving the boolean.
+ *
+ * `sourceUrl` may be null — some facts render without one, and inventing a
+ * citation is worse than admitting there is none.
+ */
 export type Fact = {
   /** what kind of fact — carried for tests and for reading a failure */
   kind: string
-  verified: boolean
+  /** when a person confirmed it; null means nobody has */
+  verifiedAt: string | null
   sourceUrl: string | null
 }
+
+export const isVerified = (f: Fact): boolean => f.verifiedAt != null
 
 export type ProvenanceState = 'none' | 'some' | 'all'
 
@@ -42,7 +55,7 @@ export type ProvenanceState = 'none' | 'some' | 'all'
  * technically true and completely useless.
  */
 export function provenanceState(facts: readonly Fact[]): ProvenanceState {
-  const unverified = facts.filter((f) => !f.verified)
+  const unverified = facts.filter((f) => !isVerified(f))
   if (unverified.length === 0) return 'all'
   return unverified.length === facts.length ? 'none' : 'some'
 }
@@ -99,9 +112,86 @@ export function unverifiedSources(
   const seen = new Set<string>()
   const out: CitedSource[] = []
   for (const f of facts) {
-    if (f.verified || !f.sourceUrl || seen.has(f.sourceUrl)) continue
+    if (isVerified(f) || !f.sourceUrl || seen.has(f.sourceUrl)) continue
     seen.add(f.sourceUrl)
     out.push({ url: f.sourceUrl, host: hostOf(f.sourceUrl), isPrivate: isPrivateUrl(f.sourceUrl) })
   }
   return out
+}
+
+/**
+ * The most recent confirmation anywhere on the page.
+ *
+ * ISO-8601 sorts lexically, which is the only reason a string compare is
+ * honest here. The room's own `verified_at` is just one more fact in the list —
+ * the badge must not fall back to it, because that column is NULL on all
+ * seventeen rooms and falling back is precisely the proxy being removed.
+ */
+export function latestVerified(facts: readonly Fact[]): string | null {
+  return facts
+    .map((f) => f.verifiedAt)
+    .filter((v): v is string => v != null)
+    .sort()
+    .at(-1) ?? null
+}
+
+export type BadgeTone = 'verified' | 'partial' | 'unverified'
+export type Badge = { text: string; tone: BadgeTone }
+
+/** `2026-08-06`, or null when there is no usable stamp. */
+const day = (iso: string | null): string | null => {
+  if (!iso) return null
+  const d = new Date(iso)
+  return Number.isNaN(d.valueOf()) ? null : d.toISOString().slice(0, 10)
+}
+
+/**
+ * THE HERO BADGE, FROM THE SAME THREE STATES.
+ *
+ * It read `room.verified_at` — NULL on every room — so Wynn wore
+ * "UNVERIFIED · SOURCED" above three in-person receipts and a block saying part
+ * of the page is confirmed. Three expressions of one state, two of them using a
+ * proxy the third had already replaced.
+ *
+ * `partial` is a NEW TONE, NOT A NEW VOCABULARY: the states are still
+ * none/some/all, and this is what `some` looks like in the header. The wording
+ * has to carry a specific burden — say that something here is confirmed WITHOUT
+ * claiming the room is — so it names the parts rather than the room. "PARTLY
+ * VERIFIED" would still read as a property of the room; "SOME FACTS CONFIRMED"
+ * cannot.
+ *
+ * The tone is deliberately not `verified`'s teal. Teal is the colour that
+ * asserts a checked fact, and colour is read before words: a teal badge with a
+ * qualifying sentence in it is a teal badge. `partial` therefore takes ordinary
+ * text — brighter than the unverified grey, short of the claim.
+ */
+export function provenanceBadge(
+  state: ProvenanceState,
+  facts: readonly Fact[],
+  fetchedAt: string | null,
+): Badge {
+  if (state === 'all') {
+    const on = day(latestVerified(facts))
+    return { text: on ? `VERIFIED ON SITE ${on}` : 'VERIFIED ON SITE', tone: 'verified' }
+  }
+  if (state === 'some') {
+    const on = day(latestVerified(facts))
+    return { text: on ? `SOME FACTS CONFIRMED ON SITE ${on}` : 'SOME FACTS CONFIRMED ON SITE', tone: 'partial' }
+  }
+  return { text: `UNVERIFIED · SOURCED ${day(fetchedAt) ?? '—'}`, tone: 'unverified' }
+}
+
+/**
+ * WHY A DASH IS A DASH, per figure rather than per room.
+ *
+ * A dash means two opposite things — "asked, and the room publishes none" or
+ * "nobody has looked" — and only the stamp on THAT figure can tell them apart.
+ * Asking the room was wrong in both directions at once: it called a confirmed
+ * absence a gap, and on a partly-checked room it would vouch for figures nobody
+ * had been near.
+ */
+export function notCheckedTitle(verifiedAt: string | null): string {
+  return verifiedAt != null
+    ? 'Checked on site — not published for this room'
+    : 'Not yet checked on site'
 }

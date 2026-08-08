@@ -1558,6 +1558,10 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 | Roster: 17 rooms, WSOP·Paris seasonal and off all counts | code + test | `inRoster()`; `test:mixed` seasonal scenario |
 | Amenity filter: unknown is never counted as a match | code + test | `amenityState()`, `combineStates()`; `amenity-filter.test.mjs`; `test:map` three-state pixels |
 | Provenance copy tracks the rows, never a static claim | code + test | `provenanceState()`; `provenance.test.mjs`; `test:mixed` 17-room sweep |
+| Hero badge derives from the same state as the block | code + test | `provenanceBadge()`; `test:mixed` badge sweep |
+| No verified figure carries the `~` unverified marker | code + test | `Figure`; `test:mixed` SQL-derived tilde count, all 17 rooms |
+| A dash's title rides the stamp on THAT figure | code + test | `notCheckedTitle()`; `test:mixed` Orleans carries both titles |
+| Receipts print the latest stamp, not the first row's | test | `test:mixed` runs both row orderings |
 | The remainder sentence renders below the receipts | test | `test:mixed` byte-offset assertion |
 | A private source is named, never linked | code + test | `isPrivate()`; `test:mixed` asserts no `docs.google.com` href |
 | A slug ships only at `AMENITY_SHIP_FLOOR` answered rooms | code + test | `shippableAmenities()`; `amenity-filter.test.mjs` boundary test |
@@ -2071,6 +2075,92 @@ One layout consequence: Skyline and Boulder Station cite **no** private source,
 so verifying them yields neither a receipt nor a remainder and the section header
 would stand alone over the correction form. The header is now conditional. No
 copy was invented for a state that is meant to be silent.
+
+## Three renderings of one state, two still on the old proxy (2026-08-07)
+
+`62e93a4` computed the provenance block per fact. **Two other expressions of the
+same state on the same page kept the room-level proxy it replaced**, and both
+contradicted it on prod. Wynn shipped:
+
+| Surface | Said | Truth |
+|---|---|---|
+| Hero badge | `UNVERIFIED · SOURCED` | 6 facts confirmed |
+| Figures | 40 tildes | 30 of them wrong |
+| Receipts | 3 × "Confirmed in person" | — |
+| Provenance block | "Everything else…" | correct |
+
+One page, four surfaces, three disagreeing. Fixing the block **narrowed** the
+inconsistency rather than removing it — the lesson is that a proxy gets replaced
+at every read site or it is not replaced.
+
+### The badge is a tone, not a fourth vocabulary
+
+States stay none/some/all. `some` renders **`SOME FACTS CONFIRMED ON SITE`** —
+worded to name the parts, because "PARTLY VERIFIED" still reads as a property of
+the room. It deliberately does **not** take teal: colour is read before words,
+and a teal badge with a qualifier in it is a teal badge. Teal stays on the true
+#1 and on `all`.
+
+### `Fact` carries the stamp, not a boolean
+
+The badge needs a date, and a `verified: boolean` beside a date is two fields
+that can disagree about one thing. Every verification column is a `timestamptz`,
+so the boolean is derived and `latestVerified()` reads the same list.
+
+### The tilde is per FIGURE, and the split is visible
+
+`~` + `cid-unverified` **is** the unverified marker, so a confirmed figure must
+not wear it. Buy-ins ride `verified_at`; rake and drop ride `rake_verified_at` —
+cited to different documents on the same row. So a rake cell can be clean while
+the buy-ins beside it are tilded, which looks wrong until you remember it is the
+truth. Wynn: 40 → 10 tildes, and all 17 rooms now match a **SQL-derived**
+expectation (independent derivation on purpose — a helper shared with the
+renderer would agree by construction and prove nothing).
+
+A verified figure gains no colour, it only loses the marker.
+
+### Receipts gate on verification, not on source privacy
+
+They read *"Confirmed in person on …"* — a claim about whether somebody stood
+there. Privacy decides whether a **source** gets an href, which the sources line
+settles. Conflating them left Orleans, Santa Fe and South Point with
+floor-confirmed stakes and no receipt anywhere, because their stakes cite public
+pages.
+
+The **stakes receipt was missing entirely**, and its absence was invisible:
+"Everything else comes from published sources" only keeps an antecedent while
+something above it is confirmed, and that held *only* because amenity coverage
+happens to reach every partly-verified room — correct by accident of a different
+table.
+
+Receipt dates now take the **latest** stamp. `[0]` printed whichever row
+PostgREST returned first, a date that moves when rows reorder and understates
+the moment a second visit lands.
+
+### Every gate proved red, and one control was not a control
+
+Each fix was reverted to `room.verified_at` and the suite failed:
+
+| Reverted | Failure |
+|---|---|
+| Badge | 15 rooms named, 17 unverified badges vs 2 rooms with no verified row |
+| Tilde | 5 rooms mismatched; `20 -> 20` — the room gate **cannot express** the split |
+| Dash title | Orleans lost "Checked on site" |
+| Receipt date | both orderings failed |
+| Stakes line | antecedent gone |
+
+The receipt-date check **passed under `[0]` on the first attempt** — the late
+stamp landed on the row that happened to be first, so it could not detect the
+effect it was named after. It now runs twice, moving the stamp to a different
+row each time; `[0]` cannot satisfy both for any fixed ordering.
+
+Two stale assertions surfaced. One asserted *the bug*
+(`'the ROOM header still says UNVERIFIED'`) — its intent was that a room with
+verified amenity rows must not be shown as verified, which is now checked in
+both directions. The other described a bare-section case that the receipt fix
+removed. And the harness's own **liveness probe was keyed to the badge string**,
+so changing the copy made it report the server was dead; it now compares
+rendered bytes across a flip and cannot rot with the wording.
 
 ## Open items — recorded, not built (2026-08-07)
 

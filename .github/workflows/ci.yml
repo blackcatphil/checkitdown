@@ -148,7 +148,7 @@ jobs:
           psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -f scripts/census.sql > /tmp/census-before.txt
           cat /tmp/census-before.txt
 
-      - name: "test:mixed (19 scenarios; the assertion count is asserted below)"
+      - name: "test:mixed (the assertion floor is asserted below, not named here)"
         env:
           PSQL: psql
           BASE_URL: http://127.0.0.1:3000
@@ -159,7 +159,7 @@ jobs:
             || { echo "::error::mixed-state suite did not pass"; exit 1; }
           n=$(grep -c '^   PASS' /tmp/mixed.log || true)
           echo "assertions passed: $n"
-          [ "$n" -ge 95 ] || { echo "::error::only $n assertions ran (expected >= 95) — the suite shrank, which is a silent regression"; exit 1; }
+          [ "$n" -ge 108 ] || { echo "::error::only $n assertions ran (expected >= 108) — the suite shrank, which is a silent regression"; exit 1; }
 
       - name: Assert the database was left clean
         run: |
