@@ -1052,6 +1052,144 @@ end $$;
 commit;
 
 -- =====================================================================
+-- CONVENTION CLEANUP — 2026-08-08. THE 08-06 RECEIPTS GO BACK ON THE PAGE.
+-- =====================================================================
+-- NO FACT CHANGES HERE AND NO COUNT MOVES. This closes the divergence the
+-- 08-08 block above names: the 08-06 apply repointed `rake_source_url` at the
+-- SinCityGrinders sheet for Wynn, Venetian and GVR on what were PURE
+-- CORROBORATIONS, and 08-07 then reasoned the opposite way and 08-08 followed
+-- it. Two conventions were live in one file. This is the older one being
+-- brought to the newer, which is the direction that matches the rule.
+--
+-- THE RULE, ONCE MORE: A ROW CITES WHERE ITS OWN FACT CAME FROM. The partner
+-- agreeing with a figure is a VERIFICATION of it, not a RE-SOURCING of it.
+-- Wynn's $5 cap was read off Vegas Advantage and is still read off Vegas
+-- Advantage; the sheet is why we believe it, not where it came from. Pointing
+-- the receipt at the sheet erases the page a reader would check and claims a
+-- provenance that never happened — the child-provenance rule violated in the
+-- flattering direction.
+--
+-- WHAT "RESTORE" MEANS HERE IS **NULL**, and that is not data loss. Before the
+-- 08-06 apply these rows had no rake receipt at all: `rake_source_url` was set
+-- for ORLEANS ONLY, the one genuine split in the seed. NULL is the schema's
+-- documented "the rake came from this row's own `source_url`" — read it as
+-- coalesce(rake_source_url, source_url) — so nulling the column hands the
+-- citation back to the Vegas Advantage page each figure was actually read
+-- from. There is no URL to copy here because the original value was the
+-- absence of one.
+--
+-- THE STAMPS DO NOT MOVE. `rake_verified_at` stays 2026-08-06 on all fourteen
+-- rows: the partner did stand in those rooms that morning and that fact is
+-- untouched by where the figure is cited. `rake_fetched_at` DOES clear,
+-- because it dated the sheet read, and there is no longer a sheet read on
+-- these rows — the row's own `fetched_at` dates the page.
+--
+-- FOURTEEN ROWS, NOT SIXTEEN — AND THE PREDICATE, NOT A LIST, IS WHAT EXCLUDES
+-- THE OTHER TWO. Wynn's two PLO rows also cite the sheet for rake, and they
+-- must KEEP it: they were inserted on 08-07 from the long-form review doc with
+-- SPLIT PROVENANCE BY DESIGN — `source_url` cites the doc for the STAKES,
+-- `rake_source_url` cites the sheet for the RAKE, because the doc carries no
+-- rake figure. Nulling those two would resolve their rake to a document that
+-- does not contain it, which is the exact fabrication this cleanup is against.
+-- So the WHERE clause tests `source_url not like '%docs.google.com%'` — "only
+-- drop a rake receipt when the row's own source_url is the page the figure was
+-- read from". The PLO rows fall out of that by construction. A hardcoded
+-- exception list would have worked today and rotted the next time a row
+-- arrived with partner-sourced stakes.
+-- =====================================================================
+
+begin;
+
+update cash_games c
+   set rake_source_url = null,
+       rake_fetched_at = null
+  from rooms r
+ where r.id = c.room_id
+   and r.slug in ('wynn-encore','venetian','green-valley-ranch')
+   and c.rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit'
+   and c.source_url not like '%docs.google.com%';
+
+-- THE GUARD NAMES THE ROOM, AND ALSO NAMES WHAT MUST NOT HAVE MOVED. A
+-- cleanup that silently took a rake value, a verification stamp or the two
+-- Wynn PLO receipts with it would leave every count identical — the
+-- self-check below cannot see any of it, because no count changes here.
+do $$
+declare
+  n_gvr int; n_ven int; n_wynn int; n_plo int; n_rv int; n_bad int;
+begin
+  -- Receipts handed back: 5 GVR, 6 Venetian, 3 Wynn NLH, all still stamped
+  -- 08-06 and all still carrying the rake values the web gave them.
+  select count(*) into n_gvr from cash_games c join rooms r on r.id = c.room_id
+   where r.slug = 'green-valley-ranch'
+     and c.rake_source_url is null and c.rake_fetched_at is null
+     and c.rake_verified_at = timestamptz '2026-08-06 12:00:00-07'
+     and c.rake_percent = 10.00 and c.rake_cap = 5.00 and c.jackpot_drop = 3.00;
+  if n_gvr <> 5 then
+    raise exception 'green-valley-ranch: expected 5 rows restored to their own page at cap 5 / drop 3 / 08-06, got %', n_gvr;
+  end if;
+
+  select count(*) into n_ven from cash_games c join rooms r on r.id = c.room_id
+   where r.slug = 'venetian'
+     and c.rake_source_url is null and c.rake_fetched_at is null
+     and c.rake_verified_at = timestamptz '2026-08-06 12:00:00-07'
+     and c.rake_percent is null and c.rake_cap = 5.00 and c.jackpot_drop = 2.00;
+  if n_ven <> 6 then
+    raise exception 'venetian: expected 6 rows restored to their own page at cap 5 / drop 2 / 08-06, got %', n_ven;
+  end if;
+
+  select count(*) into n_wynn from cash_games c join rooms r on r.id = c.room_id
+   where r.slug = 'wynn-encore'
+     and c.rake_source_url is null and c.rake_fetched_at is null
+     and c.rake_verified_at = timestamptz '2026-08-06 12:00:00-07'
+     and c.rake_percent = 10.00 and c.rake_cap = 5.00 and c.jackpot_drop = 0.00;
+  if n_wynn <> 3 then
+    raise exception 'wynn-encore: expected 3 NLH rows restored to their own page at cap 5 / drop 0 / 08-06, got %', n_wynn;
+  end if;
+
+  -- THE TWO THAT MUST NOT HAVE MOVED. Split provenance by design: stakes from
+  -- the review doc, rake from the sheet. If this ever reads 0, the predicate
+  -- above stopped excluding them and two rows now cite a doc with no rake in it.
+  select count(*) into n_plo from cash_games c join rooms r on r.id = c.room_id
+   where r.slug = 'wynn-encore'
+     and c.source_url like '%docs.google.com/document%'
+     and c.rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit'
+     and c.rake_fetched_at  = timestamptz '2026-08-07 12:00:00-07'
+     and c.rake_verified_at = timestamptz '2026-08-07 12:00:00-07';
+  if n_plo <> 2 then
+    raise exception
+      'wynn-encore PLO: expected 2 rows still citing the sheet for rake (stakes from the review doc), got % — the restore over-reached', n_plo;
+  end if;
+
+  -- NO VERIFICATION WAS LOST. This is the assertion the self-check cannot
+  -- make, because 42 is what it reads whether or not this block ran correctly.
+  select count(*) into n_rv from cash_games where rake_verified_at is not null;
+  if n_rv <> 42 then
+    raise exception 'rake-verified count moved to % — this cleanup must not change it', n_rv;
+  end if;
+
+  -- NO ROW IN THE THREE CLEANED ROOMS MAY STILL CITE THE SHEET FOR A FIGURE ITS
+  -- OWN PAGE CARRIES. Scoped to those three ON PURPOSE, and the first draft of
+  -- this check was not — it asked the question globally and caught seventeen
+  -- rows at Orleans and Santa Fe, which are RIGHT to cite the sheet: 08-06
+  -- CORRECTED them (Santa Fe's cap 6 -> 5, Orleans' drop unknown -> 3), so the
+  -- sheet is where those figures came from. "Sheet-cited, web source_url,
+  -- stamped 08-06" is the shape of a corroboration AND of a correction, and
+  -- nothing in the row tells them apart — only the pre-apply value does, which
+  -- is history this file no longer holds. So the invariant is named per room by
+  -- the three rooms we know were corroborations, never inferred from shape.
+  select count(*) into n_bad from cash_games c join rooms r on r.id = c.room_id
+   where r.slug in ('wynn-encore','venetian','green-valley-ranch')
+     and c.rake_source_url = 'https://docs.google.com/spreadsheets/d/1Z_SEZI1Wu737tyfSJlakUlheU32P9eHiu7hRD5loDLM/edit'
+     and c.source_url not like '%docs.google.com%';
+  if n_bad <> 0 then
+    raise exception
+      '% row(s) in the three cleaned rooms still cite the sheet for a figure their own page carries', n_bad;
+  end if;
+end $$;
+
+commit;
+
+-- =====================================================================
 -- THE SEED CHECKS ITSELF.
 --
 -- The seed and production have diverged twice: once silently, once
