@@ -23,8 +23,10 @@
  * back with blanket UPDATEs — `set verified_at = null`, `set available = true` —
  * which was correct only while the seed contained nothing verified and nothing
  * absent. The partner floor data made both assumptions false, and every run
- * would have wiped 31 rake-verified rows and flipped 16 confirmed absences to
- * present: a test suite quietly deleting the product's first real data.
+ * would have wiped EVERY rake-verified row and flipped EVERY confirmed absence
+ * to present: a test suite quietly deleting the product's first real data.
+ * (Written when that was 31 rows and 16 absences; it is more now, and the
+ * number was never the point — "every one of them" is.)
  *
  * So the columns a scenario is about to touch are copied to a snapshot schema
  * first, and only the rows a scenario actually touched are written back. A
@@ -357,10 +359,12 @@ try {
   await warm()
   console.log(`rooms=${ROOMS.length} rakeable=${RAKEABLE.length}`)
 
-  /* NOT "day one" any more. The partner floor data verified 31 rake figures
-     without signing off a single room, so the baseline the product actually
-     ships is rake ranked and rooms unconfirmed — which is precisely the mixed
-     state this suite exists for, arriving for real. */
+  /* NOT "day one" any more. The 2026-08-06 partner apply verified 31 rake
+     figures without signing off a single room, so the baseline the product
+     actually ships is rake ranked and rooms unconfirmed — which is precisely
+     the mixed state this suite exists for, arriving for real. (31 is what that
+     morning verified and stays as history; the running total is higher, and
+     this scenario asserts against the live count, never a copied one.) */
   await scenario('BASELINE — rake confirmed on the floor, no room signed off', [], ({ text, ranks }) => {
     const expect = rankedSlugs()
     check('ranks exactly the rake-verified rooms', ranks.length === expect.length,

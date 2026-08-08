@@ -139,10 +139,15 @@ function phrase(names: string[], one: string, many: string): string | null {
  *
  * `ranked.find(isLeader)` returned the FIRST rank-1 room and the card crowned
  * it — which was harmless only while at most one room could be verified at the
- * best value. The partner floor data verified 31 rake figures at once and six
- * rooms tied at the same cap, so the card named one of six and silently dropped
- * five equally-best rooms: a superlative stating something untrue, in the one
+ * best value. The 2026-08-06 partner apply verified 31 rake figures at once and
+ * left several rooms tied at the same cap, so the card named one of them and
+ * silently dropped the rest: a superlative stating something untrue, in the one
  * product whose premise is that it does not.
+ *
+ * The size of that tie is NOT named here. It was written down as "six" and
+ * matched neither the state at the time (five rooms) nor the state after the
+ * 2026-08-08 apply (seven, once Red Rock's cap was corrected to $5). The tie
+ * moves every time a cap is verified or corrected; the code below counts it.
  *
  * A tie is a real answer, so it is reported as one, under the same
  * enumerate-vs-summarise rule the exclusion lines use — name them while a name

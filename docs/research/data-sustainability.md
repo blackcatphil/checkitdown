@@ -23,6 +23,12 @@ answers.
 | Table count | 16/17 rooms | ~1–2×/yr | floor visit |
 | Hours | 17/17 rooms | rare | floor visit |
 
+(Rake coverage corrected 2026-08-08 — read **42/78 games rake-verified**, not
+33/78. The 2026-08-08 partner apply added nine. Every other cell and the
+rate-of-change column are as measured on 2026-08-07; the finding this table
+supports — that the partner's circulation is what maintains these fields — is
+unchanged, and the higher coverage is an instance of it, not a challenge to it.)
+
 These change about as often as a room repaints. A partner who is already in
 these rooms weekly re-confirms them as a side effect of being there, which is
 why the floor sheet is a sustainable source rather than a one-off scrape: the

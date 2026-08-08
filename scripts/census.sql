@@ -5,9 +5,15 @@
 -- hardcoded one goes stale silently — the failure this project keeps finding.
 --
 -- Verification is per FACT, not per room. `rooms.verified_at` alone was the
--- old check, and it is NULL on all seventeen rooms while 6 games, 33 rakes,
--- 30 amenity rows and 2 formats carry real stamps: a broken rollback could
+-- old check, and it is NULL on every room while cash-game rows, rake figures,
+-- amenity rows and formats all carry real stamps: a broken rollback could
 -- have wiped every one of them and reported a clean database.
+--
+-- NO COUNTS IN THIS HEADER, deliberately. It used to name four of them
+-- ("6 games, 33 rakes, 30 amenity rows and 2 formats"), which is the exact
+-- thing the paragraph above tells you not to do — and the rake figure was
+-- stale within two applies. A file whose thesis is "the gate is a DIFF, not a
+-- set of expected numbers" cannot carry a hardcoded set of expected numbers.
 --
 -- ADD A ROW HERE whenever a scenario learns to touch a new column.
 --

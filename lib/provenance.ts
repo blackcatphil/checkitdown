@@ -3,9 +3,15 @@
  *
  * It said one thing, always: *"Every figure on this page is sourced and none is
  * verified."* That was true the day it was written and false by the time anyone
- * noticed — the number-copied-forward class, in prose. Production holds 6
- * game-verified and 33 rake-verified rows, so on Wynn the page carried four
- * in-person rake receipts and a sentence directly above them denying any of it.
+ * noticed — the number-copied-forward class, in prose. Production had verified
+ * rows on both `cash_games.verified_at` and `cash_games.rake_verified_at` by
+ * then, so on Wynn the page carried four in-person rake receipts and a sentence
+ * directly above them denying any of it.
+ *
+ * The counts are deliberately not repeated here. This comment used to say "6
+ * game-verified and 33 rake-verified rows", which went stale on the next
+ * partner apply — the same failure the comment is describing, committed inside
+ * the description of it. The state is computed below; read it from there.
  *
  * The bug underneath was narrower than "the copy is stale": the block gated on
  * `rooms.verified_at`, which is NULL for all seventeen rooms, while the FACTS

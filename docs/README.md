@@ -405,13 +405,20 @@ has no RLS).
 `anon`, which is indistinguishable from a permissions bug — it briefly looked
 like `service_role` was broken when the grants were fine.
 
-**No hosted Supabase project yet** — deliberate. Local first; create the hosted
-project when there is something to deploy, and verify current pricing first.
+**Hosted Supabase: live since 2026-08-05** (project `checkitdown`, us-west-1),
+serving checkitdown.com. This paragraph used to say "no hosted project yet —
+deliberate", which was true when written and false for three days before anyone
+noticed: a STATE claim in prose rots exactly like a count does, and the numeric
+sweep that fixed this file's stale counts could not see it. Local-first still
+holds for development, and migrations do NOT auto-apply to the hosted project —
+every new migration is applied there by hand.
 
-**Data: seeded as candidate data.** 17 rooms · 75 cash games · 12 amenity types ·
-8 room-amenity links · 42 sources, every row carrying `source_url` and
-`fetched_at` with `verified_at` NULL. Figures in the *design comps* remain
-placeholders; the database behind the app does not.
+**Data: seeded as candidate data.** Every row carries `source_url` and
+`fetched_at`, and `verified_at` is NULL until someone on the floor confirms the
+row — the partner applies have since set real stamps, and the live counts are
+the seed self-check tuple in `supabase/seed.sql`, not any number written here.
+Figures in the *design comps* remain placeholders; the database behind the app
+does not.
 
 ## Build order
 
@@ -1932,7 +1939,11 @@ A mistyped slug in a `where slug in (...)` inserts one row fewer, silently. The
 self-check would catch the total and report a count. These guards report
 `room_formats names slugs that are not rooms: westgate-las-vegas-resort-and-casino`
 — proven by feeding it exactly that historical typo. The seed self-check now
-covers all seven counts: 17 / 78 / 6 / 33 / 44 / 15 / 2.
+covers all seven counts: rooms, cash games, game-verified, rake-verified,
+sources, waitlist rows and formats. **The tuple itself is not copied here** —
+it moves with every partner apply (rake-verified went 31 → 33 → 42 across three
+mornings), and a mirror of it in this file is a stale number waiting to happen.
+The live values are the `is distinct from (...)` tuple in `supabase/seed.sql`.
 
 ## The amenity filter reopens, with a THIRD state (2026-08-07)
 
@@ -2023,6 +2034,11 @@ and none is verified."* True when written. By the time anyone looked, production
 held **6 game-verified and 33 rake-verified rows**, so Wynn printed four
 in-person receipts with a sentence directly above them denying all of it — the
 number-copied-forward class, in prose.
+
+> Those are the figures **as of this section's date, 2026-08-07**, and they are
+> left standing because they are what made the bug visible. Rake-verified has
+> since moved to 42 (2026-08-08 apply). Kept as dated history, not as a current
+> count — which is the distinction the section is about.
 
 The mechanism was narrower than stale copy. The block gated on
 `rooms.verified_at`, which is **NULL for all seventeen rooms**, while facts are

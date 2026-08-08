@@ -61,6 +61,30 @@ actually checked, and 0 of 164 is what we have found wrong.**
 | Room (tables, hours, comps) | 16 | 0 | 1 | 0 |
 | Amenities | 8 | 28 | 0 | 0 |
 
+(Corrected 2026-08-08 — the 2026-08-08 partner apply verified nine more rake
+figures, and the two rooms split by *kind of edit*: Red Rock was a CORRECTION,
+so its 3 figures moved to citing the sheet; South Point was a CORROBORATION, so
+its 6 keep their Vegas Advantage citation under the child-provenance rule. The
+Rake row's CITATION split is therefore now **fetchable page 6 · floor sheet
+36**, not 0 · 33.
+
+**What that changes about the sentence below is narrower than falsified.** Its
+second half stands as written: every one of the 42 verification stamps is the
+partner's, ranking gates on those stamps, and no rake figure is ranked on the
+strength of a page. Its first half needs a date, not a retraction: six figures'
+*receipts* now point at a fetchable page — but fetchable is not watched (the
+detector's targets do not include South Point's page), and a receipt on a page
+is not machine *confirmation* (Vegas Advantage is this document's own
+documented-static source, `dateModified` 2025-04; a fetch would prove the page
+still serves, not that the figure is current — the figure's confirmation is the
+floor stamp either way). Quote the sentence with its 2026-08-07 date, neither
+as current nor as overturned.
+
+The verdict table and its Machine-confirmed column are deliberately NOT
+recomputed here — those buckets are `scripts/source-health.mjs` output, and
+whether these nine figures change 86/64/14/164 is a question for a re-run, not
+arithmetic in a correction note.)
+
 **Not one rake figure depends on a fetchable page.** The column Just the Facts
 ranks on rests entirely on the partner's floor visits. That is the strongest
 sentence in this document and it was not what I expected to find.
