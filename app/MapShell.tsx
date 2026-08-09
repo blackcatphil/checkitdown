@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AmenityDef, FilterState } from '@/lib/amenity-filter'
 import { amenityGroups, amenityState, combineStates, summaryLine, tally } from '@/lib/amenity-filter'
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
+import { applyStakesFilter, comboCatalogue, VARIANT_LABEL, VARIANT_ORDER } from '@/lib/stakes-filter'
 import { applyPalette, type MapStyle } from '@/lib/map-style'
 import { ENUMERATE_MAX } from '@/lib/ranking'
 import { ROOM_FOOTPRINTS, ROOM_ROOFS, ROOM_SHELLS } from '@/lib/room-footprints'
@@ -32,6 +33,11 @@ export type MapRoom = {
   is_seasonal: boolean
   latitude: number
   longitude: number
+  /* One key per cash_games row: `${game}::${stakes_label}`. See
+     lib/stakes-filter — the variant is baked into the key so no later code can
+     pair a stakes level with a variant the room does not spread at it. */
+  combos: string[]
+  comboMeta: Record<string, { variant: string; label: string; sort: number }>
   table_count: number | null
   verified_at: string | null
   games: string[]
@@ -334,7 +340,23 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
     [rooms, season],
   )
   const { matches, activeKeys } = useMemo(
-    () => applyGameFilter(roster, checked),
+    () => {
+      /* TWO NARROWINGS, ONE PIPELINE. The coarse variant keys and the
+         (variant, stakes) combos are both ANDed, and both report what they
+         dropped — a key with no room behind it is named, never swallowed. */
+      const g = applyGameFilter(roster, checked)
+      const s2 = applyStakesFilter(g.matches, checked)
+      /* A key is DROPPED only if NEITHER filter claimed it. Each filter reports
+         every checked key it does not own as dropped, so intersecting the two
+         `dropped` lists directly would report every stakes key as dropped by
+         the variant filter and vice versa. Ask the positive question once. */
+      const claimed = new Set<string>([...g.activeKeys, ...s2.activeKeys])
+      return {
+        matches: s2.matches,
+        activeKeys: [...claimed],
+        dropped: checked.filter((k) => !claimed.has(k)),
+      }
+    },
     [roster, checked],
   )
 
@@ -344,6 +366,9 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      invisibly — the same trap `applyGameFilter` closes for games, arriving here
      for amenities. */
   const groups = useMemo(() => amenityGroups(roster, amenityDefs), [roster, amenityDefs])
+  /* DERIVED FROM THE ROSTER, so it reacts to closures and the seasonal toggle
+     the way shippableKeys does — there is no list of stakes in the client. */
+  const catalogue = useMemo(() => comboCatalogue(roster), [roster])
   const shipped = useMemo(
     () => new Set(groups.flatMap((g) => g.items.map((d) => d.slug))),
     [groups],
@@ -1499,6 +1524,69 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
                 <span style={{ flex: 1 }}>{label}</span>
                 <span className="num" style={{ font: 'var(--cid-tag)', color: n ? 'var(--cid-dim)' : 'var(--cid-disabled)' }}>{n}</span>
               </button>
+            )
+          })}
+        </div>
+
+        {/* ═══ STAKES, BY VARIANT — every (variant, stakes) actually spread.
+            Ruled 2026-08-09: all 26 combos, five sub-heads, nothing merged.
+
+            THE COUNTS ARE ROW-LEVEL. `r.combos.includes(key)` asks whether ONE
+            cash_games row is both this variant and these stakes — it is not
+            "does the room spread $2/5" AND separately "does the room spread
+            PLO". ARIA has $1/2 PLO and no $1/2 NLH, and must not appear under
+            the latter; that is asserted by name in the probe.
+
+            OMAHA IS SHOWN AS STORED. Three spellings sit under OTHER — "Omaha",
+            "Omaha hi", "Omaha hi/lo" — and they are NOT merged: whether GVR's
+            bare "Omaha" is hi or hi/lo is a floor question, and a UI that
+            guesses it would launder an unanswered question into a fact. It is
+            on the floor-visit checklist instead.
+
+            The order is numeric, off big_blind / big_bet / spread_max, never
+            off the label. ═══ */}
+        <div className="cid-stakes" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-5)' }}>
+          <span className="cid-label">STAKES</span>
+          {VARIANT_ORDER.map((v) => {
+            const items = catalogue.filter((c) => c.variant === v)
+            if (!items.length) return null
+            return (
+              <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-3)' }}>
+                {/* A SUB-HEAD, not another eyebrow: the group above it already
+                    took the gold, and two gold headings in a column read as two
+                    groups rather than one group and its parts. */}
+                <span
+                  className="num cid-subhead"
+                  style={{
+                    font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)',
+                    color: 'var(--cid-text-3)',
+                  }}
+                >
+                  {VARIANT_LABEL[v]}
+                </span>
+                {items.map((c) => {
+                  const on = checked.includes(c.key)
+                  const n = matches.filter((r) => r.combos.includes(c.key)).length
+                  return (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => toggle(c.key)}
+                      className="cid-check"
+                      data-on={on ? 'true' : 'false'}
+                    >
+                      <span aria-hidden className="cid-box">{on ? '✓' : ''}</span>
+                      <span style={{ flex: 1 }}>{c.label}</span>
+                      <span
+                        className="num"
+                        style={{ font: 'var(--cid-tag)', color: n ? 'var(--cid-dim)' : 'var(--cid-disabled)' }}
+                      >
+                        {n}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             )
           })}
         </div>

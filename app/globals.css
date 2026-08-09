@@ -367,6 +367,18 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     max-height: var(--cid-sheet-peek);
     overflow: hidden;
   }
+  /* THE STAKES GROUP SCROLLS WITHIN THE SHEET, rather than making the sheet
+     taller. 26 checkboxes across five sub-heads is more than a phone sheet can
+     show at once, and a sheet that grows to fit them would cover the map it is
+     filtering. The panel already scrolls; this caps the one group that can run
+     long so the amenity groups below it stay reachable without a long scroll
+     past every stakes level in the city. */
+  .cid-stakes {
+    max-height: 46vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   /* HANDLE-ONLY ENTRY — 2026-08-09 ruling. The panel collapses to the handle's
      own target height so the corridor fit can afford the pixels the summary
      line would otherwise take. Driven by a data attribute the MAP sets from a

@@ -1,3 +1,4 @@
+import { comboKey, comboSort, roomCombos } from '@/lib/stakes-filter'
 import { MapClient } from './MapClient'
 import type { MapRoom } from './MapShell'
 
@@ -30,7 +31,7 @@ export default async function Home() {
        or NO ROW) and the absence is load-bearing — nothing here may coalesce
        it away. */
     .select(
-      'slug,name,area,status,is_seasonal,latitude,longitude,table_count,verified_at,cash_games(game,stakes_label,big_blind),room_amenities(available,amenity_types(slug))',
+      'slug,name,area,status,is_seasonal,latitude,longitude,table_count,verified_at,cash_games(game,stakes_label,big_blind,big_bet,spread_max),room_amenities(available,amenity_types(slug))',
     )
     .neq('status', 'closed')
     .order('name')
@@ -49,7 +50,10 @@ export default async function Home() {
     .order('sort_order')
 
   const rooms: MapRoom[] = (data ?? []).map((r) => {
-    const games = r.cash_games as Array<{ game: string; stakes_label: string; big_blind: number | null }>
+    const games = r.cash_games as Array<{
+      game: string; stakes_label: string | null
+      big_blind: number | null; big_bet: number | null; spread_max: number | null
+    }>
     const rows = r.room_amenities as Array<{ available: boolean; amenity_types: { slug: string } | null }>
     /* Only answered slugs become keys. A room with no row for `freeself` must
        come out of here with no `freeself` key at all — writing `false` for it
@@ -73,6 +77,19 @@ export default async function Home() {
       table_count: r.table_count,
       verified_at: r.verified_at,
       games: [...new Set(games.map((g) => GAME_KEY[g.game]).filter(Boolean))],
+      /* ONE KEY PER ROW, variant and stakes together — see lib/stakes-filter.
+         This is the shape that makes "$2/5 NLH matches a room that only spreads
+         $2/5 PLO" impossible rather than merely unlikely. */
+      combos: roomCombos(games),
+      /* The label and the SORT NUMBER travel with the key so the panel never
+         parses a label to order it. `$10/20` sorts after `$2/5` because 20 > 5,
+         which string order would get backwards. */
+      comboMeta: Object.fromEntries(
+        games.filter((g) => g.stakes_label).map((g) => [
+          comboKey(g.game, g.stakes_label!),
+          { variant: g.game, label: g.stakes_label!, sort: comboSort(g) },
+        ]),
+      ),
       amenities,
       stakes: nlh.length
         ? nlh.length > 1
