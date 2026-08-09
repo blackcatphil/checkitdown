@@ -50,8 +50,12 @@ jobs:
             || { echo "::error::test:unit reported failures"; exit 1; }
           n=$(grep -oE '^. tests [0-9]+' /tmp/unit.log | grep -oE '[0-9]+')
           echo "unit assertions: $n"
-          [ "${n:-0}" -ge 6 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 6) — a suite that shrinks to nothing still exits 0"; exit 1; }
+          # 119, audited 2026-08-09. Was 6 — a tripwire from when this suite WAS
+          # six tests, left untouched while it grew to 119. A floor 113 below
+          # reality does not catch a shrinking suite; it catches a deleted one,
+          # which is not the failure worth guarding.
+          [ "${n:-0}" -ge 119 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 119) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -82,8 +86,12 @@ jobs:
             || { echo "::error::pgTAP did not report success"; exit 1; }
           n=$(grep -oE 'Tests=[0-9]+' /tmp/rls.log | head -1 | cut -d= -f2)
           echo "pgTAP assertions: $n"
-          [ "${n:-0}" -ge 10 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 10) — a shrinking suite is a silent regression"; exit 1; }
+          # 51, audited 2026-08-09. Was 10, set when the RLS file held ten
+          # assertions; it has since absorbed the intake-Phase-I coverage —
+          # room_amenities, the floor-stamp path both ways, insert proposals —
+          # and 41 of those could have vanished under the old number.
+          [ "${n:-0}" -ge 51 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 51) — a shrinking suite is a silent regression"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
@@ -159,7 +167,9 @@ jobs:
             || { echo "::error::mixed-state suite did not pass"; exit 1; }
           n=$(grep -c '^   PASS' /tmp/mixed.log || true)
           echo "assertions passed: $n"
-          [ "$n" -ge 128 ] || { echo "::error::only $n assertions ran (expected >= 128) — the suite shrank, which is a silent regression"; exit 1; }
+          # 136, audited 2026-08-09 (was 128 — the smallest drift in the repo,
+          # and the only floor that had been kept roughly current).
+          [ "$n" -ge 136 ] || { echo "::error::only $n assertions ran (expected >= 136) — the suite shrank, which is a silent regression"; exit 1; }
 
       - name: Assert the database was left clean
         run: |
@@ -246,13 +256,20 @@ jobs:
             || { echo "::error::the rank-qualifier assertion did not run — a bare '#3' with no sort is a number attached to nothing"; exit 1; }
           n=$(grep -c '^  PASS' /tmp/mobile.log || true)
           echo "mobile assertions: $n"
-          # 13 here, not 16: first-extrusion, the 17-room count and the pin
-          # overlap check all read `window.__cid_map`, which exists only under
-          # NEXT_PUBLIC_MAP_DEBUG=1. CI probes the SHIPPING configuration, so
-          # those three SKIP with a named reason and the five-surface checks —
-          # the ones that caught the header — run in full.
-          [ "$n" -ge 13 ] \
-            || { echo "::error::only $n mobile assertions ran (expected >= 13) — the suite shrank"; exit 1; }
+          # 43 IN THIS CONFIGURATION, 52 WITH THE DEBUG HANDLE.
+          #
+          # Raised from 13 on 2026-08-09 by the floor audit. 13 was true when
+          # the probe measured the map alone; it then grew the bottom nav, the
+          # safe-area and clearance checks, the hydration/console gate and the
+          # Safari-height corridor case, and the floor never moved — THIRTY
+          # assertions could have disappeared without a word.
+          #
+          # The 4 SKIPs read `window.__cid_map`, which exists only under
+          # NEXT_PUBLIC_MAP_DEBUG=1; CI probes the SHIPPING configuration, so
+          # they skip with a named reason and everything else runs in full.
+          # Raise this when assertions are added; never lower it to pass a run.
+          [ "$n" -ge 43 ] \
+            || { echo "::error::only $n mobile assertions ran (expected >= 43) — the suite shrank"; exit 1; }
           # A skip must stay a skip. If these ever stop being skipped without
           # the floor moving, something changed configuration silently.
           s=$(grep -c '^  SKIP' /tmp/mobile.log || true)
