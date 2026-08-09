@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(57);
+select plan(79);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -835,6 +835,276 @@ select is(
   public.proposal_field_refusal('room_descriptions', 'body', false, false),
   null,
   'body IS writable through a proposal — content ships via the queue, not via a commit'
+);
+
+-- =====================================================================
+-- THE PRECEDENCE LAW (migration 008). Phil ruled 2026-08-09.
+-- =====================================================================
+-- THE MATRIX IS ASSERTED CELL BY CELL, not as "precedence works". Each cell is
+-- a different decision and they fail independently: the day someone reads
+-- `data_type` from the payload instead of from `sources`, floor->web still
+-- applies and web->floor silently starts applying too.
+--
+-- A HELPER THAT BUILDS A PROPOSAL AND TRIES IT, returning the SQLSTATE — so a
+-- refusal is distinguished from a crash by code rather than by message text.
+create or replace function pg_temp.try_apply(
+  p_field text, p_value jsonb, p_source_kind text, p_target uuid, p_override boolean default false
+) returns text language plpgsql as $$
+declare
+  v_id  uuid;
+  v_src uuid;
+  v_room uuid;
+begin
+  select room_id into v_room from public.cash_games where id = p_target;
+  select id into v_src from public.sources where data_type = p_source_kind limit 1;
+  insert into public.pending_changes
+    (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
+  values ('cash_games', p_target, v_room, 'update', p_field, p_value, 'pgtap-precedence',
+          v_src, (select url from public.sources where id = v_src))
+  returning id into v_id;
+  /* ROLE AND CLAIMS ARE RESTORED ON BOTH PATHS, the way pg_temp.runs_as does
+     it above. The first draft used set_config(..., true) and never reset —
+     which is transaction-local, and the whole file is ONE transaction, so
+     `authenticated` leaked into every later statement and the next read of a
+     temp table died with "permission denied". A helper that changes the
+     session has to put it back, on the exception path especially. */
+  begin
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claims', '{"email":"admin@example.test"}', true);
+    perform public.approve_change(v_id, p_override);
+    perform set_config('request.jwt.claims', null, true);
+    reset role;
+    return 'APPLIED';
+  exception when others then
+    perform set_config('request.jwt.claims', null, true);
+    reset role;
+    return sqlstate;
+  end;
+end $$;
+
+-- Fixtures: one row made floor-sourced (a person stood there), one left web.
+create temp table pgtap_prec as
+  select
+    (select c.id from public.cash_games c where c.rake_verified_at is not null order by c.id limit 1) as floor_row,
+    (select c.id from public.cash_games c where c.rake_verified_at is null
+       and c.rake_type is not null order by c.id limit 1) as web_row,
+    /* A SECOND, UNTOUCHED web row. The first draft reused one for both the
+       floor->web and web->web cells and web->web then failed with CID03 —
+       correctly. The floor write had MOVED THE CITATION to the floor document
+       (the receipt follows the fact), so the row was floor-ranked by the time
+       the web write arrived. The law was right and the fixture was wrong,
+       which is worth keeping as a comment: precedence is a property of the
+       fact's current citation, not of the row's history. */
+    (select c.id from public.cash_games c where c.rake_verified_at is null
+       and c.rake_type is not null order by c.id offset 1 limit 1) as web_row_2;
+
+select is(
+  public.fact_source_kind('cash_games', (select floor_row from pgtap_prec), 'rake_cap'),
+  'floor',
+  'a person-verified rake reads as FLOOR even while the row still cites the web page it corroborated'
+);
+
+select is(
+  public.fact_source_kind('cash_games', (select web_row from pgtap_prec), 'rake_cap'),
+  'web',
+  'an unstamped rake reads as WEB'
+);
+
+-- ─── THE FOUR CELLS ──────────────────────────────────────────────────
+select is(
+  pg_temp.try_apply('rake_cap', '7'::jsonb, 'floor', (select web_row from pgtap_prec)),
+  'APPLIED',
+  'PRECEDENCE floor -> web APPLIES — a visit outranks a page'
+);
+
+select is(
+  pg_temp.try_apply('rake_cap', '8'::jsonb, 'cash', (select web_row_2 from pgtap_prec)),
+  'APPLIED',
+  'PRECEDENCE web -> web APPLIES — research lands without approval'
+);
+
+select is(
+  pg_temp.try_apply('rake_cap', '9'::jsonb, 'cash', (select floor_row from pgtap_prec)),
+  'CID03',
+  'PRECEDENCE web -> floor is REFUSED — floor always trumps web'
+);
+
+-- THE CLAUSE THAT MAKES IT PRECEDENCE AND NOT PERMISSION. If the override
+-- could lift this, the law would hold exactly until somebody was in a hurry.
+select is(
+  pg_temp.try_apply('rake_cap', '9'::jsonb, 'cash', (select floor_row from pgtap_prec), true),
+  'CID03',
+  'web -> floor stays refused WITH the override — no flag outranks a floor visit'
+);
+
+select is(
+  pg_temp.try_apply('rake_cap', '11'::jsonb, 'floor', (select floor_row from pgtap_prec)),
+  'CID03',
+  'PRECEDENCE floor -> floor is REFUSED without the override'
+);
+
+select is(
+  pg_temp.try_apply('rake_cap', '12'::jsonb, 'floor', (select floor_row from pgtap_prec), true),
+  'APPLIED',
+  'floor -> floor APPLIES with the override — the newer document supersedes the earlier visit'
+);
+
+-- ─── THE STAMP FOLLOWS THE LAW ───────────────────────────────────────
+select isnt(
+  (select rake_verified_at from public.cash_games where id = (select floor_row from pgtap_prec)),
+  null,
+  'a FLOOR correction keeps the person-verified stamp — a floor document IS somebody having stood there'
+);
+
+select is(
+  (select rake_verified_at from public.cash_games where id = (select web_row_2 from pgtap_prec)),
+  null,
+  'and a web write leaves no stamp behind it'
+);
+
+-- A FLOOR WRITE PROMOTES THE FACT IT LANDS ON. The receipt follows the fact, so
+-- the row now cites the floor document and outranks the web from then on. Found
+-- by a fixture that reused one row and got a correct refusal.
+select is(
+  public.fact_source_kind('cash_games', (select web_row from pgtap_prec), 'rake_cap'),
+  'floor',
+  'a fact a floor document wrote is FLOOR-ranked afterwards — the receipt moved with the value'
+);
+
+-- ─── APPROVAL IS NO LONGER THE ROAD, BUT THE QUEUE IS STILL THERE ────
+select has_table('public', 'pending_changes',
+  'the queue REMAINS — unused by the normal path, kept for what the law does not cover');
+select has_view('public', 'pending_review',
+  'and so does the review view a human can still look at');
+
+-- ─── THE GROUPED RAKE TRANSACTION ────────────────────────────────────
+-- The constraint makes "this room gains a rake" unrepresentable one field at a
+-- time. Asserted as the FAILURE FIRST, so the group's success is known to be
+-- doing something rather than to be unnecessary.
+select is(
+  pg_temp.try_apply('rake_cap', '5'::jsonb, 'cash',
+    (select c.id from public.cash_games c where c.rake_type is null order by c.id limit 1)),
+  '23514',
+  'a cap alone onto a model-less row is refused by rake_model_coherent — which is why groups exist'
+);
+
+-- ─── THE GROUP LANDS WHAT SINGLE WRITES CANNOT ───────────────────────
+-- The refusal directly above is the control: a cap alone is rejected by the
+-- constraint. The same room gaining the SAME rake through a group must succeed,
+-- and must succeed as a whole.
+create or replace function pg_temp.try_group(p_target uuid, p_override boolean default false)
+returns text language plpgsql as $$
+declare
+  v_room uuid; v_src uuid; v_ids uuid[];
+begin
+  select room_id into v_room from public.cash_games where id = p_target;
+  select id into v_src from public.sources where data_type = 'cash' limit 1;
+  insert into public.pending_changes
+    (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
+  select 'cash_games', p_target, v_room, 'update', f.field, f.val, 'pgtap-group',
+         v_src, (select url from public.sources where id = v_src)
+    from (values ('rake_cap', '6'::jsonb), ('rake_type', '"pot"'::jsonb), ('rake_percent', '10'::jsonb)) as f(field, val);
+  select array_agg(id) into v_ids from public.pending_changes where agent = 'pgtap-group';
+  begin
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claims', '{"email":"admin@example.test"}', true);
+    perform public.approve_change_group(v_ids, p_override);
+    perform set_config('request.jwt.claims', null, true);
+    reset role;
+    return 'APPLIED';
+  exception when others then
+    perform set_config('request.jwt.claims', null, true);
+    reset role;
+    return sqlstate;
+  end;
+end $$;
+
+create temp table pgtap_group as
+  select (select c.id from public.cash_games c where c.rake_type is null order by c.id limit 1) as bare_row;
+
+select is(
+  pg_temp.try_group((select bare_row from pgtap_group)),
+  'APPLIED',
+  'a room GAINS A RAKE through a group — model before figures, one transaction'
+);
+
+select is(
+  (select rake_type from public.cash_games where id = (select bare_row from pgtap_group)),
+  'pot',
+  '...and the model landed'
+);
+
+select is(
+  /* NUMERIC, not text: rake_cap is numeric(6,2) and renders '6.00'. The same
+     spelling-versus-value trap the prose probe hit. */
+  (select rake_cap from public.cash_games where id = (select bare_row from pgtap_group)),
+  6::numeric,
+  '...and so did the cap that could not be written on its own'
+);
+
+-- ALL OR NOTHING. A group carrying one impossible member must leave the row
+-- untouched — a half-applied rake model is the failure this exists to prevent.
+create or replace function pg_temp.try_bad_group(p_target uuid)
+returns text language plpgsql as $$
+declare
+  v_room uuid; v_src uuid; v_ids uuid[];
+begin
+  select room_id into v_room from public.cash_games where id = p_target;
+  select id into v_src from public.sources where data_type = 'cash' limit 1;
+  insert into public.pending_changes
+    (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
+  select 'cash_games', p_target, v_room, 'update', f.field, f.val, 'pgtap-badgroup',
+         v_src, (select url from public.sources where id = v_src)
+    from (values ('rake_type', '"time"'::jsonb), ('rake_cap', '99'::jsonb)) as f(field, val);
+  select array_agg(id) into v_ids from public.pending_changes where agent = 'pgtap-badgroup';
+  begin
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claims', '{"email":"admin@example.test"}', true);
+    perform public.approve_change_group(v_ids, false);
+    perform set_config('request.jwt.claims', null, true);
+    reset role;
+    return 'APPLIED';
+  exception when others then
+    perform set_config('request.jwt.claims', null, true);
+    reset role;
+    return sqlstate;
+  end;
+end $$;
+
+select is(
+  pg_temp.try_bad_group((select bare_row from pgtap_group)),
+  '23514',
+  'a group whose members contradict the rake model is refused — time-charge cannot carry a cap'
+);
+
+select is(
+  (select rake_type from public.cash_games where id = (select bare_row from pgtap_group)),
+  'pot',
+  '...and the row is UNCHANGED by the failed group — all or nothing, not half a model'
+);
+
+select is(
+  (select rake_cap from public.cash_games where id = (select bare_row from pgtap_group)),
+  6::numeric,
+  '...including the figure the failed group would have overwritten'
+);
+
+-- ─── WHO MAY APPLY, NOW THAT NOBODY APPROVES ─────────────────────────
+-- The scheduled differ holds the database credential and carries no JWT, so
+-- is_admin() is false for it. is_service_caller() is the narrow allowance that
+-- lets the pipeline write at all — and it must NOT be satisfiable by anything
+-- arriving over HTTP.
+select ok(
+  public.is_service_caller(),
+  'is_service_caller() is TRUE for a process holding the database credential — the differ can write'
+);
+
+select ok(
+  not pg_temp.runs_as('anon', '{}'::jsonb,
+    $$ select case when public.is_service_caller() then 1 else 1/0 end $$)
+  or not pg_temp.runs_as('authenticated', '{"email":"stranger@example.test"}'::jsonb,
+    $$ select case when public.is_service_caller() then 1 else 1/0 end $$),
+  'and it is NOT satisfied by anon or by an ordinary signed-in user'
 );
 
 select * from finish();

@@ -19,7 +19,9 @@
     "icons": "node scripts/make-icons.mjs",
     "test:flicker": "STEP=0.002 N=10 node scripts/flicker.mjs",
     "test:palette": "node scripts/palette-probe.mjs",
-    "test:auth": "node scripts/auth-probe.mjs"
+    "test:auth": "node scripts/auth-probe.mjs",
+    "differ": "node scripts/differ.mjs",
+    "test:differ": "node --test lib/differ.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -55,9 +55,11 @@ jobs:
           # reality does not catch a shrinking suite; it catches a deleted one,
           # 126 on 2026-08-09: +7 for lib/filter-groups, the collapse resolver.
           # 137 on 2026-08-09: +11 for lib/description, the prose interpolation.
+          # 149 on 2026-08-09: +12 for lib/differ — the CSV parse, the diff and
+          # the rake batching that makes a gained rake expressible at all.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 137 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 137) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 149 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 149) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -93,9 +95,12 @@ jobs:
           # room_amenities, the floor-stamp path both ways, insert proposals —
           # 57 on 2026-08-09: +6 for room_descriptions — read access, the
           # queue-only write path, and the no-typed-currency constraint.
+          # 79 on 2026-08-09: +22 for THE PRECEDENCE LAW — every cell of the
+          # matrix separately, the grouped-rake transaction and its all-or-nothing
+          # rollback, and the service-caller boundary.
           # and 41 of those could have vanished under the old number.
-          [ "${n:-0}" -ge 57 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 57) — a shrinking suite is a silent regression"; exit 1; }
+          [ "${n:-0}" -ge 79 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 79) — a shrinking suite is a silent regression"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
