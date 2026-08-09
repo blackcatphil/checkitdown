@@ -587,6 +587,7 @@ for (let i = 0; i < RUNS; i++) {
 /* Collected before the browser closes; reported with everything else below,
    because `ok` is defined after the teardown in this file. */
 const preFindings = []
+const skipped = []
 const pre = (cond, msg) => preFindings.push([cond, msg])
 
 /* ═══ THE (VARIANT, STAKES) FILTERS — 2026-08-09 ═══
@@ -626,42 +627,59 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
     pre(half != null && half.count === 8, `$1/2 NLH counts 8 rooms, row-level (${half ? half.count : 'missing'})`)
   }
 
-  /* Click it and watch ARIA. */
-  const verdict = await page2.evaluate(async () => {
-    const root = document.querySelector('.cid-stakes')
-    const box = [...root.querySelectorAll('.cid-check')].find((b) => b.children[1]?.textContent.trim() === '$1/2')
-    if (!box) return { err: 'no $1/2 checkbox' }
-    box.click()
-    await new Promise((r) => setTimeout(r, 900))
-    const m = window.__cid_map
-    const seen = {}
-    for (const f of m.querySourceFeatures('rooms')) {
-      const sl = f.properties.slug
-      if (sl === 'aria' && !(sl in seen)) seen[sl] = f.properties.hit
-    }
-    return seen
-  })
-  pre(verdict.aria === 0,
-    `THE COUNTER-EXAMPLE: ARIA spreads $1/2 PLO, so $1/2 NLH must NOT match it (hit=${verdict.aria})`)
-  /* THE CONTROL IS BELLAGIO, not Golden Nugget: a control has to be VISIBLE at
-     the camera the probe is at. Golden Nugget is downtown, outside the Strip
-     entry frame, so `querySourceFeatures` never returned it and the assertion
-     read `hit=undefined` — a control that is absent proves nothing, which is
-     the same vacuous-pass shape this suite keeps catching. Bellagio is on the
-     Strip and genuinely spreads $2/5 PLO. */
-  const control = await page2.evaluate(async () => {
-    const root = document.querySelector('.cid-stakes')
-    const boxes = [...root.querySelectorAll('.cid-check')]
-    boxes.find((b) => b.children[1]?.textContent.trim() === '$1/2')?.click()
-    await new Promise((r) => setTimeout(r, 400))
-    boxes.find((b) => b.children[1]?.textContent.trim() === '$2/5 PLO')?.click()
-    await new Promise((r) => setTimeout(r, 900))
-    for (const f of window.__cid_map.querySourceFeatures('rooms')) {
-      if (f.properties.slug === 'bellagio') return f.properties.hit
-    }
-    return undefined
-  })
-  pre(control === 1, `THE CONTROL: Bellagio does spread $2/5 PLO and matches (hit=${control})`)
+  /* ═══ THE FEATURE-STATE HALF NEEDS THE FLAG-GATED HANDLE ═══
+     `window.__cid_map` exists only under NEXT_PUBLIC_MAP_DEBUG=1, and CI
+     deliberately probes the SHIPPING configuration — no handle. Reading it
+     directly made these two the only assertions in this file that THROW
+     instead of degrading, which took main red.
+
+     They now report a named SKIP, exactly as the rendered-feature assertions
+     above do. That is honest rather than a hole because the same counter-example
+     and control run UNCONDITIONALLY at the unit level in
+     lib/stakes-filter.test.mjs — the coverage does not depend on this flag; only
+     the browser-level confirmation of the wiring does.
+
+     The DOM-shape assertions above need no handle and keep running in CI. */
+  const hasHandle2 = await page2.evaluate(() => typeof window.__cid_map !== 'undefined')
+  if (!hasHandle2) {
+    skipped.push('THE COUNTER-EXAMPLE: ARIA must not match $1/2 NLH — needs NEXT_PUBLIC_MAP_DEBUG=1 (asserted unconditionally in lib/stakes-filter.test.mjs)')
+    skipped.push('THE CONTROL: Bellagio matches $2/5 PLO — same flag, same unit-level cover')
+  } else {
+    const verdict = await page2.evaluate(async () => {
+      const root = document.querySelector('.cid-stakes')
+      const box = [...root.querySelectorAll('.cid-check')].find((b) => b.children[1]?.textContent.trim() === '$1/2')
+      if (!box) return { err: 'no $1/2 checkbox' }
+      box.click()
+      await new Promise((r) => setTimeout(r, 900))
+      const seen = {}
+      for (const f of window.__cid_map.querySourceFeatures('rooms')) {
+        const sl = f.properties.slug
+        if (sl === 'aria' && !(sl in seen)) seen[sl] = f.properties.hit
+      }
+      return seen
+    })
+    pre(verdict.aria === 0,
+      `THE COUNTER-EXAMPLE: ARIA spreads $1/2 PLO, so $1/2 NLH must NOT match it (hit=${verdict.aria})`)
+
+    /* THE CONTROL IS BELLAGIO, not Golden Nugget: a control has to be VISIBLE
+       at the camera the probe is at. Golden Nugget is downtown, outside the
+       Strip entry frame, so `querySourceFeatures` never returned it and the
+       assertion read `hit=undefined` — a control that is absent proves nothing.
+       Bellagio is on the Strip and genuinely spreads $2/5 PLO. */
+    const control = await page2.evaluate(async () => {
+      const root = document.querySelector('.cid-stakes')
+      const boxes = [...root.querySelectorAll('.cid-check')]
+      boxes.find((b) => b.children[1]?.textContent.trim() === '$1/2')?.click()
+      await new Promise((r) => setTimeout(r, 400))
+      boxes.find((b) => b.children[1]?.textContent.trim() === '$2/5 PLO')?.click()
+      await new Promise((r) => setTimeout(r, 900))
+      for (const f of window.__cid_map.querySourceFeatures('rooms')) {
+        if (f.properties.slug === 'bellagio') return f.properties.hit
+      }
+      return undefined
+    })
+    pre(control === 1, `THE CONTROL: Bellagio does spread $2/5 PLO and matches (hit=${control})`)
+  }
   await page2.close()
 }
 
@@ -671,6 +689,7 @@ await browser.close()
 let failed = 0
 const ok = (cond, msg) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${msg}`); if (!cond) failed++ }
 for (const [c, m] of preFindings) ok(c, m)
+for (const m of skipped) console.log(`  SKIP  ${m}`)
 
 for (const [i, r] of results.entries()) {
   console.log(`\n=== run ${i + 1} — ${r.cold ? 'COLD cache' : 'WARM cache'} ===`)

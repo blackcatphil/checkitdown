@@ -194,11 +194,27 @@ jobs:
             || { echo "::error::the tile-request assertion did not run — it is the whole point of this gate"; exit 1; }
           n=$(grep -c '  PASS' /tmp/map.log || true)
           echo "map assertions: $n"
-          # 8 here, not 10: the two rendered-feature assertions need
-          # NEXT_PUBLIC_MAP_DEBUG=1, and CI deliberately probes the SHIPPING
-          # configuration rather than a build with a debug handle in it.
-          [ "$n" -ge 8 ] \
-            || { echo "::error::only $n map assertions ran (expected >= 8)"; exit 1; }
+          # 18 IN THIS CONFIGURATION, 35 WITH THE DEBUG HANDLE.
+          #
+          # CI deliberately probes the SHIPPING build, so `window.__cid_map`
+          # does not exist and every rendered-feature assertion degrades to a
+          # named SKIP. Raised from 8 on 2026-08-09: the floor had drifted far
+          # below what actually runs — the probe had grown to 13 here long
+          # before the stakes filters added five more, and a floor of 8 would
+          # have let ten assertions disappear without a word. That is the exact
+          # failure the floor exists to catch, sitting inside the floor itself.
+          #
+          # The two SKIPped assertions are the ARIA counter-example and the
+          # Bellagio control. They are not lost coverage: both run
+          # unconditionally in lib/stakes-filter.test.mjs under test:unit.
+          # Raise this number when assertions are added; never lower it to make
+          # a run pass.
+          [ "$n" -ge 18 ] \
+            || { echo "::error::only $n map assertions ran (expected >= 18)"; exit 1; }
+          # The SKIPs must stay SKIPs. If these stop appearing without the floor
+          # moving, the shipping build has grown a debug handle.
+          s=$(grep -c '^  SKIP' /tmp/map.log || true)
+          echo "map assertions skipped (need MAP_DEBUG): $s"
 
       # --- GATE 5: the phone, and the promise not to cache a fact. ---
       #
