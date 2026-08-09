@@ -20,6 +20,17 @@ export function SignIn() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
+    /* THE LINK'S SHAPE IS DECIDED BY THE EMAIL TEMPLATE, NOT HERE.
+       This call is unchanged by the 2026-08-09 move off PKCE: the template
+       renders {{ .TokenHash }} and this URL becomes {{ .RedirectTo }}, so
+       `next` still travels in code rather than being baked into a dashboard
+       field. See app/auth/callback/route.ts for why PKCE was abandoned —
+       briefly, it needed a secret the browser had to still be holding when the
+       link was clicked, and mail clients routinely break that.
+
+       The client's own flowType is left at its default. It mints a verifier
+       that the token_hash flow never reads, which is harmless, and leaving it
+       is what keeps a link minted under the OLD template still working. */
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/admin/review` },

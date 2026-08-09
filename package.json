@@ -18,7 +18,8 @@
     "test:pwa": "node scripts/pwa-probe.mjs",
     "icons": "node scripts/make-icons.mjs",
     "test:flicker": "STEP=0.002 N=10 node scripts/flicker.mjs",
-    "test:palette": "node scripts/palette-probe.mjs"
+    "test:palette": "node scripts/palette-probe.mjs",
+    "test:auth": "node scripts/auth-probe.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
