@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(24);
+select plan(51);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -281,10 +281,13 @@ select ok(
 -- And the honest control: the SAME shape, correctly parented, is accepted.
 -- Without this the test above would pass just as well if approve_change were
 -- broken outright.
-insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent)
-select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(9), 'pgtap-matched'
-  from public.cash_games c where c.rake_cap is not null and c.rake_verified_at is null limit 1;
-
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_url)
+select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(9), 'pgtap-matched',
+       'https://example.test/matched'
+  from public.cash_games c where c.rake_cap is not null and c.rake_verified_at is null
+  and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
+ order by c.id
+ limit 1;
 select ok(
   pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
     $$ select public.approve_change(
@@ -362,6 +365,427 @@ select ok(
     $$ insert into public.room_formats (room_id, slug, label)
        values ((select id from public.rooms where slug='aria'), 'pgtap-probe', 'probe') $$),
   'service_role can write room_formats (the forward-grant gap)'
+);
+
+-- =====================================================================
+-- 10. INTAKE PHASE I (migration 6) — the queue as the only write path.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 10a. room_amenities kept its RLS, its policy and its grants across the
+--      primary-key swap.
+-- ---------------------------------------------------------------------
+-- Migration 6 drops the (room_id, amenity_id) primary key and adds one on a new
+-- surrogate `id`. Policies and grants attach to the TABLE and not to the
+-- constraint, so they SHOULD survive untouched — and "should survive" is
+-- precisely the reasoning that once left this project with twelve correct
+-- policies and an API that answered 42501 to everything. Asserted, not assumed.
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.room_amenities'::regclass)
+  and exists (select 1 from pg_policy where polrelid = 'public.room_amenities'::regclass)
+  and pg_temp.works_as('anon', 'select 1 from public.room_amenities limit 1'),
+  'room_amenities kept RLS, its policy and anon SELECT across the primary-key swap'
+);
+
+-- The natural key must still be enforced, or one room can hold two answers to
+-- the same amenity question — and the seed's `on conflict (room_id, amenity_id)`
+-- would have nothing to conflict on.
+select ok(
+  exists (
+    select 1 from pg_constraint
+     where conrelid = 'public.room_amenities'::regclass
+       and contype = 'u'
+       and pg_get_constraintdef(oid) = 'UNIQUE (room_id, amenity_id)'
+  ),
+  '(room_id, amenity_id) survives as UNIQUE after being demoted from primary key'
+);
+
+-- ---------------------------------------------------------------------
+-- 10b. A proposal against room_amenities now APPLIES.
+-- ---------------------------------------------------------------------
+-- It used to be refused loudly because the table had no single-column id to
+-- name. The refusal was correct then and would be a bug now.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id, source_url)
+select 'room_amenities', ra.id, ra.room_id, 'available', to_jsonb(ra.available), to_jsonb(false), 'pgtap-amen',
+       (select id from public.sources where data_type = 'cash' limit 1), 'https://example.test/amen'
+  from public.room_amenities ra where ra.verified_at is null
+   and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
+ order by ra.id
+ limit 1;
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-amen' limit 1)) $$),
+  'a proposal against room_amenities is applied now that the row is addressable'
+);
+
+-- ---------------------------------------------------------------------
+-- 10c. THE WESTGATE MISATTRIBUTION CLASS APPLIES TO THIS TABLE TOO.
+-- ---------------------------------------------------------------------
+-- A valid amenity id belonging to a different room than the proposal names.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent)
+select 'room_amenities', ra.id,
+       (select r.id from public.rooms r where r.id <> ra.room_id limit 1),
+       'available', to_jsonb(ra.available), to_jsonb(false), 'pgtap-amen-mismatch'
+  from public.room_amenities ra
+   where not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
+ order by ra.id
+ limit 1;
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change(
+         (select id from public.pending_changes where agent='pgtap-amen-mismatch' limit 1), true) $$),
+  'an amenity proposal whose target row belongs to a different room is refused'
+);
+
+-- ---------------------------------------------------------------------
+-- 10d. THE FLOOR-STAMP PATH, BOTH DIRECTIONS.
+-- ---------------------------------------------------------------------
+-- A verification stamp means a person stood in the room. The gate is the
+-- data_type of the source the proposal CITES, joined inside the definer
+-- function — never a parameter and never a flag in the payload, because either
+-- would let the writer of a proposal certify their own proposal.
+
+-- WEB source + stamp -> refused, with the original denylist error.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id)
+select 'room_amenities', ra.id, ra.room_id, 'verified_at', 'null'::jsonb, to_jsonb(now()::text), 'pgtap-stamp-web',
+       (select id from public.sources where data_type = 'cash' limit 1)
+  from public.room_amenities ra where ra.verified_at is null
+   and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
+ order by ra.id
+ limit 1;
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change(
+         (select id from public.pending_changes where agent='pgtap-stamp-web' limit 1), true) $$),
+  'a stamp proposal citing a WEB source is refused'
+);
+
+-- FLOOR source + stamp -> applies. Without this control the test above would
+-- pass just as well if stamps were refused outright, which is the old behaviour.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id)
+select 'room_amenities', ra.id, ra.room_id, 'verified_at', 'null'::jsonb, to_jsonb(now()::text), 'pgtap-stamp-floor',
+       (select id from public.sources where data_type = 'floor' limit 1)
+  from public.room_amenities ra where ra.verified_at is null
+   and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
+ order by ra.id
+ limit 1;
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change(
+         (select id from public.pending_changes where agent='pgtap-stamp-floor' limit 1), true) $$),
+  'a stamp proposal citing a FLOOR source is applied'
+);
+
+-- STAMPS ARE OPTIONAL, NOT IMPLIED. A floor source does not mean every
+-- proposal from it silently acquires a verification stamp; it means one is
+-- PERMITTED when the proposal actually carries it.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id, source_url)
+select 'room_amenities', ra.id, ra.room_id, 'available', to_jsonb(ra.available), to_jsonb(false), 'pgtap-floor-nostamp',
+       (select id from public.sources where data_type = 'floor' limit 1), 'https://example.test/nostamp'
+  from public.room_amenities ra where ra.verified_at is null
+   and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
+ order by ra.id
+ limit 1;
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change(
+         (select id from public.pending_changes where agent='pgtap-floor-nostamp' limit 1), true) $$)
+  and (select verified_at is null from public.room_amenities ra
+        where ra.id = (select target_id from public.pending_changes where agent='pgtap-floor-nostamp' limit 1)),
+  'a floor-sourced proposal WITHOUT a stamp applies and does not acquire one'
+);
+
+-- ---------------------------------------------------------------------
+-- 10e. INSERT PROPOSALS.
+-- ---------------------------------------------------------------------
+-- Horseshoe has no massage row at all, which is the case an insert exists for:
+-- "not checked" becoming "checked, confirmed absent".
+insert into public.pending_changes (target_table, target_id, room_id, operation, new_value, agent, source_id, source_url)
+select 'room_amenities', null, r.id, 'insert',
+       jsonb_build_object(
+         'amenity_id', (select id from public.amenity_types where slug = 'massage'),
+         'available', false,
+         'detail', 'confirmed absent on the floor'),
+       'pgtap-insert', (select id from public.sources where data_type = 'floor' limit 1), 'https://example.test/insert'
+  from public.rooms r where r.slug = 'horseshoe';
+
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-insert' limit 1)) $$),
+  'an insert proposal creates the row'
+);
+
+-- change_log must name the row that was CREATED, or the log cannot be walked
+-- back to the fact it produced.
+select ok(
+  exists (
+    select 1 from public.change_log cl
+     join public.room_amenities ra on ra.id = cl.target_id
+    where cl.agent = 'pgtap-insert' and cl.operation = 'insert' and ra.available = false
+  ),
+  'change_log records the created row id for an insert'
+);
+
+-- AN INSERT MAY NOT SMUGGLE A STAMP PAST THE FLOOR GATE. The payload is a
+-- whole row, so every key runs the same check the update path runs — the first
+-- sketch of this validated the update field and looped the payload past a
+-- shorter list, which is exactly how this hole opens.
+insert into public.pending_changes (target_table, target_id, room_id, operation, new_value, agent, source_id, source_url)
+select 'room_amenities', null, r.id, 'insert',
+       jsonb_build_object(
+         'amenity_id', (select id from public.amenity_types where slug = 'usb'),
+         'available', true,
+         'verified_at', now()::text),
+       'pgtap-insert-stamp', (select id from public.sources where data_type = 'cash' limit 1), 'https://example.test/insert-stamp'
+  from public.rooms r where r.slug = 'horseshoe';
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-insert-stamp' limit 1)) $$),
+  'an insert citing a web source cannot smuggle a verification stamp'
+);
+
+-- An insert may not re-parent itself either: room_id comes from the proposal,
+-- never from the payload, so a second copy could only ever disagree.
+insert into public.pending_changes (target_table, target_id, room_id, operation, new_value, agent, source_id, source_url)
+select 'room_amenities', null, r.id, 'insert',
+       jsonb_build_object(
+         'amenity_id', (select id from public.amenity_types where slug = 'tvs'),
+         'room_id', (select id from public.rooms where slug = 'aria'),
+         'available', true),
+       'pgtap-insert-reparent', (select id from public.sources where data_type = 'floor' limit 1), 'https://example.test/insert-reparent'
+  from public.rooms r where r.slug = 'horseshoe';
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-insert-reparent' limit 1)) $$),
+  'an insert payload carrying room_id is refused rather than re-parenting the new row'
+);
+
+-- A ROOM CANNOT BE CREATED THROUGH A PROPOSAL — the roster of 17 is a locked
+-- decision, and an insert into `rooms` has no room to belong to.
+insert into public.pending_changes (target_table, target_id, room_id, operation, new_value, agent, source_id, source_url)
+select 'rooms', null, r.id, 'insert', jsonb_build_object('name', 'Injected Room', 'slug', 'injected'),
+       'pgtap-insert-room', (select id from public.sources where data_type = 'floor' limit 1), 'https://example.test/insert-room'
+  from public.rooms r where r.slug = 'horseshoe';
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-insert-room' limit 1)) $$),
+  'a proposal cannot create a room'
+);
+-- =====================================================================
+-- 11. THE RECEIPT FOLLOWS THE FACT (revision 1).
+-- =====================================================================
+-- Approval used to write a new value and leave the OLD citation beside it, so
+-- the first queued floor correction produced a row whose source_url pointed at
+-- a page contradicting it — the Westgate misattribution class, in the write
+-- path, on day one.
+--
+-- EVERY CASE BELOW IS TWO STATEMENTS: one that performs the approval, one that
+-- reads the result. They were written as a single
+-- `ok(runs_as(...) and (select ...))` and three of them failed while the
+-- function was correct — SQL does not guarantee the evaluation order of AND
+-- operands, so Postgres read the row BEFORE the approval that changed it. An
+-- assertion whose truth depends on a side effect inside the same expression is
+-- not an assertion. Statement order is the only ordering there is.
+
+-- ---------------------------------------------------------------------
+-- 11a. A FLOOR CORRECTION TO A VALUE MOVES THE RECEIPT TO THE SHEET.
+-- ---------------------------------------------------------------------
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id, source_url)
+select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(4), 'pgtap-receipt-floor',
+       (select id from public.sources where data_type = 'floor' limit 1),
+       'https://docs.google.com/spreadsheets/d/PGTAP/edit'
+  from public.cash_games c
+ where c.rake_cap is not null and c.rake_verified_at is null and c.rake_type = 'pot'
+   and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
+ order by c.id
+ limit 1;
+
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-receipt-floor' limit 1)) $$),
+  'a floor correction to a rake value is applied'
+);
+
+select is(
+  (select c.rake_source_url from public.cash_games c
+    where c.id = (select target_id from public.pending_changes where agent='pgtap-receipt-floor' limit 1)),
+  'https://docs.google.com/spreadsheets/d/PGTAP/edit',
+  '...and the RAKE receipt moved to the sheet the proposal cites'
+);
+
+-- The rake family moves; the ROW's own citation does not. This is the split
+-- that lets Orleans cite Boyd for its stakes and a third party for its cap.
+select isnt(
+  (select c.source_url from public.cash_games c
+    where c.id = (select target_id from public.pending_changes where agent='pgtap-receipt-floor' limit 1)),
+  'https://docs.google.com/spreadsheets/d/PGTAP/edit',
+  '...while the row-level stakes citation is left alone'
+);
+
+-- ---------------------------------------------------------------------
+-- 11b. A STAMP-ONLY PROPOSAL MOVES NO RECEIPT (corroboration).
+-- ---------------------------------------------------------------------
+-- 4a55228, as code: the partner confirming a figure we already hold changes no
+-- number, so it re-sources nothing. South Point kept its Vegas Advantage
+-- citation through a floor verification and this path must reach that answer.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id, source_url)
+select 'room_amenities', ra.id, ra.room_id, 'verified_at', 'null'::jsonb, to_jsonb(now()::text), 'pgtap-corroborate',
+       (select id from public.sources where data_type = 'floor' limit 1),
+       'https://docs.google.com/spreadsheets/d/PGTAP/edit'
+  from public.room_amenities ra
+ where ra.verified_at is null and ra.source_url is not null
+   and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
+ order by ra.id
+ limit 1;
+
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-corroborate' limit 1)) $$),
+  'a stamp-only floor proposal is applied'
+);
+
+select ok(
+  (select ra.verified_at is not null and ra.source_url not like '%docs.google.com%'
+     from public.room_amenities ra
+    where ra.id = (select target_id from public.pending_changes where agent='pgtap-corroborate' limit 1)),
+  '...it sets the stamp and does NOT re-source the figure — a corroboration is not a re-sourcing'
+);
+
+-- ---------------------------------------------------------------------
+-- 11c. CHILD PROVENANCE APPLIES TO RESEARCH TOO.
+-- ---------------------------------------------------------------------
+-- A detector-shaped web proposal is not exempt: if it changes the number, the
+-- row must cite ITS page. The rule is about where a fact came from, not about
+-- whose data is better.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id, source_url)
+select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(7), 'pgtap-receipt-web',
+       (select id from public.sources where data_type = 'cash' limit 1),
+       'https://vegasadvantage.com/pgtap-detector'
+  from public.cash_games c
+ where c.rake_cap is not null and c.rake_verified_at is null and c.rake_type = 'pot'
+   and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
+ order by c.id
+ limit 1;
+
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-receipt-web' limit 1)) $$),
+  'a web detector proposal is applied'
+);
+
+select is(
+  (select c.rake_source_url from public.cash_games c
+    where c.id = (select target_id from public.pending_changes where agent='pgtap-receipt-web' limit 1)),
+  'https://vegasadvantage.com/pgtap-detector',
+  '...and it too moves the receipt to its own page — child provenance is not only for the partner'
+);
+
+-- ---------------------------------------------------------------------
+-- 11d. AN INSERT IS BORN CITING THE PROPOSAL, AND NEVER UNCITED.
+-- ---------------------------------------------------------------------
+-- CASH_GAMES, not room_amenities: the 10e insert test exercised the amenity
+-- table, and `cash_games.source_url` is NULLABLE — so before this fix an
+-- uncited game row would have been created SILENTLY rather than failing. The
+-- quiet version of the bug needs the loud test.
+insert into public.pending_changes (target_table, target_id, room_id, operation, new_value, agent, source_id, source_url)
+select 'cash_games', null, r.id, 'insert',
+       jsonb_build_object('game', 'nlh', 'stakes_label', '$2/5 pgtap', 'rake_type', 'pot', 'rake_cap', 5),
+       'pgtap-insert-cash', (select id from public.sources where data_type = 'floor' limit 1),
+       'https://docs.google.com/spreadsheets/d/PGTAP/edit'
+  from public.rooms r where r.slug = 'horseshoe';
+
+select ok(
+  pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-insert-cash' limit 1)) $$),
+  'an insert proposal against cash_games is applied'
+);
+
+select ok(
+  (select c.source_url = 'https://docs.google.com/spreadsheets/d/PGTAP/edit' and c.fetched_at is not null
+     from public.cash_games c where c.stakes_label = '$2/5 pgtap'),
+  '...and the created row carries the PROPOSAL''s citation, written by the function'
+);
+
+-- Uncited insert: refused. `source_url` is nullable on every target table, so
+-- nothing but this check stands between a proposal and a fact with no receipt.
+insert into public.pending_changes (target_table, target_id, room_id, operation, new_value, agent, source_id)
+select 'cash_games', null, r.id, 'insert',
+       jsonb_build_object('game', 'nlh', 'stakes_label', '$9/9 uncited'),
+       'pgtap-insert-uncited', (select id from public.sources where data_type = 'floor' limit 1)
+  from public.rooms r where r.slug = 'horseshoe';
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-insert-uncited' limit 1)) $$),
+  'an insert proposal citing no source is refused'
+);
+
+select is_empty(
+  $$ select 1 from public.cash_games where stakes_label = '$9/9 uncited' $$,
+  '...and creates nothing'
+);
+
+-- Same rule on the update side: a value cannot change without a citation for
+-- the new value, or the receipt move would trade a contradicting receipt for
+-- no receipt at all.
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent)
+select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(3), 'pgtap-update-uncited'
+  from public.cash_games c
+ where c.rake_cap is not null and c.rake_verified_at is null
+   and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
+ order by c.id
+ limit 1;
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-update-uncited' limit 1)) $$),
+  'an update proposal that changes a value but cites no source is refused'
+);
+
+-- ---------------------------------------------------------------------
+-- 11e. THE RECEIPT MOVE OPENED NO PAYLOAD DOOR.
+-- ---------------------------------------------------------------------
+-- The move reads pc.source_url — proposal metadata — and the payload may not
+-- carry a citation at all. Re-run in both operations, because the whole risk of
+-- this revision is that "the function writes provenance now" quietly becomes
+-- "provenance is writable".
+insert into public.pending_changes (target_table, target_id, room_id, operation, new_value, agent, source_id, source_url)
+select 'room_amenities', null, r.id, 'insert',
+       jsonb_build_object(
+         'amenity_id', (select id from public.amenity_types where slug = 'checkcash'),
+         'available', true,
+         'source_url', 'https://evil.test/payload'),
+       'pgtap-insert-payload-cite', (select id from public.sources where data_type = 'floor' limit 1),
+       'https://docs.google.com/spreadsheets/d/PGTAP/edit'
+  from public.rooms r where r.slug = 'horseshoe';
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-insert-payload-cite' limit 1)) $$),
+  'an insert payload carrying source_url is refused — the citation is not a payload field'
+);
+
+insert into public.pending_changes (target_table, target_id, room_id, field, old_value, new_value, agent, source_id, source_url)
+select 'room_amenities', ra.id, ra.room_id, 'source_url', 'null'::jsonb, to_jsonb('https://evil.test/update'::text),
+       'pgtap-update-payload-cite', (select id from public.sources where data_type = 'floor' limit 1),
+       'https://docs.google.com/spreadsheets/d/PGTAP/edit'
+  from public.room_amenities ra
+ where not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
+ order by ra.id
+ limit 1;
+
+select ok(
+  not pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    $$ select public.approve_change((select id from public.pending_changes where agent='pgtap-update-payload-cite' limit 1), true) $$),
+  'an update proposing source_url as a field is refused — two mechanisms may not fight over one column'
+);
+
+select is_empty(
+  $$ select 1 from public.room_amenities where source_url like 'https://evil.test/%' $$,
+  'no payload-supplied citation reached a fact row, by either operation'
 );
 
 select * from finish();

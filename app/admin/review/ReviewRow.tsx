@@ -9,6 +9,8 @@ export type Row = {
   room_slug: string | null
   room_name: string | null
   target_table: string
+  operation: string
+  source_id: string | null
   field: string | null
   old_value: unknown
   new_value: unknown

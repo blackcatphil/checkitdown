@@ -574,6 +574,7 @@ export type Database = {
           available: boolean
           detail: string | null
           fetched_at: string | null
+          id: string
           menu_url: string | null
           rate: number | null
           room_id: string
@@ -586,6 +587,7 @@ export type Database = {
           available?: boolean
           detail?: string | null
           fetched_at?: string | null
+          id?: string
           menu_url?: string | null
           rate?: number | null
           room_id: string
@@ -598,6 +600,7 @@ export type Database = {
           available?: boolean
           detail?: string | null
           fetched_at?: string | null
+          id?: string
           menu_url?: string | null
           rate?: number | null
           room_id?: string
@@ -1191,9 +1194,11 @@ export type Database = {
           new_value: Json | null
           note: string | null
           old_value: Json | null
+          operation: Database["public"]["Enums"]["change_op"] | null
           room_id: string | null
           room_name: string | null
           room_slug: string | null
+          source_id: string | null
           source_url: string | null
           state: Database["public"]["Enums"]["change_state"] | null
           target_id: string | null
@@ -1212,6 +1217,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_changes_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
             referencedColumns: ["id"]
           },
         ]
@@ -1267,6 +1279,25 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      pending_source_groups: {
+        Args: never
+        Returns: {
+          data_type: string
+          label: string
+          pending: number
+          source_id: string
+          would_override: number
+        }[]
+      }
+      proposal_field_refusal: {
+        Args: {
+          p_field: string
+          p_is_insert: boolean
+          p_source_is_floor: boolean
+          p_table: string
+        }
+        Returns: string
+      }
       reject_change: { Args: { p_id: string }; Returns: Json }
     }
     Enums: {

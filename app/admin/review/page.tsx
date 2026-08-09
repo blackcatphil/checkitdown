@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { isStaleVerification, orderQueue } from '@/lib/review-order'
 import { whoAmI } from '@/lib/supabase-admin'
 
+import { BulkApprove, type SourceGroup } from './BulkApprove'
 import { ReviewRow, type Row } from './ReviewRow'
 
 export const dynamic = 'force-dynamic'
@@ -47,6 +48,24 @@ export default async function ReviewPage() {
   const rows = orderQueue((data ?? []) as unknown as Row[])
   const stale = rows.filter((r) => isStaleVerification(r.fetched_at, r.fact_verified_at)).length
 
+  /* Grouped for the bulk control, by the DATABASE rather than by this page.
+     The label lives in `sources`, which authenticated may not read — so the
+     grouping is a definer function gated on is_admin(), the same shape as
+     detector_status(). Proposals with no source are absent by construction:
+     "approve everything unattributed" is not a one-click decision. */
+  const { data: groupData } = await supabase.rpc('pending_source_groups')
+  const groups: SourceGroup[] = ((groupData ?? []) as Array<{
+    source_id: string
+    label: string | null
+    pending: number
+    would_override: number
+  }>).map((g) => ({
+    source_id: g.source_id,
+    label: g.label ?? 'unlabelled source',
+    count: g.pending,
+    overrides: g.would_override,
+  }))
+
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-6)' }}>
       <span className="cid-label">ADMIN · {email}</span>
@@ -64,6 +83,8 @@ export default async function ReviewPage() {
               }`
             : 'The detector has never run. This queue is empty because nothing has looked yet — not because nothing has changed.'}
       </p>
+
+      <BulkApprove groups={groups} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-5)' }}>
         {rows.map((r) => (
