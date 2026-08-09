@@ -250,6 +250,12 @@ jobs:
       # and a second port for no reason.
       - name: "test:mobile (390px: the phone layout, and the map if the handle exists)"
         env:
+          # DEFENCE IN DEPTH, and it documents the dependency at the step.
+          # This probe stages a description fixture through scripts/psql-path.mjs,
+          # which now resolves `psql` from PATH by itself — so this line is no
+          # longer load-bearing. It is stated anyway, matching test:mixed, so a
+          # reader of this step can see that it talks to the database at all.
+          PSQL: psql
           BASE_URL: http://localhost:3000
         run: |
           set -euo pipefail

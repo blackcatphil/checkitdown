@@ -15,6 +15,7 @@
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolvePsql } from './psql-path.mjs'
 
 /* Partial results are cached so a rate-limited re-run resumes instead of
    re-asking a free public endpoint for what we already have. */
@@ -27,7 +28,7 @@ const ENDPOINTS = [
   // overpass.osm.jp dropped: certificate expired as of 2026-08-04
 ]
 
-const rooms = execFileSync('/opt/homebrew/opt/postgresql@17/bin/psql',
+const rooms = execFileSync(resolvePsql(),
   ['postgresql://postgres:postgres@127.0.0.1:54322/postgres', '-qtAX', '-F', '\t', '-c',
     `select slug, name, area, latitude, longitude from rooms
       where status <> 'closed' and not is_seasonal order by name`],

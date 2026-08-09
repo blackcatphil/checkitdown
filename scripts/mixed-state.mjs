@@ -41,7 +41,9 @@ import { execFileSync } from 'node:child_process'
    is a local default, not a requirement — hardcoding it would make the suite
    silently un-runnable anywhere else, which is the failure this whole file
    exists to prevent one layer up. */
-const PSQL = process.env.PSQL ?? '/opt/homebrew/opt/postgresql@17/bin/psql'
+/* $PSQL, else `psql` from PATH, else the Homebrew path. See psql-path.mjs:
+   an absolute machine-specific path as a DEFAULT is what broke CI. */
+const PSQL = resolvePsql()
 const DB = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 
@@ -50,6 +52,7 @@ const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8'
 /* THE SAME DETECTOR THE PRODUCT USES. A probe with its own private regex
    would be asserting against its own idea of what a figure is. */
 import { currencyFigures } from '../lib/description.ts'
+import { resolvePsql } from './psql-path.mjs'
 
 const SNAP = 'cid_mixed_state_snapshot'
 

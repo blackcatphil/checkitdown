@@ -27,12 +27,13 @@
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolvePsql } from './psql-path.mjs'
 
 const UA = 'checkitdown-research/0.1 (blackcatphil23@gmail.com)'
 const CACHE = 'scripts/.footprints'
 if (!existsSync(CACHE)) mkdirSync(CACHE, { recursive: true })
 
-const rooms = execFileSync('/opt/homebrew/opt/postgresql@17/bin/psql',
+const rooms = execFileSync(resolvePsql(),
   ['postgresql://postgres:postgres@127.0.0.1:54322/postgres', '-qtAX', '-F', '\t', '-c',
     `select slug, name, latitude, longitude from rooms
       where status <> 'closed' and not is_seasonal order by name`],
