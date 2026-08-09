@@ -288,7 +288,51 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
    custom property, so 860px is written literally in the query and the
    token carries the reason. If one moves, move both.
    ===================================================================== */
+/* THE PHONE'S BOTTOM NAV — hidden above the breakpoint, where the header still
+   carries its links. Declared here (outside the query) so the desktop rule is
+   explicit rather than an absence. */
+.cid-botnav { display: none; }
+
 @media (max-width: 860px) {
+  /* ---- THE BOTTOM NAV, and the header nav it replaces ------------------ */
+  /* Not both. Two navs on a 390px screen is two answers to "where am I". */
+  .cid-nav { display: none; }
+
+  .cid-botnav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 20;               /* see the stacking note on the sheet below */
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--cid-ink-700);
+    /* Gold on a hairline, which is the one geometry where it is decoration by
+       construction rather than by discipline. It marks the boundary; it does
+       not mark which item you are on. */
+    border-top: 1px solid var(--cid-gold-line);
+    /* THE HOME INDICATOR IS REAL. Without this the bar's lower rows sit under
+       it and the outermost items lose part of their target. */
+    padding-bottom: env(safe-area-inset-bottom);
+    min-height: var(--cid-botnav-h);
+  }
+  .cid-botnav-item {
+    display: grid;
+    place-items: center;
+    min-height: var(--cid-target);   /* 44px, and the grid row is taller */
+    padding: 0 var(--cid-space-3);
+    font: var(--cid-label);
+    letter-spacing: var(--cid-track-nav);
+    color: var(--cid-text-3);
+    border-bottom: none;             /* a hit area carries no text decoration */
+    text-align: center;
+  }
+  /* ACTIVE = WEIGHT + FULL INK. Never a colour: the palette law applies to
+     navigation state exactly as it applies to a verified fact. */
+  .cid-botnav-item[data-active] {
+    color: var(--cid-text);
+    font-weight: 700;
+  }
+
   /* ---- LANDING MAP: panel becomes a bottom sheet over a full-bleed map */
   .cid-mapgrid {
     grid-template-columns: 1fr;
@@ -297,9 +341,17 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   /* Both children occupy the single cell; the sheet sits above the map. */
   .cid-mapgrid > * { grid-area: 1 / 1; }
 
+  /* THE STACKING, WHICH IS THE NAMED LANDMINE.
+     The sheet and its handle must sit ABOVE the bottom nav, and the handle must
+     stay tappable with the nav present. This has bitten once already: the debug
+     badge landed exactly on the handle and swallowed the tap, and the probe
+     reported a timeout against a layout that was correct. A fixed bar at the
+     bottom of the viewport is the same hazard wearing different clothes, so the
+     sheet is lifted above it (z-index 30 > the nav's 20) and its foot is padded
+     by the full nav clearance so the handle can never be underneath the bar. */
   .cid-mappanel {
     position: relative;
-    z-index: 3;
+    z-index: 30;
     align-self: end;
     width: 100%;
     max-height: var(--cid-sheet-max);
@@ -314,6 +366,16 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   .cid-mappanel[data-open="false"] {
     max-height: var(--cid-sheet-peek);
     overflow: hidden;
+  }
+  /* HANDLE-ONLY ENTRY — 2026-08-09 ruling. The panel collapses to the handle's
+     own target height so the corridor fit can afford the pixels the summary
+     line would otherwise take. Driven by a data attribute the MAP sets from a
+     measurement, not by a media query: the trigger is "the fit cannot clear
+     MASS_ZOOM with the full peek", which no CSS query can ask. */
+  .cid-mappanel[data-peek="handle"] {
+    max-height: var(--cid-target);
+    padding-top: 0;
+    padding-bottom: 0;
   }
   /* The handle is the whole affordance: no drag gesture, no double-tap.
      A button, because it is one. */
@@ -422,6 +484,41 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
      under both, which is what makes an installed app look installed — and also
      what puts the bottom of the sheet under the home indicator unless the inset
      is added back. */
-  .cid-mappanel { padding-bottom: calc(var(--cid-space-6) + env(safe-area-inset-bottom)); }
-  .cid-page { padding-bottom: calc(var(--cid-space-9) + env(safe-area-inset-bottom)); }
+  /* CLEARANCE. `--cid-botnav-clear` already carries the safe-area inset, so it
+     replaces the bare `env()` these two used to add — adding both would reserve
+     the indicator row twice and leave a visible gap above the bar. Every page
+     that ends in content ends in one of these two rules. */
+  /* THE SHEET ENDS WHERE THE BAR BEGINS. Being ABOVE the nav in z-order made
+     the handle tappable, and the probe confirmed that — but the sheet still
+     ran 29px PAST the nav's top edge and simply covered it. Tappable and
+     correct are different things: a sheet drawn over the nav hides two of its
+     four destinations. `margin-bottom` shortens the panel instead, so the two
+     never share pixels; the padding is then just ordinary inner space. */
+  .cid-mappanel {
+    margin-bottom: var(--cid-botnav-clear);
+    padding-bottom: var(--cid-space-6);
+  }
+  /* CLEARANCE AS A SPACER, BECAUSE PADDING CANNOT WIN HERE.
+     Every `<main className="cid-page">` sets a `padding` SHORTHAND inline, and
+     an inline style beats any class rule — so this block's padding-bottom has
+     NEVER applied on any page, which means the `env(safe-area-inset-bottom)` it
+     used to carry never applied either. That was live and invisible until the
+     nav gave it something to fail against.
+     Rewriting those eleven inline paddings would also restore the class's
+     left/right gutter that each of them zeroes, which is a DESKTOP change and
+     out of scope for a mobile ruling. A pseudo-element is a CHILD: it stacks
+     below the last content inside the same box, inline padding cannot reach it,
+     and it exists only inside this query. The map page does not use .cid-page —
+     its sheet clears the bar by margin instead. */
+  .cid-page::after {
+    content: '';
+    display: block;
+    height: var(--cid-botnav-clear);
+  }
+  /* The map fills its cell rather than the page, so the sheet's own foot is
+     what clears the bar there — but the ATTRIBUTION is pinned to the canvas and
+     would sit behind it. */
+  .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right {
+    margin-bottom: var(--cid-botnav-clear);
+  }
 }

@@ -14,6 +14,12 @@
   --cid-page-max: 1240px;
   --cid-gutter: 20px;
   --cid-header-h: 64px;
+  /* THE PHONE'S BOTTOM NAV. The bar itself is 56px; --cid-botnav-clear is what
+     every page reserves at its foot, and it ADDS the safe-area inset because
+     `viewportFit: 'cover'` draws under the home indicator. Any page that ends
+     in content rather than in this token ends underneath the bar. */
+  --cid-botnav-h: 56px;
+  --cid-botnav-clear: calc(var(--cid-botnav-h) + env(safe-area-inset-bottom));
   --cid-panel-w: 302px;       /* map filter panel */
   --cid-measure: 760px;       /* prose max-width */
 

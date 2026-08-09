@@ -18,6 +18,21 @@ export const metadata: Metadata = {
  * figures at all. It is the same family as "not yet checked on site" and the
  * confirmed-absence blocks: an honest absence beats a confident wrong answer.
  * There is deliberately nothing here to read except that sentence.
+ *
+ * IT CARRIES THE BOTTOM NAV, and that is deliberate rather than incidental.
+ * The bar lives in the root layout, so it is in this page's precached HTML.
+ * Tapping any item while offline re-requests a page, the worker fails to reach
+ * the network, and this same screen comes back — which is the honest outcome
+ * and the one the app should give: the nav still LOOKS like the app, and every
+ * destination reports the same true thing rather than a stale cached copy.
+ * Hiding the bar here would have been the worse call. It would make the app
+ * look broken at exactly the moment it is behaving correctly, and it would
+ * strand a reader on a screen with no way back to the map when connectivity
+ * returns. No item shows as current, because /offline is not one of them.
+ *
+ * Clearance comes from `.cid-page`, which reserves --cid-botnav-clear at the
+ * phone breakpoint — the last paragraph here is the thing that would otherwise
+ * sit under the bar.
  */
 export default function Offline() {
   return (

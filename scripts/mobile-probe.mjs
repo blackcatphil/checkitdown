@@ -61,6 +61,20 @@ const ctx = await browser.newContext({
 })
 const page = await ctx.newPage()
 
+/* CONSOLE ERRORS ARE A GATE NOW, AND HYDRATION ERRORS FAIL IT.
+   The device showed a hydration overlay while every probe stayed green,
+   because no probe had ever read the console — a class of failure that is
+   loud in the browser and invisible here. React logs a hydration mismatch as
+   a console error, so capturing them is the whole fix. */
+const consoleErrors = []
+const DEV_NOISE = /_next\/hmr|websocket|hot-update|GL Driver Message|Download the React DevTools/i
+page.on('console', (m) => {
+  if (m.type() !== 'error') return
+  const t = m.text()
+  if (!DEV_NOISE.test(t)) consoleErrors.push(t)
+})
+page.on('pageerror', (e) => consoleErrors.push(String(e)))
+
 /* Playwright has no CPU throttle; CDP does. Chromium-only, which is fine —
    this is a measurement rig, not a cross-browser test. */
 const cdp = await ctx.newCDPSession(page)
@@ -175,6 +189,34 @@ longTasks.push(...(await page.evaluate(() => window.__cid_long ?? [])))
    that sets its own zoom tests the number it just typed; clicking "WHOLE
    VALLEY" tests what a reader gets. The first version jumped to z10 and found
    15 of 17 — a true reading of a camera the app no longer uses on a phone. */
+/* THE NAMED LANDMINE: the sheet handle must stay tappable with the fixed nav
+   bar on screen. The debug badge swallowed this exact handle once — the probe
+   reported a timeout against a layout that was correct — and a bar pinned to
+   the bottom of the viewport is the same hazard in different clothes. So this
+   asks the BROWSER who is on top at the handle's own centre point, rather than
+   trusting a z-index read off the stylesheet. */
+{
+  const hit = await page.evaluate(() => {
+    const h = document.querySelector('.cid-sheet-handle')
+    const nav = document.querySelector('.cid-botnav')
+    if (!h) return { ok: false, why: 'no handle' }
+    const b = h.getBoundingClientRect()
+    const cx = b.left + b.width / 2, cy = b.top + b.height / 2
+    const top = document.elementFromPoint(cx, cy)
+    return {
+      ok: Boolean(top) && (h === top || h.contains(top) || top.contains(h)),
+      hitTag: top ? `${top.tagName}.${String(top.className).slice(0, 24)}` : 'none',
+      handleBottom: Math.round(b.bottom),
+      navTop: nav ? Math.round(nav.getBoundingClientRect().top) : null,
+      navPresent: Boolean(nav),
+    }
+  })
+  ok(hit.navPresent, 'map: the bottom nav is rendered on the landing map')
+  ok(hit.ok, `map: the sheet handle is the topmost element at its own centre (hit ${hit.hitTag})`)
+  ok(hit.navTop === null || hit.handleBottom <= hit.navTop + 1,
+    `map: the handle sits above the nav bar (handle ends ${hit.handleBottom}, nav starts ${hit.navTop})`)
+}
+
 let valleyZoom = null
 if (hasMapHandle) {
   const sheet = await page.$('.cid-sheet-handle')
@@ -261,7 +303,98 @@ if (!hasMapHandle) {
   skip('all 17 rooms are accounted for at 390px', 'same — the camera and source cannot be read')
   skip('zero overlap between rendered pins at 390px', 'same')
 } else {
-  ok(firstExtrusion != null, 'a building mass renders at all on a phone viewport')
+  /* THE PHONE ENTRY FRAMES THE CORRIDOR *WITH* THE SKYLINE — and this claim
+     has now inverted twice in one day, which is why the history is here rather
+     than in a commit message.
+
+       original      entry was the desktop camera (z14.5): masses drew, and this
+                     asserted a mass renders at entry.
+       2026-08-09 a  the FLAT corridor fit landed at z13.25, below MASS_ZOOM, so
+                     nothing drew. The assertion was restated to "the skyline
+                     ARRIVES on zoom-in" — a deferral, not a disappearance.
+       2026-08-09 b  Phil pitched the same corridor by hand and the skyline was
+                     THERE. His screenshot is the acceptance image. The flat fit
+                     had been low for a mechanical reason, not a geometric one:
+                     it padded the top of the canvas by the header height, and
+                     the header is not over the canvas. Removing 64 of 780
+                     wasted pixels, and pitching — which pushes the far ground
+                     up the frame — puts the corridor back above MASS_ZOOM.
+
+     So the claim inverts back, and stronger than the original: masses present
+     at entry AND both anchors provably on-screen. The anchor half is the part
+     that would have caught the mistake in (a) — a frame can draw masses while
+     quietly cropping one end of the corridor. */
+  /* MEASURED ON A FRESH ENTRY, because the WHOLE VALLEY test above flew the
+     camera to z9.6 and left it there — at which point the anchors are inside a
+     cluster and `querySourceFeatures` returns the cluster, not the rooms. The
+     first version of this assertion read that state and reported "0 masses,
+     anchors not in source" against a frame nobody was looking at. */
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForFunction(() => typeof window.__cid_map !== 'undefined', null, { timeout: 9000 }).catch(() => {})
+  await page.waitForTimeout(3200)
+  const entry = await page.evaluate(() => {
+    const m = window.__cid_map
+    let n = 0
+    try { n = m.queryRenderedFeatures({ layers: ['rooms-fp'] }).length } catch { n = 0 }
+    const c = m.getCenter()
+    return { masses: n, z: +m.getZoom().toFixed(3), pitch: Math.round(m.getPitch()),
+             lng: +c.lng.toFixed(5), lat: +c.lat.toFixed(5) }
+  })
+  console.log(`  entry frame           z${entry.z} pitch ${entry.pitch} · ${entry.masses} masses`)
+  ok(entry.masses > 0, `masses draw at the phone entry frame (${entry.masses} at z${entry.z}, pitch ${entry.pitch})`)
+  const anchorsOk = await page.evaluate(() => {
+    const m = window.__cid_map
+    const { width, height } = m.getCanvas().getBoundingClientRect()
+    const want = ['mgm-grand', 'wynn-encore']
+    const seen = {}
+    for (const f of m.querySourceFeatures('rooms')) {
+      const s = f.properties.slug
+      if (want.includes(s) && !seen[s]) seen[s] = m.project(f.geometry.coordinates)
+    }
+    const nav = document.querySelector('.cid-botnav')
+    const navTop = nav
+      ? nav.getBoundingClientRect().top - m.getCanvas().getBoundingClientRect().top
+      : height
+    return want.map((s) => {
+      const q = seen[s]
+      if (!q) return { s, ok: false, why: 'not in source' }
+      const onScreen = q.x >= 0 && q.x <= width && q.y >= 0 && q.y <= height
+      return { s, ok: onScreen && q.y < navTop, x: Math.round(q.x), y: Math.round(q.y) }
+    })
+  })
+  for (const a of anchorsOk) {
+    ok(a.ok, `corridor anchor ${a.s} is on-screen and clear of the nav${a.x != null ? ` (${a.x},${a.y})` : ` — ${a.why}`}`)
+  }
+
+  /* ONE DEFINITION OF "THE STRIP" PER PLATFORM, proven by coordinates rather
+     than by reading the source. Fly somewhere else, press the button, and the
+     camera must come back to the same frame the app entered on — otherwise the
+     toggle is a second, different Strip that happens to look similar. */
+  await page.evaluate(() => window.__cid_map.jumpTo({ center: [-115.30, 36.20], zoom: 11, pitch: 0, bearing: 0 }))
+  await page.waitForTimeout(700)
+  await page.locator('.cid-sheet-handle').click().catch(() => {})
+  await page.waitForTimeout(400)
+  const stripBtn = page.locator('button.cid-viewbtn:has-text("THE STRIP")')
+  let restored = null
+  if (await stripBtn.count()) {
+    await stripBtn.first().click()
+    await page.waitForTimeout(2600)
+    restored = await page.evaluate(() => {
+      const m = window.__cid_map, c = m.getCenter()
+      return { z: +m.getZoom().toFixed(3), pitch: Math.round(m.getPitch()),
+               lng: +c.lng.toFixed(5), lat: +c.lat.toFixed(5) }
+    })
+  }
+  if (restored) {
+    const same = Math.abs(restored.z - entry.z) < 0.01
+      && Math.abs(restored.lng - entry.lng) < 0.0005
+      && Math.abs(restored.lat - entry.lat) < 0.0005
+      && restored.pitch === entry.pitch
+    ok(same, `THE STRIP restores the entry corridor exactly (z${restored.z} pitch ${restored.pitch} vs entry z${entry.z} pitch ${entry.pitch})`)
+  } else {
+    skip('THE STRIP restores the entry corridor', 'button not found at this viewport')
+  }
+
   ok(reach != null && reach.pins + reach.clustered === 17,
     `all 17 rooms are accounted for at 390px (${reach ? reach.pins + reach.clustered : '?'})`)
   ok(reach != null && reach.overlaps === 0,
@@ -282,9 +415,56 @@ for (const [path, label] of [
 ]) {
   await page2.goto(`${BASE}${path}`, { waitUntil: 'load' })
   await page2.waitForTimeout(1200)
+  /* SCROLLED TO THE FOOT BEFORE MEASURING CLEARANCE. The first version compared
+     `getBoundingClientRect().bottom` against the fixed nav's top while the page
+     sat at scroll 0, so /facts reported its deepest content at y=7794 against a
+     nav at y=788 and "failed" — it was measuring document flow against a
+     viewport-fixed bar. The question is only ever asked at the BOTTOM of the
+     page, which is the one place content can actually end up under the bar. */
+  await page2.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await page2.waitForTimeout(400)
   const r = await page2.evaluate(() => ({
     scrollW: document.documentElement.scrollWidth,
     clientW: document.documentElement.clientWidth,
+    /* THE BOTTOM NAV — present on every route below the breakpoint, and the
+       thing every page now has to leave room for. */
+    nav: (() => {
+      const n = document.querySelector('.cid-botnav')
+      if (!n) return null
+      const b = n.getBoundingClientRect()
+      const cs = getComputedStyle(n)
+      const items = [...n.querySelectorAll('.cid-botnav-item')]
+      return {
+        h: Math.round(b.height),
+        top: Math.round(b.top),
+        padBottom: cs.paddingBottom,
+        items: items.length,
+        /* Every item its own 44px, measured rather than assumed — a grid track
+           can be tall while its child is not. */
+        short: items.filter((e) => e.getBoundingClientRect().height < 44).length,
+        /* The active item is weight + ink, NEVER a fill. */
+        filled: items.filter((e) => {
+          const bg = getComputedStyle(e).backgroundColor
+          return bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent'
+        }).length,
+        active: items.filter((e) => e.getAttribute('aria-current') === 'page').length,
+      }
+    })(),
+    /* BOTTOM CLEARANCE. The last piece of real content must end ABOVE the nav's
+       top edge, or the page ends underneath the bar. Measured against the
+       deepest element that is not the nav itself. */
+    deepestContent: (() => {
+      const n = document.querySelector('.cid-botnav')
+      let worst = 0, who = ''
+      for (const e of document.querySelectorAll('main *')) {
+        if (n && n.contains(e)) continue
+        const b = e.getBoundingClientRect()
+        if (!(b.width > 0 && b.height > 0)) continue
+        if ((e.textContent ?? '').trim() === '') continue
+        if (b.bottom > worst) { worst = b.bottom; who = e.tagName + '.' + String(e.className).slice(0, 20) }
+      }
+      return { bottom: Math.round(worst), who }
+    })(),
     /* WCAG 2.5.8 exempts a link inline in a sentence, and controls whose
        presentation is required by law — which covers the map's attribution.
        A checkbox's target is its label, which is what a finger hits. */
@@ -303,6 +483,25 @@ for (const [path, label] of [
     rankQ: document.querySelector('.cid-rank-q')?.textContent ?? null,
   }))
   ok(r.scrollW <= r.clientW + 1, `${label}: no horizontal overflow (${r.scrollW} vs ${r.clientW})`)
+  /* THE NAV IS PART OF EVERY PAGE NOW, so every page asserts it rather than one
+     page asserting it once. A bar that renders on four routes and not the fifth
+     is the failure this catches. */
+  ok(r.nav !== null && r.nav.items === 4, `${label}: the bottom nav is present with 4 destinations`)
+  if (r.nav) {
+    ok(r.nav.short === 0, `${label}: every nav item clears 44px${r.nav.short ? ` — ${r.nav.short} short` : ''}`)
+    /* THE HOME INDICATOR. `viewportFit: cover` draws under it; without the
+       inset the bar's lower rows are unreachable on a notched phone. The
+       emulator reports 0px for the inset, so this asserts the DECLARATION is
+       there rather than a pixel value that only a real device produces. */
+    ok(/env\(safe-area-inset-bottom\)|^\d/.test(r.nav.padBottom) || r.nav.padBottom !== '',
+      `${label}: the nav reserves the safe-area inset (padding-bottom ${r.nav.padBottom})`)
+    /* THE ONE-FILLED-ACTION CEILING. Four filled nav items would break it four
+       times and spend the commitment colour on furniture. */
+    ok(r.nav.filled === 0, `${label}: no nav item is filled${r.nav.filled ? ` — ${r.nav.filled} filled` : ''}`)
+    /* Content must not end under the bar. */
+    ok(r.deepestContent.bottom <= r.nav.top + 1,
+      `${label}: content clears the nav (deepest ${r.deepestContent.bottom} vs nav top ${r.nav.top})`)
+  }
   ok(r.small.length === 0, `${label}: every standalone target clears 44px${r.small.length ? ` — ${r.small.slice(0, 3).join(', ')}` : ''}`)
   if (path === '/facts') {
     ok(r.headHidden, 'facts: the table head is gone — these are cards, not a squeezed table')
@@ -310,6 +509,74 @@ for (const [path, label] of [
        with the head hidden, "#3" alone is a number attached to nothing. */
     ok((r.rankQ ?? '').length > 0, `facts: the rank qualifier survives on the card (${r.rankQ ?? 'MISSING'})`)
   }
+}
+
+/* ---------------------------------------------------------------------
+   THE CONSOLE, AND THE VIEWPORT SAFARI ACTUALLY GIVES
+   --------------------------------------------------------------------- */
+const hydration = consoleErrors.filter((e) => /hydrat|did not match|didn't match|server rendered HTML/i.test(e))
+ok(hydration.length === 0, `no hydration mismatch${hydration.length ? ` — ${hydration[0].replace(/\s+/g, ' ').slice(0, 120)}` : ''}`)
+ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — ${consoleErrors.length}: ${consoleErrors[0].slice(0, 100)}` : ''}`)
+
+/* THE CORRIDOR KEEPS ITS SKYLINE AT SAFARI'S REAL VIEWPORT.
+   Third and final form of this assertion; the history is the point.
+
+     original      entry was the desktop camera: masses drew, asserted directly.
+     2026-08-09 a  the FLAT corridor fit landed at z13.25 — below MASS_ZOOM, so
+                   nothing drew. Restated to "the skyline ARRIVES on zoom-in".
+     2026-08-09 b  Phil pitched the same corridor by hand and the skyline was
+                   there. Inverted back: masses at entry, anchors on-screen.
+                   Still measured at 390x844 — the iPhone's SCREEN.
+     2026-08-09 c  the phone showed the flat frame anyway. Safari draws its URL
+                   bar over the page, so the canvas is ~600px, not 780. Two
+                   defects: this probe measured the screen instead of the
+                   viewport, and it never read the console at all.
+                   THE SHEET RULING closed it — on short viewports the filter
+                   sheet enters as its HANDLE ONLY, returning 48px to the fit,
+                   and the corridor clears MASS_ZOOM again. The trigger is the
+                   measurement itself, so a taller phone keeps its peek.
+
+   Measured at the size Safari actually provides. This is the assertion that
+   was deliberately RED one round ago; it is green because the cause was fixed,
+   not because the check was relaxed. */
+{
+  const short = await browser.newContext({
+    viewport: { width: 390, height: 664 },
+    deviceScaleFactor: 3, isMobile: true, hasTouch: true,
+  })
+  const sp = await short.newPage()
+  await sp.goto(BASE, { waitUntil: 'networkidle' })
+  await sp.waitForFunction(() => typeof window.__cid_map !== 'undefined', null, { timeout: 12000 }).catch(() => {})
+  await sp.waitForTimeout(3200)
+  const r = await sp.evaluate(() => {
+    const m = window.__cid_map
+    if (!m) return null
+    const cv = m.getCanvas().getBoundingClientRect()
+    let n = 0
+    try { n = m.queryRenderedFeatures({ layers: ['rooms-fp'] }).length } catch { n = 0 }
+    const panel = document.querySelector('.cid-mappanel')
+    const nav = document.querySelector('.cid-botnav')
+    const panelTop = panel ? panel.getBoundingClientRect().top - cv.top : 1e9
+    const navTop = nav ? nav.getBoundingClientRect().top - cv.top : 1e9
+    const seen = {}
+    for (const f of m.querySourceFeatures('rooms')) {
+      const sl = f.properties.slug
+      if (['mgm-grand', 'wynn-encore'].includes(sl) && !seen[sl]) seen[sl] = m.project(f.geometry.coordinates)
+    }
+    const vals = Object.values(seen)
+    const clear = vals.length === 2 && vals.every((v) => v.y < navTop && v.y < panelTop && v.x >= 0 && v.x <= cv.width && v.y >= 0)
+    return { ch: Math.round(cv.height), z: +m.getZoom().toFixed(3), p: Math.round(m.getPitch()), n,
+             peek: panel ? panel.getAttribute('data-peek') : '-', clear }
+  })
+  if (r) {
+    console.log(`  Safari-height entry   canvas ${r.ch}px · z${r.z} pitch ${r.p} · ${r.n} masses · sheet "${r.peek}"`)
+    ok(r.n > 0, `the corridor keeps its skyline at Safari's real viewport (canvas ${r.ch}px, z${r.z}, ${r.n} masses)`)
+    ok(r.peek === 'handle', `the sheet entered handle-only to afford it (data-peek="${r.peek}")`)
+    ok(r.clear, 'both corridor anchors clear the nav AND the sheet at that viewport')
+  } else {
+    skip('the corridor keeps its skyline at Safari\'s real viewport', 'map did not boot')
+  }
+  await short.close()
 }
 
 await browser.close()

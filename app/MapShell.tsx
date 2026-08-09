@@ -105,6 +105,18 @@ const VALLEY_Z = 10
 const VALLEY_Z_PHONE = 9.6
 const STRIP: [number, number] = [-115.1726, 36.1120]
 const STRIP_Z = 14.5
+
+/* THE CORRIDOR — the phone's definition of "the Strip". Ruled 2026-08-09.
+   A phone at the desktop camera showed FIVE of seventeen rooms. Rather than
+   pick a zoom number and hope, the frame is stated as the two rooms that must
+   both be in it and the camera is derived from them: MGM Grand at the south
+   end, Wynn/Encore at the north.
+   THE COORDINATES ARE READ FROM THE ROOM DATA, never retyped here. A lat/lng
+   typed into a constant is the plausible-wrong-pointer failure with a decimal
+   point: it looks right, it is in Las Vegas, and it is silently a hundred
+   metres off the building. The same rule that rejected "Venetian" resolving to
+   the Sphere applies to a hardcoded anchor. */
+const CORRIDOR_ANCHORS = ['mgm-grand', 'wynn-encore'] as const
 const CLUSTER_RADIUS = 50
 const PITCH = 52
 /** Below this the camera flattens: the tile building layer carries no data
@@ -208,6 +220,53 @@ const riseBase = (p: number) => ['max', 0, ['-', ['*', ['get', 'height'], riseFa
 const FULL_HEIGHT = ['get', 'height'] as ExpressionSpecification
 const FULL_BASE = ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification
 
+/* =====================================================================
+   THE FLICKER A/B RIG — DEV ONLY, AND THE PHONE IS THE INSTRUMENT.
+   =====================================================================
+   The rooftop flicker cannot be reproduced in the test harness: headless
+   Chromium runs SwiftShader and reports DEPTH_BITS 24, and `isMobile` +
+   deviceScaleFactor emulate a VIEWPORT, not a GPU. The hypothesis is a 16-bit
+   depth buffer on a real handset, where `rooms-cap`'s top face and `rooms-fp`'s
+   top face — both at exactly ['get','height'], verified from the live style —
+   quantise to the same value and the comparison flips as the camera moves.
+
+   So the A/B moves to Phil's phone, and these two params drive it:
+
+     ?ring=off          hide the roof ring. Flicker gone => it is the ring.
+                        Flicker stays => the mechanism is NOT the ring, and
+                        nothing here should be "fixed".
+     ?ringlift=<m>      lift the ring by a trial epsilon in metres, breaking
+                        the coplanarity. The smallest value that kills it wins.
+
+   GATED TWICE, AND REFUSED SILENTLY. `NODE_ENV !== 'production'` is the hard
+   gate — a production build cannot honour these no matter what is in the URL,
+   and it fails quiet rather than logging, because a console warning on a
+   shipped page is itself a leak of the debug surface.
+
+   AN EPSILON HERE WOULD BE RENDERING PLUMBING, NOT A HEIGHT CLAIM. It must
+   never reach stored heights, `a2`, or anything a reader is shown. Nothing in
+   this block writes data; it only offsets what the GPU is asked to draw. */
+const DEV_ONLY = process.env.NODE_ENV !== 'production'
+
+function ringParams(): { hide: boolean; lift: number } {
+  if (!DEV_ONLY || typeof window === 'undefined') return { hide: false, lift: 0 }
+  const q = new URLSearchParams(window.location.search)
+  const lift = Number(q.get('ringlift'))
+  return {
+    hide: q.get('ring') === 'off',
+    /* Finite and positive only. A junk value is not an error worth surfacing;
+       it is simply not a trial. */
+    lift: Number.isFinite(lift) && lift > 0 ? lift : 0,
+  }
+}
+
+/** The cap's height/base, with any trial lift applied. Used at EVERY site that
+ *  paints the ring — the rise animation rewrites these on every frame, so a
+ *  lift applied in one place only would be erased 950ms after arrival, which
+ *  is exactly long enough to look like it worked. */
+const liftExpr = (e: ExpressionSpecification, lift: number) =>
+  (lift > 0 ? (['+', e, lift] as ExpressionSpecification) : e)
+
 
 /**
  * DIM BEATS HOVER, DELIBERATELY.
@@ -248,6 +307,10 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      first paint would answer a question nobody asked yet. Desktop ignores this
      entirely — the panel is always open above the breakpoint. */
   const [sheetOpen, setSheetOpen] = useState(false)
+  /* HANDLE-ONLY ENTRY. Set from the measured corridor fit (see stripCamera),
+     never from a device test. False on desktop and on any phone tall enough to
+     afford the full peek. */
+  const [handleOnly, setHandleOnly] = useState(false)
   const [season, setSeason] = useState(false)
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(STRIP_Z)
@@ -571,7 +634,10 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           },
         })
       }
-      if (EDGE === 'cap' || EDGE === 'both') {
+      /* ?ring=off — the A/B's control arm. The layer is NOT ADDED rather than
+         hidden, so the comparison is against a map that never had a ring, with
+         no chance of a hidden layer still participating in a depth pass. */
+      if ((EDGE === 'cap' || EDGE === 'both') && !ringParams().hide) {
         /* A RING, NOT A SLAB. The first version extruded the whole footprint
            over the top 3 m, so its top face was the entire roof and every
            building wore a gold lid. This source is a donut — outer edge the real
@@ -589,9 +655,13 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
                its depth with everything else, because depth is a property of a
                lit mass and not a second signal. */
             'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.roofLit, T.massUnknown),
-            /* `max` keeps a short component from inverting base above height. */
-            'fill-extrusion-base': ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification,
-            'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
+            /* `max` keeps a short component from inverting base above height.
+               The trial lift (?ringlift) rides here too, so the ring is at its
+               test height from the first frame rather than only after the rise
+               settles — otherwise the arrival frames would be measuring the
+               unlifted geometry. */
+            'fill-extrusion-base': liftExpr(FULL_BASE, ringParams().lift),
+            'fill-extrusion-height': liftExpr(FULL_HEIGHT, ringParams().lift),
             'fill-extrusion-opacity': 0.95,
           },
         })
@@ -940,8 +1010,9 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
       wireRef.current?.setProgress(1)
       map.setPaintProperty('rooms-fp', 'fill-extrusion-height', FULL_HEIGHT)
       if (map.getLayer('rooms-cap')) {
-        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', FULL_HEIGHT)
-        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', FULL_BASE)
+        const { lift } = ringParams()
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', liftExpr(FULL_HEIGHT, lift))
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', liftExpr(FULL_BASE, lift))
       }
     }
     if (reduced()) {
@@ -962,8 +1033,9 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
       const p = 1 - (1 - t) ** 3
       map.setPaintProperty('rooms-fp', 'fill-extrusion-height', riseHeight(p))
       if (map.getLayer('rooms-cap')) {
-        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', riseHeight(p))
-        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', riseBase(p))
+        const { lift } = ringParams()
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-height', liftExpr(riseHeight(p), lift))
+        map.setPaintProperty('rooms-cap', 'fill-extrusion-base', liftExpr(riseBase(p), lift))
       }
       /* ONE progress value drives both. The shader recomputes the same stagger
          curve, so an edge is never drawn at a height its mass has not reached. */
@@ -1167,10 +1239,148 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      buttons — and an ambient orbit that keeps turning the camera after somebody
      asked for a specific view is the map arguing with them. */
   const stopDrift = useCallback(() => { lastActivity.current = Date.now() }, [])
+
+  /* ONE DEFINITION OF "THE STRIP" PER PLATFORM.
+     This is what the entry camera uses AND what the THE STRIP button restores,
+     so the button cannot drift into being a second, different Strip — which is
+     exactly what would have happened if the entry were a fitBounds and the
+     toggle stayed an easeTo to a hardcoded centre.
+     Desktop is untouched: same centre, same zoom, same pitch as before. */
+  const stripCamera = useCallback((map: InstanceType<typeof MLMap>) => {
+    const css = getComputedStyle(document.documentElement)
+    const px = (n: string, f: number) => {
+      const v = parseFloat(css.getPropertyValue(n))
+      return Number.isFinite(v) ? v : f
+    }
+    const phone = window.matchMedia(`(max-width: ${px('--cid-bp-phone', 860)}px)`).matches
+    if (!phone) return { center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18, handleOnly: false }
+
+    const anchors = rosterRef.current.filter((r) => (CORRIDOR_ANCHORS as readonly string[]).includes(r.slug))
+    /* Both or nothing. A fit over ONE anchor is a fit over a point, which
+       answers with maxZoom — a silently wrong frame that still looks like a
+       deliberate camera. */
+    if (anchors.length !== CORRIDOR_ANCHORS.length) {
+      return { center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18, handleOnly: false }
+    }
+    const pts = anchors.map((r) => [r.longitude, r.latitude] as [number, number])
+    const center: [number, number] = [
+      (pts[0][0] + pts[1][0]) / 2,
+      (pts[0][1] + pts[1][1]) / 2,
+    ]
+
+    /* THE SAFE BOX, IN CANVAS COORDINATES.
+       The header is NOT over the canvas — it is sticky above it, and the canvas
+       is already shortened by its height (390x780 inside an 844 viewport). The
+       first version padded the top by the header anyway and threw away 64 of
+       780 pixels, which is why the flat fit landed at z13.25 and drew no masses
+       at all. The chrome that genuinely overlays the canvas is the nav bar and
+       the collapsed sheet, both at the bottom.
+       CLEAR is a pin's own radius plus margin: an anchor centred exactly on the
+       padding line still has a 7px dot and a stroke outside it. */
+    const CLEAR = 24
+    const { width, height } = map.getCanvas().getBoundingClientRect()
+    const boxFor = (bottomChrome: number) => ({
+      x0: px('--cid-gutter', 20) + CLEAR,
+      x1: width - px('--cid-gutter', 20) - CLEAR,
+      y0: CLEAR,
+      y1: height - (px('--cid-botnav-h', 56) + bottomChrome + CLEAR),
+    })
+
+    /* DERIVED BY SEARCH, BECAUSE cameraForBounds CANNOT DO THIS.
+       It ignores a `pitch` option outright (measured: identical zoom with and
+       without), and it fits the ROTATED BOUNDING BOX rather than the two points
+       — at bearing -18 that is a bigger thing to fit, and it answered 13.399
+       where the corridor actually holds at 13.68.
+       So the test is the honest one: put the camera somewhere and ask the map
+       where the two anchors land. Binary search the highest zoom at which both
+       are still inside the box. 14 steps over a 3-zoom range resolves to under
+       0.0002, and every jumpTo here is synchronous — nothing paints until the
+       final camera, so this costs a few transform updates and no frames. */
+    const bestZoom = (box: ReturnType<typeof boxFor>, pitch: number) => {
+      const holds = (z: number) => {
+        map.jumpTo({ center, zoom: z, pitch, bearing: -18 })
+        return pts.every((c) => {
+          const q = map.project(c)
+          return q.x >= box.x0 && q.x <= box.x1 && q.y >= box.y0 && q.y <= box.y1
+        })
+      }
+      let lo = 11
+      let hi = 17
+      for (let i = 0; i < 14; i++) {
+        const mid = (lo + hi) / 2
+        if (holds(mid)) lo = mid
+        else hi = mid
+      }
+      return lo
+    }
+
+    /* THE SHEET RULING, 2026-08-09 — AND THE TRIGGER IS THE MEASUREMENT.
+       On a real iPhone Safari draws its URL bar over the page, so the canvas is
+       ~600px rather than the 780 the device's own 844 would suggest. Reserving
+       the full collapsed peek (92) out of 600 dropped the corridor fit to
+       z13.397 — below MASS_ZOOM — and the entry flattened to a pins-only frame
+       with no skyline. That is what Phil saw, and the harness never did because
+       it measured the SCREEN size instead of the viewport.
+       So the sheet enters as its HANDLE ONLY when, and only when, the full peek
+       cannot be afforded. The condition is the measurement itself — fit it with
+       the peek reserved and ask whether the answer clears MASS_ZOOM — never a
+       device sniff and never a hardcoded height. A taller phone that fits with
+       the peek keeps the peek, and gets there by the same code path. */
+    const peekZoom = bestZoom(boxFor(px('--cid-sheet-peek', 92)), PITCH)
+    const handleOnly = peekZoom < MASS_ZOOM
+    let lo = handleOnly ? bestZoom(boxFor(px('--cid-target', 44)), PITCH) : peekZoom
+
+    /* SEARCH AT THE PITCH WE WILL ACTUALLY RENDER.
+       The camera flattens below MIN_3D_ZOOM, and a pitched projection is not a
+       flat one — so a frame searched at 52 and rendered at 0 puts the anchors
+       somewhere the search never tested. On a 375x635 phone that is exactly
+       what happened: the fit "held" both anchors at pitch 52, then rendered
+       flat with MGM Grand behind the sheet. If the answer is going to be flat,
+       re-derive it flat. */
+    const willFlatten = lo < MIN_3D_ZOOM
+    if (willFlatten) {
+      lo = bestZoom(boxFor(handleOnly ? px('--cid-target', 44) : px('--cid-sheet-peek', 92)), 0)
+    }
+    /* PITCH IS KEPT — it is what makes this frame work. Pitching pushes the far
+       ground up the screen, so a pitched camera holds the same two anchors at a
+       HIGHER zoom than a flat one, which is the whole reason the skyline draws
+       here and did not before. Below MIN_3D_ZOOM the camera still flattens;
+       that rule is untouched and nothing inflates to reach it. */
+    return { center, zoom: lo, pitch: willFlatten ? 0 : PITCH, bearing: -18, handleOnly }
+  }, [])
+
   const goStrip = useCallback(() => {
     stopDrift()
-    mapRef.current?.easeTo({ center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18 })
-  }, [stopDrift])
+    const map = mapRef.current
+    if (!map) return
+    const cam = stripCamera(map)
+    /* THE STRIP restores the frame AND the sheet state it was framed for —
+       otherwise pressing it on a short phone would put the camera back while
+       leaving the peek in place, which is the state the camera was derived to
+       avoid. */
+    setHandleOnly(cam.handleOnly)
+    map.easeTo(cam)
+  }, [stopDrift, stripCamera])
+
+  /* THE ENTRY FRAME, APPLIED ONCE THE MAP EXISTS.
+     `cameraForBounds` needs a live map (it reads the canvas size), and the
+     canvas size is the whole point — the nav bar changed it. So the map is
+     still CONSTRUCTED at the desktop camera and the phone frame is jumped to
+     on ready, before the buildings rise and before the drift starts. `jumpTo`,
+     not `easeTo`: an animated entry from a camera nobody asked for is a
+     second, wrong frame shown first.
+     On desktop `stripCamera` returns exactly the constructor's values, so this
+     runs and changes nothing — which is the point. One code path, one
+     definition, and the desktop case is a no-op rather than a branch. */
+  const framed = useRef(false)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready || framed.current) return
+    framed.current = true
+    const cam = stripCamera(map)
+    setHandleOnly(cam.handleOnly)
+    map.jumpTo(cam)
+  }, [ready, stripCamera])
   /* The breakpoint decides the zoom, read from the same token the CSS uses so
      the two cannot drift. */
   const valleyZoom = useCallback(() => {
@@ -1209,6 +1419,7 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
       <aside
         className="cid-mappanel"
         data-open={sheetOpen ? 'true' : 'false'}
+        data-peek={handleOnly && !sheetOpen ? 'handle' : 'full'}
         style={{
           background: 'var(--cid-ink-700)', borderRight: '1px solid var(--cid-line-2)',
           padding: 'var(--cid-space-6)', overflowY: 'auto',
@@ -1223,7 +1434,15 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           type="button"
           className="cid-sheet-handle"
           aria-expanded={sheetOpen}
-          onClick={() => setSheetOpen((v) => !v)}
+          onClick={() => {
+            /* THE FIRST TOUCH BUYS BACK THE PEEK, not the whole sheet. Entry is
+               handle-only because the corridor needed those pixels; once the
+               reader reaches for the sheet they have stopped looking at the
+               frame, so the summary line comes back and every touch after this
+               toggles open/closed exactly as it always did. */
+            if (handleOnly) { setHandleOnly(false); return }
+            setSheetOpen((v) => !v)
+          }}
         >
           <span>{filtering ? summaryLine(counts) : `${roster.length} ROOMS`}</span>
           <span aria-hidden>{sheetOpen ? 'CLOSE ▾' : 'FILTERS ▴'}</span>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 
+import { BottomNav } from './BottomNav'
 import { ServiceWorker } from './ServiceWorker'
 
 import { SITE_URL } from '@/lib/site'
@@ -60,6 +61,12 @@ export const viewport: Viewport = {
 }
 
 /* VERIFIED DAILY is the trust signal and never drops out of the header. */
+/* THE HEADER'S NAV IS DESKTOP-ONLY as of 2026-08-09 — `.cid-nav` is display:
+   none below the phone breakpoint and <BottomNav> carries these same four
+   destinations there. The list stays here rather than being lifted into a
+   shared constant: they are two different navs with two different label sets
+   ("JUST THE FACTS" has room here, "FACTS" is what fits a quarter of 390px),
+   and pretending otherwise would mean one of them wearing the wrong label. */
 function SiteHeader() {
   const nav = [
     ['MAP', '/'],
@@ -148,6 +155,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ServiceWorker />
         <SiteHeader />
         {children}
+        {/* Rendered on every route and hidden above the phone breakpoint by
+            CSS, not by JS. A JS-gated nav would flash on first paint and would
+            be absent from the server HTML that the contrast and overflow gates
+            read — the bar has to exist in the markup to be measurable. */}
+        <BottomNav />
       </body>
     </html>
   )
