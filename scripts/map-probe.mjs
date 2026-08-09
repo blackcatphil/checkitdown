@@ -604,9 +604,37 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
   await page2.waitForFunction(() => typeof window.__cid_map !== 'undefined', null, { timeout: 12000 }).catch(() => {})
   await page2.waitForTimeout(2500)
 
-  const shape = await page2.evaluate(() => {
+  /* THE DEFAULT, ASSERTED — measured, not assumed. All groups open is 2500px
+     of scrollHeight against 836px of desktop panel; collapsing the five stakes
+     sub-heads takes it to 1122px. The GAMES and amenity groups stay open
+     because they are short and coarse — the overflow was never theirs. */
+  const defaults = await page2.evaluate(() => {
+    const panel = document.querySelector('.cid-mappanel')
+    return [...panel.querySelectorAll('.cid-disclose')].map((b) => ({
+      label: b.querySelector('span')?.textContent.trim(),
+      open: b.getAttribute('aria-expanded') === 'true',
+      h: Math.round(b.getBoundingClientRect().height),
+    }))
+  })
+  pre(defaults.filter((d) => !d.open).length === 5,
+    `the five stakes sub-heads ship COLLAPSED (${defaults.filter((d) => !d.open).length} closed of ${defaults.length})`)
+  pre(defaults.every((d) => d.h >= 44),
+    `every disclosure head is a 44px target (min ${Math.min(...defaults.map((d) => d.h))}px)`)
+
+  const shape = await page2.evaluate(async () => {
     const root = document.querySelector('.cid-stakes')
     if (!root) return null
+    /* THE SUB-HEADS SHIP COLLAPSED (2026-08-09), so the boxes are not in the
+       DOM until they are opened — `{open && children}` unmounts them rather
+       than hiding them, which is what makes the checked state survive a
+       collapse: it lives in MapShell, not in the markup. These assertions are
+       about the CATALOGUE being complete, not about what a first-time reader
+       sees, so open every group before counting. The default state is asserted
+       separately, below. */
+    for (const btn of root.querySelectorAll('.cid-disclose')) {
+      if (btn.getAttribute('aria-expanded') === 'false') btn.click()
+    }
+    await new Promise((r) => setTimeout(r, 500))
     const heads = [...root.querySelectorAll('.cid-subhead')].map((e) => e.textContent.trim())
     const boxes = [...root.querySelectorAll('.cid-check')].map((b) => ({
       label: b.children[1]?.textContent.trim(),
@@ -640,6 +668,53 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
      the browser-level confirmation of the wiring does.
 
      The DOM-shape assertions above need no handle and keep running in CI. */
+  /* ═══ THE COLLAPSED-FILTER TRAP — 2026-08-09 ═══
+     A collapsed group whose boxes are still checked filters the map INVISIBLY:
+     a dimmed city and no visible reason for it, which is the same failure class
+     as a bare "1 room skipped". Two rules answer it and both are asserted here,
+     BY NAME, and both run in CI — neither needs the debug handle, because the
+     dim state is compared as PIXELS rather than read from feature-state. */
+  const trap = await page2.evaluate(async () => {
+    const panel = document.querySelector('.cid-mappanel')
+    const heads = [...panel.querySelectorAll('.cid-disclose')]
+    const nlh = heads.find((h) => /NO-LIMIT/.test(h.textContent))
+    if (!nlh) return { err: 'no NLH disclosure head' }
+    if (nlh.getAttribute('aria-expanded') === 'false') { nlh.click(); await new Promise((r) => setTimeout(r, 400)) }
+    /* Check two boxes inside it, so the group is genuinely filtering. */
+    const boxes = [...nlh.parentElement.querySelectorAll('.cid-check')].slice(0, 2)
+    for (const b of boxes) { b.click(); await new Promise((r) => setTimeout(r, 350)) }
+    await new Promise((r) => setTimeout(r, 900))
+    const canvas = document.querySelector('canvas')
+    const before = canvas.toDataURL('image/png')
+    const summaryBefore = panel.querySelector('.cid-sheet-handle')?.textContent ?? ''
+    /* Now collapse it WITH the checks active. */
+    nlh.click()
+    await new Promise((r) => setTimeout(r, 1100))
+    const after = canvas.toDataURL('image/png')
+    return {
+      expanded: nlh.getAttribute('aria-expanded'),
+      headText: nlh.textContent.trim(),
+      checkedCount: boxes.length,
+      dimUnchanged: before === after,
+      summaryBefore,
+      summaryAfter: panel.querySelector('.cid-sheet-handle')?.textContent ?? '',
+    }
+  })
+  if (trap.err) {
+    pre(false, `the collapsed-filter trap could not be exercised — ${trap.err}`)
+  } else {
+    pre(trap.expanded === 'false', `a group with active checks CAN be collapsed (aria-expanded=${trap.expanded})`)
+    /* RULE 1: COLLAPSING NEVER CLEARS A SELECTION. Compared as rendered pixels,
+       so this cannot pass by reading a variable that agrees with itself. */
+    pre(trap.dimUnchanged === true,
+      `THE TRAP, rule 1: collapsing a filtering group leaves the map's dim state byte-identical (${trap.dimUnchanged ? 'identical' : 'CHANGED — the collapse cleared a filter'})`)
+    /* RULE 2: THE COLLAPSED HEAD CARRIES ITS COUNT. */
+    pre(/\d+ selected/.test(trap.headText),
+      `THE TRAP, rule 2: the collapsed head reports its active count ("${trap.headText.replace(/\s+/g, ' ')}")`)
+    pre(new RegExp(`${trap.checkedCount} selected`).test(trap.headText),
+      `...and the count is the right one (${trap.checkedCount} checked)`)
+  }
+
   const hasHandle2 = await page2.evaluate(() => typeof window.__cid_map !== 'undefined')
   if (!hasHandle2) {
     skipped.push('THE COUNTER-EXAMPLE: ARIA must not match $1/2 NLH — needs NEXT_PUBLIC_MAP_DEBUG=1 (asserted unconditionally in lib/stakes-filter.test.mjs)')

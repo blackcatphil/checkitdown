@@ -15,7 +15,10 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { AmenityDef, FilterState } from '@/lib/amenity-filter'
-import { amenityGroups, amenityState, combineStates, summaryLine, tally } from '@/lib/amenity-filter'
+import { amenityGroups, GROUP_LABEL, amenityState, combineStates, summaryLine, tally } from '@/lib/amenity-filter'
+import { FilterGroup } from './FilterGroup'
+
+import { resolveOpen, toggleOpen } from '@/lib/filter-groups'
 import { applyGameFilter, visibleFilters } from '@/lib/game-filter'
 import { applyStakesFilter, comboCatalogue, VARIANT_LABEL, VARIANT_ORDER } from '@/lib/stakes-filter'
 import { applyPalette, type MapStyle } from '@/lib/map-style'
@@ -123,6 +126,7 @@ const STRIP_Z = 14.5
    metres off the building. The same rule that rejected "Venetian" resolving to
    the Sphere applies to a hardcoded anchor. */
 const CORRIDOR_ANCHORS = ['mgm-grand', 'wynn-encore'] as const
+
 const CLUSTER_RADIUS = 50
 const PITCH = 52
 /** Below this the camera flattens: the tile building layer carries no data
@@ -317,6 +321,40 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      never from a device test. False on desktop and on any phone tall enough to
      afford the full peek. */
   const [handleOnly, setHandleOnly] = useState(false)
+
+  /* COLLAPSE STATE IS UI CHROME, NOT TRUTH — and it is deliberately NOT in the
+     URL. The URL carries the compare set, and a shared link must not ship the
+     recipient somebody else's panel geometry: they asked which rooms, not which
+     drawers were open. Session-local, in component state, and gone on reload.
+
+     Only EXPLICIT choices live here. Everything else falls through to the
+     default below, so "the reader has not decided" and "the reader closed it"
+     stay different states — the same distinction the amenity three-state draws.
+
+     DEFAULTS, MEASURED. At 302px the panel is 2198px of scroll against 836px of
+     viewport, and STAKES is 1513 of that 2198 — 69% of the panel for the group
+     a reader visits to pick one variant. So the five variant sub-heads start
+     CLOSED and everything else starts OPEN: GAMES and the amenity groups are
+     178/66/66px, cheap to leave open, and they are the coarse first cut.
+     On the phone this also retires a nested scroller — the sheet scrolled and
+     the stakes group scrolled inside it. */
+  /* COLLAPSE STATE IS UI CHROME, NOT TRUTH — session-local, never in the URL.
+     A shared link carries what is being SHOWN, not how the panel was folded
+     while somebody looked at it: paste a filtered map to a friend and they
+     should see the same rooms, not the same scroll position. The resolver and
+     the measured default live in lib/filter-groups.ts, where they can be
+     asserted; see the trap notes in FilterGroup.tsx. */
+  const [userOpen, setUserOpen] = useState<Record<string, boolean>>({})
+  const groupOpen = useCallback(
+    (id: string, active: number) => resolveOpen(id, active, userOpen),
+    [userOpen])
+  /* THE TOGGLE READS THE RESOLVED STATE, not the default. A group auto-opened
+     by an active selection is open, so a click on it must close it — computing
+     "current" from the default alone would flip false->true and leave it
+     sitting there, a button that visibly does nothing. */
+  const toggleGroup = useCallback(
+    (id: string, active: number) => setUserOpen((m) => toggleOpen(id, active, m)),
+    [])
   const [season, setSeason] = useState(false)
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(STRIP_Z)
@@ -1513,7 +1551,13 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           <button type="button" onClick={goValley} className="cid-viewbtn">WHOLE VALLEY</button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
+        <FilterGroup
+          id="games"
+          label={GROUP_LABEL.games}
+          activeCount={visibleFilters(roster).filter(([k]) => checked.includes(k)).length}
+          open={groupOpen('games', visibleFilters(roster).filter(([k]) => checked.includes(k)).length)}
+          onToggle={toggleGroup}
+        >
           <span className="cid-label">GAMES</span>
           {visibleFilters(roster).map(([k, label]) => {
             const n = matches.filter((r) => r.games.includes(k)).length
@@ -1526,7 +1570,7 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
               </button>
             )
           })}
-        </div>
+        </FilterGroup>
 
         {/* ═══ STAKES, BY VARIANT — every (variant, stakes) actually spread.
             Ruled 2026-08-09: all 26 combos, five sub-heads, nothing merged.
@@ -1545,25 +1589,30 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
 
             The order is numeric, off big_blind / big_bet / spread_max, never
             off the label. ═══ */}
+        <FilterGroup
+          id="stakes"
+          label="STAKES"
+          activeCount={checked.filter((k) => k.includes('::')).length}
+          open={groupOpen('stakes', checked.filter((k) => k.includes('::')).length)}
+          onToggle={toggleGroup}
+        >
         <div className="cid-stakes" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-5)' }}>
-          <span className="cid-label">STAKES</span>
           {VARIANT_ORDER.map((v) => {
             const items = catalogue.filter((c) => c.variant === v)
             if (!items.length) return null
             return (
-              <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-3)' }}>
-                {/* A SUB-HEAD, not another eyebrow: the group above it already
-                    took the gold, and two gold headings in a column read as two
-                    groups rather than one group and its parts. */}
-                <span
-                  className="num cid-subhead"
-                  style={{
-                    font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)',
-                    color: 'var(--cid-text-3)',
-                  }}
-                >
-                  {VARIANT_LABEL[v]}
-                </span>
+              /* A SUB-HEAD, not another eyebrow: the group above it already took
+                 the gold, and two gold headings in a column read as two groups
+                 rather than one group and its parts. */
+              <FilterGroup
+                key={v}
+                id={`stakes:${v}`}
+                label={VARIANT_LABEL[v]}
+                head="sub"
+                activeCount={items.filter((c) => checked.includes(c.key)).length}
+                open={groupOpen(`stakes:${v}`, items.filter((c) => checked.includes(c.key)).length)}
+                onToggle={toggleGroup}
+              >
                 {items.map((c) => {
                   const on = checked.includes(c.key)
                   const n = matches.filter((r) => r.combos.includes(c.key)).length
@@ -1586,18 +1635,27 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
                     </button>
                   )
                 })}
-              </div>
+              </FilterGroup>
             )
           })}
         </div>
+        </FilterGroup>
 
         {/* AMENITY GROUPS — reopened 2026-08-07. A group appears only when a
             slug under it is answered for at least AMENITY_SHIP_FLOOR rooms, so
             this list grows out of the floor visits rather than out of an edit
             here. Today: PARKING and FOOD & DRINK, one checkbox each. */}
-        {groups.map((g) => (
-          <div key={g.grp} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
-            <span className="cid-label">{g.label}</span>
+        {groups.map((g) => {
+          const active = g.items.filter((d) => amenChecked.includes(d.slug)).length
+          return (
+          <FilterGroup
+            key={g.grp}
+            id={`amen:${g.grp}`}
+            label={g.label}
+            activeCount={active}
+            open={groupOpen(`amen:${g.grp}`, active)}
+            onToggle={toggleGroup}
+          >
             {g.items.map((d) => {
               const on = amenChecked.includes(d.slug)
               const n = roster.filter((r) => r.amenities[d.slug] === true).length
@@ -1614,8 +1672,9 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
                 </button>
               )
             })}
-          </div>
-        ))}
+          </FilterGroup>
+          )
+        })}
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--cid-space-4)', minHeight: 'var(--cid-target)', font: 'var(--cid-body)', color: 'var(--cid-text-3)', cursor: 'pointer' }}>
           <input type="checkbox" checked={season} onChange={(e) => setSeason(e.target.checked)} />

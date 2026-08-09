@@ -579,6 +579,63 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
   await short.close()
 }
 
+/* ═══ REACHABILITY WITH THE GROUPS COLLAPSED (2026-08-09) ═══
+   Collapsing was justified by a scroll measurement, so the claim it has to
+   answer is a scroll measurement: can a thumb actually GET to every group head
+   in the sheet, and does the last one clear the fixed nav once it is there?
+   The old failure this rebuilds against was a nested scroller — .cid-stakes
+   capped at 46vh INSIDE a scrolling sheet — where the inner list swallowed the
+   drag and the groups below it were reachable only by accident. */
+{
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 }, deviceScaleFactor: 3,
+    isMobile: true, hasTouch: true, reducedMotion: 'reduce',
+  })
+  const pg = await ctx.newPage()
+  await pg.goto(BASE, { waitUntil: 'networkidle' })
+  await pg.waitForTimeout(2500)
+  await pg.locator('.cid-sheet-handle').click().catch(() => {})
+  await pg.waitForTimeout(900)
+  const reachAll = await pg.evaluate(async () => {
+    const panel = document.querySelector('.cid-mappanel')
+    const nav = document.querySelector('.cid-botnav')
+    if (!panel) return null
+    const navTop = nav ? nav.getBoundingClientRect().top : window.innerHeight
+    const heads = [...panel.querySelectorAll('.cid-disclose')]
+    /* ONE SCROLLER, NOT TWO. Anything nested inside the panel that scrolls on
+       its own is the bug this replaced, so it is asserted absent rather than
+       assumed gone. */
+    const nested = [...panel.querySelectorAll('*')].filter((el) => {
+      const st = getComputedStyle(el)
+      return el.scrollHeight > el.clientHeight + 4
+        && /auto|scroll/.test(st.overflowY) && el !== panel
+    }).length
+    const unreachable = []
+    for (const h of heads) {
+      h.scrollIntoView({ block: 'center' })
+      await new Promise((r) => setTimeout(r, 60))
+      const b = h.getBoundingClientRect()
+      if (!(b.top >= 0 && b.bottom <= navTop && b.height >= 44)) {
+        unreachable.push(`${h.querySelector('span')?.textContent.trim()} (${Math.round(b.top)}..${Math.round(b.bottom)} vs nav ${Math.round(navTop)})`)
+      }
+    }
+    return { heads: heads.length, nested, unreachable,
+             collapsed: heads.filter((h) => h.getAttribute('aria-expanded') === 'false').length }
+  })
+  if (reachAll) {
+    console.log(`  filter groups         ${reachAll.heads} heads, ${reachAll.collapsed} collapsed by default · ${reachAll.nested} nested scrollers`)
+    ok(reachAll.unreachable.length === 0,
+      `every filter group head is reachable in the sheet with the defaults collapsed${reachAll.unreachable.length ? ` — ${reachAll.unreachable.join('; ')}` : ` (${reachAll.heads} heads, all clearing the nav)`}`)
+    ok(reachAll.nested === 0,
+      `the sheet is ONE scroller — no nested list swallows the drag (${reachAll.nested} found)`)
+    ok(reachAll.collapsed === 5,
+      `the five stakes sub-heads ship collapsed at 390px too — one rule, both platforms (${reachAll.collapsed})`)
+  } else {
+    skip('every filter group head is reachable in the sheet', 'panel not found')
+  }
+  await ctx.close()
+}
+
 await browser.close()
 console.log(`\n  ${failed} failed${skipped ? `, ${skipped} skipped` : ''}\n`)
 process.exit(failed ? 1 : 0)

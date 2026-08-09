@@ -53,9 +53,10 @@ jobs:
           # 119, audited 2026-08-09. Was 6 — a tripwire from when this suite WAS
           # six tests, left untouched while it grew to 119. A floor 113 below
           # reality does not catch a shrinking suite; it catches a deleted one,
+          # 126 on 2026-08-09: +7 for lib/filter-groups, the collapse resolver.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 119 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 119) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 126 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 126) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -218,9 +219,11 @@ jobs:
           # Bellagio control. They are not lost coverage: both run
           # unconditionally in lib/stakes-filter.test.mjs under test:unit.
           # Raise this number when assertions are added; never lower it to make
+          # 24 on 2026-08-09: +2 for the measured collapse default and the 44px
+          # targets, +4 for the invisible-filter trap (rules 1 and 2, by name).
           # a run pass.
-          [ "$n" -ge 18 ] \
-            || { echo "::error::only $n map assertions ran (expected >= 18)"; exit 1; }
+          [ "$n" -ge 24 ] \
+            || { echo "::error::only $n map assertions ran (expected >= 24)"; exit 1; }
           # The SKIPs must stay SKIPs. If these stop appearing without the floor
           # moving, the shipping build has grown a debug handle.
           s=$(grep -c '^  SKIP' /tmp/map.log || true)
@@ -267,9 +270,11 @@ jobs:
           # The 4 SKIPs read `window.__cid_map`, which exists only under
           # NEXT_PUBLIC_MAP_DEBUG=1; CI probes the SHIPPING configuration, so
           # they skip with a named reason and everything else runs in full.
+          # 46 on 2026-08-09: +3 for sheet reachability with the groups collapsed,
+          # including the one-scroller assertion that replaced the 46vh nest.
           # Raise this when assertions are added; never lower it to pass a run.
-          [ "$n" -ge 43 ] \
-            || { echo "::error::only $n mobile assertions ran (expected >= 43) — the suite shrank"; exit 1; }
+          [ "$n" -ge 46 ] \
+            || { echo "::error::only $n mobile assertions ran (expected >= 46) — the suite shrank"; exit 1; }
           # A skip must stay a skip. If these ever stop being skipped without
           # the floor moving, something changed configuration silently.
           s=$(grep -c '^  SKIP' /tmp/mobile.log || true)

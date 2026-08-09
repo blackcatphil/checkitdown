@@ -66,6 +66,45 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   border-bottom: 1px dotted var(--cid-unverified-rule);
 }
 
+/* THE DISCLOSURE HEAD — one control for every collapsible group in the panel.
+   A button, not a summary element and not a tap-anywhere div: `aria-expanded`
+   has to be real for a screen reader, the target has to clear 44px on desktop
+   too (the standing ruling), and keyboard operation comes free from the right
+   element rather than from handlers somebody has to remember. */
+.cid-disclose {
+  display: flex;
+  align-items: center;
+  gap: var(--cid-space-3);
+  width: 100%;
+  min-height: var(--cid-target);
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  /* A <button> resets `color` to `buttontext` — black — and every span inside
+     it inherits that. The stakes sub-heads had always taken their colour from
+     the panel, so wrapping them in a real button silently dropped them to
+     1.18:1 on ink. Caught by the palette probe, fixed at the button: an element
+     chosen for its SEMANTICS has no business restyling the text it wraps. */
+  color: inherit;
+}
+.cid-disclose:hover .cid-disclose-mark { color: var(--cid-accent-300); }
+.cid-disclose:focus-visible { outline: 2px solid var(--cid-accent-300); outline-offset: 2px; }
+/* The active count on a COLLAPSED head. Not a colour claim — it reads at
+   --cid-text-3 like any other meta, because "2 selected" is a fact about the
+   panel and the palette law reserves hue for nothing at all. */
+.cid-disclose-count {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-text-3);
+}
+.cid-disclose-mark {
+  margin-left: auto;
+  font: var(--cid-tag);
+  color: var(--cid-dim);
+}
+
 /* Every fr track is minmax(0,…) — see --cid-table-cols. Without it one long
    room name puts a horizontal scrollbar on the page. */
 .cid-trow {
@@ -367,17 +406,14 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     max-height: var(--cid-sheet-peek);
     overflow: hidden;
   }
-  /* THE STAKES GROUP SCROLLS WITHIN THE SHEET, rather than making the sheet
-     taller. 26 checkboxes across five sub-heads is more than a phone sheet can
-     show at once, and a sheet that grows to fit them would cover the map it is
-     filtering. The panel already scrolls; this caps the one group that can run
-     long so the amenity groups below it stay reachable without a long scroll
-     past every stakes level in the city. */
-  .cid-stakes {
-    max-height: 46vh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
+  /* THE NESTED SCROLL IS GONE — 2026-08-09, superseded by collapsible groups.
+     `.cid-stakes` was capped at 46vh with its own scroller because 26
+     checkboxes could not fit a phone sheet. That made the sheet scroll AND the
+     group inside it scroll, which is two scrollbars competing for one flick.
+     With the five variant sub-heads collapsed by default the group is five
+     heads tall, so the sheet's own scroll is enough and the inner one can go.
+     Measured: the group was 1513px open; collapsed it is the height of its
+     heads. */
 
   /* HANDLE-ONLY ENTRY — 2026-08-09 ruling. The panel collapses to the handle's
      own target height so the corridor fit can afford the pixels the summary
