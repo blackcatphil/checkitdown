@@ -91,11 +91,19 @@ function Cell({
   if (value == null) {
     /* On a CHECKED room a dash means the room does not publish it — not that we
        skipped it. Saying "not yet checked" there reports a completed check as a
-       gap, the same conflation the exclusion buckets fix. */
+       gap, the same conflation the exclusion buckets fix.
+
+       THE COLOUR: --cid-disabled is documented "non-text markers ONLY" and this
+       dash is TEXT — it carries a claim ("we have not checked"), so it has to be
+       legible. At .38 paper it measured 3.31:1, and 3.36:1 BEFORE the palette
+       swap: a pre-existing AA failure no audit had ever looked at, surfaced by
+       the new contrast gate rather than caused by the new palette. It now takes
+       the row's quietest legible step, which recedes with a dimmed row and
+       clears the floor in both states (8.65:1 at rest, 4.80:1 dimmed). */
     return (
       <span
         className="num"
-        style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }}
+        style={{ font: 'var(--cid-num)', color: 'var(--cid-row-meta, var(--cid-dim))' }}
         title={checked ? 'Checked on site — not published for this room' : 'Not yet checked on site'}
       >
         {EMDASH}
@@ -103,8 +111,12 @@ function Cell({
     )
   }
   if (leader) {
-    /* Teal marks the true #1. Verified, so no tilde and no dotted rule. */
-    return <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-value)' }}>{value}</span>
+    /* FULL-STRENGTH INK MARKS THE TRUE #1 — no colour claim, by law. This was
+       teal, and the sentence here said so; the token it read is now a tombstone
+       resolving to --cid-text, so the figure lands as emphasis. The weight and
+       size half of the #1 treatment rides the RANK cell, where a reader looks
+       first. Verified, so no tilde and no dotted rule. */
+    return <span className="num" style={{ font: 'var(--cid-num)', color: 'var(--cid-row-lead)' }}>{value}</span>
   }
   return (
     <span
@@ -155,7 +167,8 @@ function Superlative({
 
       {winner ? (
         <>
-          <span style={{ font: 'var(--cid-h2)', color: 'var(--cid-value)' }}>{winner.name}</span>
+          {/* Emphasis, not a colour claim — --cid-value is a tombstone now. */}
+          <span style={{ font: 'var(--cid-h2)', color: 'var(--cid-text)' }}>{winner.name}</span>
           <span className="num" style={{ font: 'var(--cid-num-lg)', color: 'var(--cid-text-2)' }}>
             {winner.value}
           </span>
@@ -435,7 +448,10 @@ export default async function JustTheFacts({
             <div
               className="cid-trow"
               key={r.slug}
-              style={dimmed ? { opacity: 'var(--cid-dim-row)' } : undefined}
+              /* A DATA FLAG, NOT AN OPACITY. The row restates its three ink
+                 levels in CSS (see .cid-trow[data-dim]); opacity multiplied the
+                 whole row against the page and put both levels below AA. */
+              data-dim={dimmed ? '' : undefined}
             >
               {/* THE RANK CARRIES ITS QUALIFIER ON A CARD.
                   On the table the qualifier is the column head — "# BY RAKE" —
@@ -444,11 +460,26 @@ export default async function JustTheFacts({
                   without the sort it belongs to. So the head text rides the
                   cell and CSS reveals it only where the header is gone. */}
               <span className="cid-cell" data-lead data-h={rake.head}>
+                {/* THE TRUE #1 IS WEIGHT, SIZE AND FULL-STRENGTH INK — three
+                    carriers, none of them hue, so the lead survives greyscale,
+                    a colour-blind reader and a dimmed row. It was one colour.
+                    Peers step down on all three at once rather than only
+                    fading, which is what made the old single-channel version
+                    depend on the one channel the law just removed. */}
                 <span
                   className="num"
                   style={{
-                    font: 'var(--cid-rank)',
-                    color: rk.isLeader ? 'var(--cid-value)' : rk.rank != null ? 'var(--cid-text-2)' : 'var(--cid-disabled)',
+                    fontFamily: 'var(--cid-font-mono)',
+                    fontVariantNumeric: 'tabular-nums',
+                    fontWeight: rk.isLeader ? 'var(--cid-rank-lead-weight)' : 'var(--cid-rank-peer-weight)',
+                    fontSize: rk.isLeader ? 'var(--cid-rank-lead-size)' : 'var(--cid-rank-peer-size)',
+                    /* Peer and unranked share an ink level, deliberately. They
+                       ARE different states, but the law says no data state is
+                       carried by colour — and the glyph already carries it: a
+                       peer shows "#4", an unranked row shows an em-dash. The
+                       unranked cell used --cid-disabled, which is documented
+                       non-text-only and measured 3.31:1. */
+                    color: rk.isLeader ? 'var(--cid-row-lead)' : 'var(--cid-row-meta)',
                   }}
                   title={rk.rank == null ? 'Not ranked — not confirmed on site' : undefined}
                 >
@@ -461,7 +492,7 @@ export default async function JustTheFacts({
                   href={`/rooms/${r.slug}`}
                   style={{
                     font: 'var(--cid-room-name)',
-                    color: 'var(--cid-text)',
+                    color: 'var(--cid-row-lead)',
                     borderBottom: 'none',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -482,7 +513,7 @@ export default async function JustTheFacts({
                   {STATUS_LABEL[r.status]}
                 </span>
               ) : verified ? (
-                <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-text-3)' }}>
+                <span className="num" style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-row-meta)' }}>
                   {new Date(r.verified_at!).toISOString().slice(0, 10)}
                 </span>
               ) : d.rakeInPerson ? (
@@ -491,7 +522,7 @@ export default async function JustTheFacts({
                    the source behind it is private, so the receipt is words. */
                 <span
                   className="num"
-                  style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-text-3)' }}
+                  style={{ font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)', color: 'var(--cid-row-meta)' }}
                   title={inPersonReceipt(d.rakeInPerson)}
                 >
                   IN PERSON {new Date(d.rakeInPerson).toISOString().slice(0, 10)}

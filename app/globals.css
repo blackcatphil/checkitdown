@@ -20,9 +20,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* GOLD IS THE RESTING HIGHLIGHT; AUBERGINE IS THE INTERACTION.
-   #A98CE8 (--cid-accent-300) is reserved for hover, so it cannot also be the
-   resting link colour — that is the swap. */
+/* GOLD IS THE RESTING HIGHLIGHT; BLUE IS THE INTERACTION.
+   --cid-accent-300 is reserved for hover, so it cannot also be the resting link
+   colour — that is the swap. The hex behind that token moved with the steel
+   palette; this sentence deliberately does not say which, because a hex named
+   in prose is a comment that goes stale one swap later. */
 a {
   color: var(--cid-gold-300);
   text-decoration: none;
@@ -74,7 +76,30 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   padding: 0 var(--cid-space-5);
   min-height: var(--cid-row-h);
   border-bottom: 1px solid var(--cid-line-1);
+
+  /* THE ROW'S THREE INK LEVELS, as custom properties rather than as literal
+     colours on each cell. The cells set `color` INLINE, and an inline style
+     beats any class selector — so a `.cid-trow[data-dim] .cid-cell { color }`
+     rule could never have won without `!important`. A custom property is read
+     at compute time by that same inline style, so the row can restate the
+     level and every cell follows. */
+  --cid-row-lead: var(--cid-text);
+  --cid-row-body: var(--cid-text-2);
+  --cid-row-meta: var(--cid-text-3);
 }
+/* COMPARE-DIM IS A COLOUR STEP, NOT AN OPACITY.
+   This was `opacity: var(--cid-dim-row)` on the row, which multiplies the row
+   against its backdrop and dropped the lead to 3.76:1 and the peers to 2.56:1
+   — both below AA, and unfixable by any palette because the mechanism is
+   multiplication rather than hue. The colour step holds the same recession and
+   measures 10.91 / 6.02 / 4.80. `--cid-dim-row` survives for dimmed map PINS,
+   which have no contrast requirement to fail. */
+.cid-trow[data-dim] {
+  --cid-row-lead: var(--cid-row-dim-lead);
+  --cid-row-body: var(--cid-row-dim-text);
+  --cid-row-meta: var(--cid-row-dim-meta);
+}
+.cid-trow[data-dim] .cid-unverified { color: var(--cid-row-dim-text); }
 .cid-trow > * { min-width: 0; }
 
 .cid-thead {
@@ -99,7 +124,21 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   color: var(--cid-dim);
   font: var(--cid-caption);
 }
-.maplibregl-ctrl-attrib a { color: var(--cid-accent-300); border-bottom: none; }
+/* THE ATTRIBUTION LINKS WERE 1.14:1 AND HAD BEEN SINCE THE MAP SHIPPED.
+   MapLibre's own stylesheet sets `.maplibregl-ctrl-attrib a { color: rgba(0,0,0,.75) }`
+   — black at 75%, which is correct on its default white control and unreadable
+   on ours. Our rule matched at equal specificity and lost on load order, so the
+   colour we authored never applied and nothing measured it: the attribution is
+   painted by the map at runtime, so it does not exist until client JS boots,
+   and every audit until this pass had run against server-rendered HTML.
+   `-inner` raises specificity rather than reaching for !important, and both
+   selectors are stated so a MapLibre version that moves the anchor keeps a
+   readable colour. Legal text nobody can read is not attribution. */
+.maplibregl-ctrl-attrib a,
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner a {
+  color: var(--cid-accent-300);
+  border-bottom: none;
+}
 
 .cid-mapbadge {
   position: absolute; right: var(--cid-space-5); bottom: var(--cid-space-8);
