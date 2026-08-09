@@ -35,8 +35,16 @@ const VIEWPORT = { width: 1440, height: 900 }
 /* The four built surfaces, plus the compare state — which is the ONE state that
    exercises the dimmed row, and therefore the only place the bug this probe was
    written for can appear. A gate that never opens the drawer does not guard it. */
+import { stageDescription, unstageDescription } from './stage-description.mjs'
+
 const SCREENS = [
   ['landing map', '/'],
+  /* PROSE IS NEW TEXT, so it is measured like every other text node — composited
+     against its ground with the opacity of every ancestor multiplied in. The
+     row is staged below and removed in a finally; without it the section does
+     not render and this screen would measure a page that has no description on
+     it at all. */
+  ['room detail (with prose)', '/rooms/aria'],
   ['just the facts', '/facts'],
   ['facts + compare (the dim state)', '/facts?compare=venetian,south-point'],
   ['tournaments', '/tournaments'],
@@ -119,6 +127,7 @@ const AUDIT = () => {
     const bold = parseInt(cs.fontWeight, 10) >= 700
     const large = px >= 24 || (bold && px >= 18.66)
     const floor = large ? 3 : 4.5
+
     if (r < floor) {
       failures.push({
         text: text.slice(0, 42), ratio: Math.round(r * 100) / 100, floor,
@@ -180,6 +189,13 @@ page.on('console', (m) => {
   if (!DEV_NOISE.test(t)) consoleNoise.push(t)
 })
 
+const staged = stageDescription('aria')
+if (!staged) {
+  console.log('  FAIL  the prose fixture could not be staged — the room-detail screen would measure a page with no description')
+  fail++
+}
+try {
+
 for (const [name, path] of SCREENS) {
   console.log(`\n== ${name}  (${path}) ==`)
   await page.goto(BASE + path, { waitUntil: 'networkidle' }).catch(() => {})
@@ -212,6 +228,23 @@ for (const [name, path] of SCREENS) {
     `${r.filled.length} filled with ${r.accent}${r.filled.length ? ` — ${r.filled.join(', ')}` : ' (the CTA appears on interaction)'}`)
   ok(`${name}: gold never fills a surface`, r.goldFills.length === 0,
     r.goldFills.length ? r.goldFills.join(', ') : 'no gold-filled element')
+
+  /* THE PROSE ACTUALLY RENDERED. Without this the room-detail screen would
+     report five cheerful passes against a page whose description section is
+     simply absent — the vacuous shape this file already guards against with
+     "the page rendered". */
+  if (path.startsWith('/rooms/')) {
+    const prose = await page.evaluate(() => {
+      const el = document.querySelector('.cid-prose-body')
+      return el == null ? null : el.textContent.trim().length
+    })
+    ok(`${name}: the description section rendered`, (prose ?? 0) > 0,
+      prose ? `${prose} characters of prose measured above` : 'NO SECTION — the screen above measured nothing')
+  }
+}
+
+} finally {
+  unstageDescription()
 }
 
 console.log(`\nconsole errors: ${consoleNoise.length}`)

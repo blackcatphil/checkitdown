@@ -47,6 +47,10 @@ const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 
+/* THE SAME DETECTOR THE PRODUCT USES. A probe with its own private regex
+   would be asserting against its own idea of what a figure is. */
+import { currencyFigures } from '../lib/description.ts'
+
 const SNAP = 'cid_mixed_state_snapshot'
 
 /** The columns any scenario is allowed to mutate. Anything not listed here is
@@ -68,7 +72,14 @@ const snapshot = () => sql(`
   create table ${SNAP}.room_waitlist as
     select room_id, vendor, enabled, verified_at from room_waitlist;
   create table ${SNAP}.room_formats as
-    select room_id, slug, label, verified_at from room_formats;`)
+    select room_id, slug, label, verified_at from room_formats;
+  /* DESCRIPTIONS ARE THE FIRST TABLE A SCENARIO *INSERTS* INTO rather than
+     updates, and the restore step above is built entirely out of UPDATE ... FROM
+     snapshot — which cannot remove a row that was not there to begin with.
+     So the snapshot records the ids that existed, and restore deletes anything
+     else. Without this the suite would leave prose behind on a room page and
+     the census would be the only thing that noticed. */
+  create table ${SNAP}.room_descriptions as select id from room_descriptions;`)
 
 const dropSnapshot = () => sql(`drop schema if exists ${SNAP} cascade`)
 
@@ -106,7 +117,10 @@ const restore = () => {
         and w.room_id in (select id from rooms where slug in (${l}));
     update room_formats f set label = s.label, verified_at = s.verified_at
       from ${SNAP}.room_formats s where s.room_id = f.room_id and s.slug = f.slug
-        and f.room_id in (select id from rooms where slug in (${l}));`)
+        and f.room_id in (select id from rooms where slug in (${l}));
+    delete from room_descriptions d
+      where d.room_id in (select id from rooms where slug in (${l}))
+        and not exists (select 1 from ${SNAP}.room_descriptions s where s.id = d.id);`)
   touched = new Set()
 }
 
@@ -123,7 +137,8 @@ const census = () => sql(`
  || (select count(*) from room_waitlist) || ' waitlist/'
  || (select count(*) from room_waitlist where enabled) || ' waitlist-enabled/'
  || (select count(*) from room_formats) || ' formats/'
- || (select count(*) from room_formats where label is not null) || ' formats-labelled'`)
+ || (select count(*) from room_formats where label is not null) || ' formats-labelled/'
+ || (select count(*) from room_descriptions) || ' descriptions'`)
 
 /** A floor visit confirms the room AND the facts in it, so verify both. */
 const verifyRooms = (slugs) => {
@@ -981,6 +996,124 @@ try {
     check('/auth is disallowed', /^Disallow: \/auth$/m.test(txt))
     check('the sitemap is advertised', /^Sitemap: https:\/\/checkitdown\.com\/sitemap\.xml$/m.test(txt))
   })
+
+
+  /* ═══════════════════════════════════════════════════════════════════
+     ⚠️ NO FIGURES TYPED INTO PROSE — asserted against RENDERED OUTPUT.
+     ═══════════════════════════════════════════════════════════════════
+     The schema already refuses a typed `$1/2` in `body`, and the resolver
+     already withholds a paragraph whose tokens do not resolve. Neither can see
+     the one failure that matters most: a token that resolves to a figure the
+     room does not actually hold. Only the rendered page can answer that, so
+     this reads the page.
+
+     Content ships through the QUEUE, not through this commit — so the fixture
+     is inserted here, asserted, and deleted by `restore`. Nothing is seeded. */
+  await (async () => {
+    console.log('\n== ROOM DESCRIPTIONS — prose states no figure the room does not hold ==')
+
+    /* The room's OWN figures, straight from the database and formatted the way
+       the product formats them. This is the set the prose is checked against;
+       building it from raw columns instead would let "$8" pass because the
+       room stores an 8 somewhere unrelated. */
+    const figuresOf = (slug) => {
+      const raw = sql(`
+        select coalesce(string_agg(x, ' '), '') from (
+          select cg.stakes_label as x from cash_games cg
+            join rooms r on r.id = cg.room_id where r.slug = '${slug}'
+          union all
+          select '$' || cg.min_buy_in::text from cash_games cg
+            join rooms r on r.id = cg.room_id where r.slug = '${slug}' and cg.min_buy_in is not null
+          union all
+          select '$' || cg.max_buy_in::text from cash_games cg
+            join rooms r on r.id = cg.room_id where r.slug = '${slug}' and cg.max_buy_in is not null
+          union all
+          select '$' || cg.rake_cap::text from cash_games cg
+            join rooms r on r.id = cg.room_id where r.slug = '${slug}' and cg.rake_cap is not null
+        ) t`)
+      return new Set(currencyFigures(raw))
+    }
+
+    const SLUG = 'aria'
+    mutate([SLUG], `
+      insert into room_descriptions (room_id, body, author_kind, written_at, source_url, fetched_at)
+      select id, 'A long room off the lobby. The smallest game is {stakes_lowest}, raked {rake_lowest}, across {table_count} tables.',
+             'checkitdown', '2026-08-09', 'https://example.test/mixed-state', now()
+        from rooms where slug = '${SLUG}'`)
+
+    const raw = await roomPageRaw(SLUG)
+    const section = raw.match(/<section class="cid-prose">([\s\S]*?)<\/section>/)?.[1] ?? ''
+    const prose = section.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+
+    check('the description renders at all', prose.length > 0,
+      prose ? `"${prose.slice(0, 60)}..."` : 'NO SECTION — every assertion below would pass vacuously')
+
+    /* THE RULE, item 3. Every currency figure the reader sees must be one the
+       room's own data holds. */
+    const held = figuresOf(SLUG)
+    const shown = currencyFigures(prose)
+    const strays = shown.filter((f) => !held.has(f))
+    check('every currency figure in the prose is present in the room\'s own data',
+      prose.length > 0 && strays.length === 0,
+      strays.length ? `STRAY: ${strays.join(', ')} not in {${[...held].join(', ')}}`
+                    : `${shown.length} figures, all held: ${shown.join(' ')}`)
+
+    /* THE NEGATIVE CONTROL. An assertion that only ever sees clean pages cannot
+       distinguish "the rule holds" from "the detector is broken" — the vacuous
+       pass this suite has been bitten by before. So the same detector is run
+       over a planted paragraph and MUST fire. */
+    const planted = 'The smallest game is $1/2, raked 10% to $99999.'
+    const plantedStrays = currencyFigures(planted).filter((f) => !held.has(f))
+    check('the detector fires on a planted stray figure — this assertion is not vacuous',
+      plantedStrays.includes('99999'), `caught ${plantedStrays.join(', ') || 'NOTHING'} (figures are canonical numbers, not $-strings)`)
+
+    /* NO BYLINE, EVER. Neither author_kind value may reach the page. */
+    check('no byline reaches the reader — author_kind is stored, never rendered',
+      !/checkitdown|partner/i.test(section), 'section markup carries no author kind')
+
+    /* STALENESS IS DATED, NOT HIDDEN. */
+    check('the description carries its written-on date',
+      /WRITTEN 2026-08-09/.test(prose), prose.match(/WRITTEN [\d-]+/)?.[0] ?? 'no date found')
+
+    /* VISUALLY DISTINCT FROM THE FACTS — structural, so it is checkable.
+       A reader must not mistake a take for a sourced figure, and the difference
+       has to be in the MARKUP rather than in a colour, so it survives a palette
+       swap. Two claims: the prose is not a tile inside the grid, and it does
+       not wear the monospace figure treatment.
+       The first version of this searched the whole document for
+       /cid-tiles[\s\S]*cid-prose/ and failed — because `.cid-tiles` appears in
+       the stylesheet Next inlines into <head>, hundreds of lines before any
+       markup. It was asserting document order against CSS. Scoped to <main>. */
+    const mainHtml = raw.match(/<main[\s\S]*?<\/main>/)?.[0] ?? ''
+    const tiles = mainHtml.match(/<div class="cid-tiles"[\s\S]*?<\/div>\s*<\/div>/)?.[0] ?? ''
+    check('the prose is not a tile inside the facts grid',
+      mainHtml.includes('cid-prose') && !tiles.includes('cid-prose'),
+      'the description is its own section, not a cell in the grid')
+    check('the prose does not wear the monospace figure treatment',
+      /<p class="cid-prose-body">/.test(section) || /class="cid-prose-body"/.test(mainHtml),
+      'body text, not `num` — the distinction is structural, not chromatic')
+
+    restore()
+
+    /* RECORDED, NOT PUBLISHED. A token the room cannot resolve withholds the
+       WHOLE paragraph rather than printing a hole a reader would read past. */
+    mutate([SLUG], `
+      insert into room_descriptions (room_id, body, author_kind, written_at, source_url, fetched_at)
+      select id, 'This room has {no_such_token} going for it.', 'checkitdown', '2026-08-09',
+             'https://example.test/mixed-state', now()
+        from rooms where slug = '${SLUG}'`)
+    const unresolved = await roomPageRaw(SLUG)
+    check('an unresolved token withholds the whole description, not just the token',
+      !/cid-prose/.test(unresolved) && !/no_such_token/.test(unresolved),
+      'no section, and no raw token leaked to the reader')
+    restore()
+
+    /* EMPTY-SAFE: thirteen of seventeen rooms are in this state until the queue
+       delivers, and that is the shipped state rather than an unfinished one. */
+    const none = await roomPageRaw('bellagio')
+    check('a room with no description renders no section at all',
+      !/cid-prose/.test(none), 'empty-safe by construction')
+  })()
 
 } finally {
   restore()

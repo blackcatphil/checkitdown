@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(51);
+select plan(57);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -45,6 +45,7 @@ insert into expected_access(relname, access) values
   ('promotions','public_read'),
   ('room_waitlist','public_read'),
   ('room_formats','public_read'),
+  ('room_descriptions','public_read'),
   ('room_freshness','public_read'),
   ('source_kinds','public_read'),
   ('pending_review','service_only'),
@@ -786,6 +787,54 @@ select ok(
 select is_empty(
   $$ select 1 from public.room_amenities where source_url like 'https://evil.test/%' $$,
   'no payload-supplied citation reached a fact row, by either operation'
+);
+
+-- ---------------------------------------------------------------------
+-- ROOM DESCRIPTIONS (migration 007). Prose is a fact like any other: it is
+-- publicly readable, it is writable only through the queue, and its citation
+-- is written by approve_change rather than proposed.
+-- ---------------------------------------------------------------------
+select ok(
+  pg_temp.works_as('anon', $$ select 1 from public.room_descriptions limit 1 $$),
+  'anon may read room_descriptions — prose ships to readers like every other fact'
+);
+
+select ok(
+  not pg_temp.works_as('anon', $$ insert into public.room_descriptions
+      (room_id, body, author_kind, written_at)
+      values ((select id from public.rooms limit 1), 'x', 'checkitdown', '2026-08-09') $$),
+  'anon may NOT write prose directly — the queue is the only write path'
+);
+
+-- ⚠️ NO FIGURES TYPED INTO PROSE, enforced by the schema rather than by a rule
+-- somebody has to remember. Asserted as UNREPRESENTABLE: the insert throws.
+select throws_ok(
+  $$ insert into public.room_descriptions (room_id, body, author_kind, written_at)
+     values ((select id from public.rooms limit 1),
+             'They spread $1/2 and $2/5 most nights.', 'checkitdown', '2026-08-09') $$,
+  '23514',
+  null,
+  'a typed currency figure in prose is refused by the schema, not merely discouraged'
+);
+
+select lives_ok(
+  $$ insert into public.room_descriptions (room_id, body, author_kind, written_at)
+     values ((select id from public.rooms where slug = 'aria'),
+             'The main game is {stakes_lowest} across {table_count} tables.',
+             'checkitdown', '2026-08-09') $$,
+  'the token form is accepted — a figure reaches prose only by resolving from the room''s own data'
+);
+
+select is(
+  public.proposal_field_refusal('room_descriptions', 'source_url', false, false),
+  'field source_url is provenance or identity and is not writable through a proposal',
+  'a description''s citation may not be proposed as a value — the receipt follows the fact here too'
+);
+
+select is(
+  public.proposal_field_refusal('room_descriptions', 'body', false, false),
+  null,
+  'body IS writable through a proposal — content ships via the queue, not via a commit'
 );
 
 select * from finish();

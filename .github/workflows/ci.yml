@@ -54,9 +54,10 @@ jobs:
           # six tests, left untouched while it grew to 119. A floor 113 below
           # reality does not catch a shrinking suite; it catches a deleted one,
           # 126 on 2026-08-09: +7 for lib/filter-groups, the collapse resolver.
+          # 137 on 2026-08-09: +11 for lib/description, the prose interpolation.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 126 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 126) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 137 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 137) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -90,9 +91,11 @@ jobs:
           # 51, audited 2026-08-09. Was 10, set when the RLS file held ten
           # assertions; it has since absorbed the intake-Phase-I coverage —
           # room_amenities, the floor-stamp path both ways, insert proposals —
+          # 57 on 2026-08-09: +6 for room_descriptions — read access, the
+          # queue-only write path, and the no-typed-currency constraint.
           # and 41 of those could have vanished under the old number.
-          [ "${n:-0}" -ge 51 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 51) — a shrinking suite is a silent regression"; exit 1; }
+          [ "${n:-0}" -ge 57 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 57) — a shrinking suite is a silent regression"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
@@ -169,8 +172,11 @@ jobs:
           n=$(grep -c '^   PASS' /tmp/mixed.log || true)
           echo "assertions passed: $n"
           # 136, audited 2026-08-09 (was 128 — the smallest drift in the repo,
+          # 145 on 2026-08-09: +9 for the description scenario, which asserts the
+          # no-typed-figures rule against RENDERED output and carries its own
+          # planted-stray negative control.
           # and the only floor that had been kept roughly current).
-          [ "$n" -ge 136 ] || { echo "::error::only $n assertions ran (expected >= 136) — the suite shrank, which is a silent regression"; exit 1; }
+          [ "$n" -ge 145 ] || { echo "::error::only $n assertions ran (expected >= 145) — the suite shrank, which is a silent regression"; exit 1; }
 
       - name: Assert the database was left clean
         run: |
@@ -272,9 +278,11 @@ jobs:
           # they skip with a named reason and everything else runs in full.
           # 46 on 2026-08-09: +3 for sheet reachability with the groups collapsed,
           # including the one-scroller assertion that replaced the 46vh nest.
+          # 50 on 2026-08-09: +4 for the description section at 390px — reading
+          # measure, overflow, and prose-vs-figures set in different faces.
           # Raise this when assertions are added; never lower it to pass a run.
-          [ "$n" -ge 46 ] \
-            || { echo "::error::only $n mobile assertions ran (expected >= 46) — the suite shrank"; exit 1; }
+          [ "$n" -ge 50 ] \
+            || { echo "::error::only $n mobile assertions ran (expected >= 50) — the suite shrank"; exit 1; }
           # A skip must stay a skip. If these ever stop being skipped without
           # the floor moving, something changed configuration silently.
           s=$(grep -c '^  SKIP' /tmp/mobile.log || true)
@@ -331,6 +339,9 @@ jobs:
             || { echo "::error::the gold-fill assertion did not run — the one discipline rule the palette law names"; exit 1; }
           n=$(grep -c '^  PASS' /tmp/palette.log || true)
           echo "palette assertions: $n"
+          # 31 on 2026-08-09: +6 for the room-detail screen, added so the new
+          # prose text nodes are composited like every other. It surfaced two
+          # em-dash markers at 3.29:1 on a page this probe had never opened.
           # 25 — the full local count; nothing here is flag-gated.
-          [ "$n" -ge 25 ] \
-            || { echo "::error::only $n palette assertions ran (expected >= 25) — the suite shrank"; exit 1; }
+          [ "$n" -ge 31 ] \
+            || { echo "::error::only $n palette assertions ran (expected >= 31) — the suite shrank"; exit 1; }

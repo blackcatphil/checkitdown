@@ -8,6 +8,8 @@ import {
   notCheckedTitle, PROVENANCE_COPY, provenanceBadge,
   provenanceState, unverifiedSources,
 } from '@/lib/provenance'
+import { resolveDescription } from '@/lib/description'
+import { formatRake } from '@/lib/figures'
 import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { supabase } from '@/lib/supabase'
 
@@ -135,7 +137,11 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet,source_url,verified_at,rake_source_url,rake_verified_at),'
       + 'room_amenities(available,detail,menu_url,source_url,verified_at,amenity_types(slug,label,grp)),'
       + 'house_rules(label,value,source_url,verified_at),'
-      + 'room_formats(slug,label,note,source_url,verified_at)',
+      + 'room_formats(slug,label,note,source_url,verified_at)'
+      /* PROSE, fetched with everything else. `author_kind` is deliberately
+         NOT selected: it is stored for content management and never rendered,
+         and a column the renderer cannot see is a byline it cannot grow. */
+      + ',room_descriptions(body,written_at,source_url,verified_at)',
     )
     .eq('slug', slug)
     .maybeSingle()
@@ -181,6 +187,12 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       slug: string; label: string | null; note: string | null
       source_url: string | null; verified_at: string | null
     }>
+
+    room_descriptions: Array<{
+      body: string; written_at: string
+      source_url: string | null; verified_at: string | null
+    }> | { body: string; written_at: string
+           source_url: string | null; verified_at: string | null } | null
   }
 
   /* THE COVERAGE GATE, in its smallest form — and it renders NOTHING today.
@@ -287,6 +299,20 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     .filter((v): v is string => v != null)
     .sort()
     .at(-1) ?? room.verified_at
+  /* PROSE. PostgREST returns a one-to-one embed as an object and a
+     one-to-many as an array; `unique (room_id)` should give us the former, but
+     the shape is not worth betting a crash on, so both are accepted here.
+     EMPTY-SAFE BY CONSTRUCTION: no row means `desc` is null and the section
+     never renders. Thirteen of seventeen rooms are in exactly that state until
+     the queue delivers, and that is the shipped state, not an unfinished one. */
+  const descRow = Array.isArray(room.room_descriptions)
+    ? room.room_descriptions[0] ?? null
+    : room.room_descriptions ?? null
+  /* Resolved against the room the page already fetched — the same rows the
+     grid below renders. An unresolved token withholds the whole paragraph
+     rather than printing a hole; see lib/description.ts. */
+  const desc = descRow == null ? null : resolveDescription(descRow.body, room)
+
   const games = [...room.cash_games].sort(
     (a, b) => (Number(a.big_blind ?? a.big_bet ?? 0)) - (Number(b.big_blind ?? b.big_bet ?? 0)),
   )
@@ -418,10 +444,29 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
    */
   function Figure({ value, verifiedAt }: { value: string | null; verifiedAt: string | null }) {
     if (value == null) {
+      /* THE COLOUR: --cid-disabled is documented "non-text markers ONLY" and
+         this dash is TEXT — it carries a claim ("we have not checked"), so it
+         has to be legible. At .38 paper it measured 3.29:1 here, the same
+         pre-existing AA failure /facts found at 3.31:1 and fixed the same way;
+         see the placeholder in app/facts/page.tsx, which carries the full
+         reasoning. ONE DECISION, TWO SITES: the same construct saying the same
+         thing may not be legible on one page and not the other.
+
+         It takes the row's quietest legible step, which recedes with a dimmed
+         row and clears the floor in both states (8.65:1 at rest, 4.80:1
+         dimmed). The fallback is --cid-dim because this page has no dim-row
+         context to inherit from — a room page is never compare-dimmed — and an
+         unresolved custom property would otherwise compute to nothing at all.
+
+         Surfaced 2026-08-09 when room detail entered the palette probe for the
+         first time. My first answer was an exemption in the probe, which would
+         have frozen 3.29:1 into the gate as a rule; Phil ruled it out. An
+         exemption that makes a real AA failure pass is worse than not
+         measuring, because it looks like a decision. */
       return (
         <span
           className="num"
-          style={{ font: 'var(--cid-num)', color: 'var(--cid-disabled)' }}
+          style={{ font: 'var(--cid-num)', color: 'var(--cid-row-meta, var(--cid-dim))' }}
           title={notCheckedTitle(verifiedAt)}
         >
           {EMDASH}
@@ -436,12 +481,11 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     )
   }
 
-  function rake(g: (typeof games)[number]) {
-    if (g.rake_type == null) return null
-    if (g.rake_percent != null && g.rake_cap != null) return `${Number(g.rake_percent)}% to $${Number(g.rake_cap)}`
-    if (g.rake_cap != null) return `to $${Number(g.rake_cap)}`
-    return null
-  }
+  /* THE GRID AND THE PROSE SHARE ONE FORMATTER. Reading the same row and
+     formatting it two ways would satisfy "interpolate from the same query" to
+     the letter and still print "10% to $8" here and "$8 cap" a paragraph
+     above. See lib/figures.ts. */
+  const rake = formatRake
 
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-8)' }}>
@@ -489,6 +533,34 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           {badge.text}
         </p>
       </header>
+
+      {/* ═══ THE DESCRIPTION — prose, and visibly not a figure ═══
+
+          NO BYLINE, EVER (Phil ruled 2026-08-09). A partner review and a Check
+          It Down description read identically: same voice, same treatment, no
+          name on either. `author_kind` is stored so that swapping one for the
+          other is a content change through the queue, and it is never selected
+          by this page — a column the renderer cannot see is a byline it cannot
+          grow by accident.
+
+          VISUALLY DISTINCT FROM THE FACTS, because a reader must not mistake a
+          take for a sourced figure. The grid is monospaced, tiled and gridded;
+          this is body text on a measure, set off by a rule. It carries no gold
+          eyebrow — gold is spent on verified facts, and spending it on
+          judgement would be the palette saying the opposite of the truth.
+
+          DATED, NOT HIDDEN. The written-on date sits with the prose the way
+          every figure carries its verified date. Chris's Golden Nugget review
+          says "recently relocated" — true today, and dating itself within a
+          year. The answer is the date, not a ban on the sentence. */}
+      {desc?.publish && descRow != null && (
+        <section className="cid-prose">
+          <p className="cid-prose-body">{desc.text}</p>
+          <p className="num cid-prose-date">
+            WRITTEN {new Date(descRow.written_at).toISOString().slice(0, 10)}
+          </p>
+        </section>
+      )}
 
       <Block label="THE FACTS">
         <div className="cid-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>

@@ -37,6 +37,8 @@
  */
 import { chromium, devices } from 'playwright'
 
+import { stageDescription, unstageDescription } from './stage-description.mjs'
+
 const BASE = process.argv[2] ?? process.env.BASE_URL ?? 'http://localhost:3100'
 const CPU_THROTTLE = Number(process.env.MOBILE_PROBE_CPU ?? 4)
 
@@ -634,6 +636,55 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
     skip('every filter group head is reachable in the sheet', 'panel not found')
   }
   await ctx.close()
+}
+
+/* ═══ THE DESCRIPTION SECTION IN THE PHONE LAYOUT (2026-08-09) ═══
+   Prose has a reading measure and a left rule, and both are things that go
+   wrong first at 390px: a `max-width: 68ch` that does not shrink pushes the
+   page sideways, and a section that clears the fixed nav on desktop can sit
+   under it on a phone. The row is staged because the section is EMPTY-SAFE —
+   without it this block would load a room page with no description and report
+   passes about nothing. */
+{
+  const staged = stageDescription('wynn-encore')
+  try {
+    const ctxD = await browser.newContext({
+      viewport: { width: 390, height: 844 }, deviceScaleFactor: 3,
+      isMobile: true, hasTouch: true, reducedMotion: 'reduce',
+    })
+    const pd = await ctxD.newPage()
+    await pd.goto(`${BASE}/rooms/wynn-encore`, { waitUntil: 'load' })
+    await pd.waitForTimeout(1200)
+    const d = await pd.evaluate(() => {
+      const el = document.querySelector('.cid-prose')
+      const body = document.querySelector('.cid-prose-body')
+      const nav = document.querySelector('.cid-botnav')
+      if (!el || !body) return null
+      const r = el.getBoundingClientRect()
+      const facts = [...document.querySelectorAll('.cid-tiles')][0]
+      return {
+        chars: body.textContent.trim().length,
+        right: Math.round(r.right),
+        docW: Math.round(document.documentElement.scrollWidth),
+        vw: window.innerWidth,
+        font: getComputedStyle(body).fontFamily,
+        factsFont: facts ? getComputedStyle(facts.querySelector('.num') ?? facts).fontFamily : '',
+        navH: nav ? Math.round(nav.getBoundingClientRect().height) : 0,
+      }
+    })
+    ok(staged && d != null, `the description section renders at 390px${d ? ` (${d.chars} characters)` : ' — NO SECTION, nothing below is measured'}`)
+    if (d) {
+      ok(d.right <= d.vw, `the reading measure does not push the page sideways (section right ${d.right} <= viewport ${d.vw})`)
+      ok(d.docW <= d.vw, `no horizontal overflow on a room page with prose (scrollWidth ${d.docW} <= ${d.vw})`)
+      /* VISUALLY DISTINCT FROM THE FACTS, on the phone too — and distinct
+         STRUCTURALLY, by typeface, so it survives the next palette swap. */
+      ok(d.font !== d.factsFont,
+        `prose and figures are set in different faces — a take cannot be mistaken for a sourced number`)
+    }
+    await ctxD.close()
+  } finally {
+    unstageDescription()
+  }
 }
 
 await browser.close()

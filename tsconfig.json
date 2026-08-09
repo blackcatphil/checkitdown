@@ -9,6 +9,13 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // `test:unit` runs the real modules under `node --test`, and Node's ESM
+    // resolver needs the extension — every test file already imports
+    // './stakes-filter.ts' and friends that way. lib/description.ts is the
+    // first lib-to-lib VALUE import, so the same requirement reached source
+    // for the first time. Legal only because noEmit is set above: nothing is
+    // compiled, so no emitted path can end in .ts.
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",

@@ -570,3 +570,39 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     margin-bottom: var(--cid-botnav-clear);
   }
 }
+
+/* ═══ ROOM DESCRIPTION — prose, and visibly not a figure ═══
+   Phil ruled 2026-08-09: the section must not be mistaken for THE FACTS.
+   The grid is monospaced, tiled and hard-edged; this is body text on a
+   reading measure behind a single rule. Every difference is structural
+   (font, measure, ground, edge) rather than chromatic, because the palette
+   law spends hue on verification and prose is not a verified figure.
+   NO GOLD EYEBROW here for exactly that reason. */
+.cid-prose {
+  border-left: 2px solid var(--cid-line-2);
+  padding: var(--cid-space-2) 0 var(--cid-space-2) var(--cid-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cid-space-4);
+}
+.cid-prose-body {
+  font: var(--cid-body);
+  color: var(--cid-text);
+  /* A READING MEASURE. The facts grid wants the full width; a paragraph at
+     1440px is a paragraph nobody finishes. */
+  max-width: 68ch;
+  margin: 0;
+}
+/* STALENESS IS DATED, NOT HIDDEN — the same treatment every verified date
+   gets, so a reader already knows how to read it. */
+.cid-prose-date {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-text-3);
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .cid-prose {
+    padding-left: var(--cid-space-4);
+  }
+}
