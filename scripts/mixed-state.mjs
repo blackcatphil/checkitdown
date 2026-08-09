@@ -7,7 +7,7 @@
  * unconfirmed ones, and several rules collide there at once —
  *
  *   - unverified rows must sort below the ranking, never into it
- *   - teal marks the true #1 and only the true #1
+ *   - the lead treatment (weight/size/full ink) marks the true #1, and only it
  *   - the exclusion line must FLIP from summary to enumeration as the count
  *     falls past ENUMERATE_MAX, a boundary crossed during the floor visit
  *   - CONFIRMED and RANKABLE are different counts (Horseshoe publishes no rake,
@@ -168,7 +168,13 @@ async function factsWith(query) {
     main,
     order: [...main.matchAll(/href="\/rooms\/([a-z-]+)"/g)].map((m) => m[1]),
     ranks: [...main.matchAll(/>#(\d+)</g)].map((m) => Number(m[1])),
-    dimmed: (main.match(/--cid-dim-row/g) ?? []).length,
+    /* THE DIM IS A DATA FLAG NOW, NOT AN OPACITY TOKEN. It was counted by
+        looking for --cid-dim-row in the markup; that token still exists but is
+        scoped to non-text markers (dimmed map pins), so counting it here would
+        report 0 forever and the assertion would pass vacuously the day someone
+        loosened it. The row states `data-dim` and restates its three ink levels
+        in CSS — see .cid-trow[data-dim]. */
+    dimmed: (main.match(/data-dim=""/g) ?? []).length,
   }
 }
 
@@ -400,7 +406,15 @@ try {
       'a rankable room exists, so the card must not still show its zero state')
     check('no name-list leaked at 16', !/[^.;—]{0,80} and [^.;—]{0,80} are not confirmed on site yet/.test(text))
     const leaderRow = rows.find((r) => />#1</.test(r))
-    check('teal on the true #1 row', !!leaderRow && leaderRow.includes('--cid-value'))
+    /* THE #1 IS WEIGHT, SIZE AND FULL-STRENGTH INK — no longer a colour.
+       This asserted teal on the leader row; teal is gone by the 2026-08-09 law
+       and --cid-value is a tombstone resolving to --cid-text, so the old check
+       would have passed on ANY row that still referenced the dead token. The
+       treatment is now three properties, and all three are asserted because
+       any one of them alone is what the law was written to prevent. */
+    check('the true #1 row carries the lead ink', !!leaderRow && leaderRow.includes('--cid-row-lead'))
+    check('the true #1 row carries the lead weight and size',
+      !!leaderRow && leaderRow.includes('--cid-rank-lead-weight') && leaderRow.includes('--cid-rank-lead-size'))
   })
 
   await scenario('THREE — mid floor visit', RAKEABLE.slice(0, 3), ({ text, ranks, rows }) => {
@@ -410,16 +424,22 @@ try {
       `page ${ranks.length}, rule ${expect.length}`)
     check('ranks ascend and start at 1', ranks[0] === 1 && ranks.every((r, i) => i === 0 || r >= ranks[i - 1]))
     check('tie shares a position', new Set(ranks).size < ranks.length, `ranks=[${ranks}]`)
-    /* TEAL MARKS EVERY TRUE #1, NOT THE FIRST OF THEM. Six rooms tie at the
+    /* THE LEAD TREATMENT MARKS EVERY TRUE #1, NOT THE FIRST OF THEM. Rooms tie at the
        same cap in the real data; each of them IS best-in-city, and the old
        "exactly one" encoded a fixture where only one room could be verified. */
     check('every tied leader is ranked #1', ranks.filter((r) => r === 1).length === lead.length,
       `page ${ranks.filter((r) => r === 1).length}, rule ${lead.length}`)
     check('LOWEST RAKE still shows a winner at three verified',
       !/Nothing rankable on rake/.test(text))
-    const tealRows = rows.filter((r) => r.includes('--cid-value'))
-    check('teal on every leader and nowhere else', tealRows.length === lead.length,
-      `${tealRows.length} teal rows, ${lead.length} leaders`)
+    const leadRows = rows.filter((r) => r.includes('--cid-rank-lead-weight'))
+    check('the lead treatment lands on every leader and nowhere else', leadRows.length === lead.length,
+      `${leadRows.length} rows at lead weight, ${lead.length} leaders`)
+    /* And the peers really do step DOWN — otherwise "every row is a leader"
+       would satisfy the line above just as well. */
+    const peerRows = rows.filter((r) => r.includes('--cid-rank-peer-weight'))
+    check('every non-leader steps down to the peer treatment',
+      peerRows.length === rows.length - leadRows.length,
+      `${peerRows.length} peer rows, ${rows.length - leadRows.length} non-leaders`)
     /* A superlative card must not crown one of several tied rooms. */
     check('a tie is reported as a tie, not as a winner',
       lead.length === 1 || new RegExp(`${lead.length} rooms tied`).test(text),

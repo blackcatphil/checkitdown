@@ -65,6 +65,12 @@ export const MAP_TOKENS = {
   building: '--cid-map-building',
   buildingEdge: '--cid-map-building-edge',
   buildingLit: '--cid-map-building-lit',
+  /* MULTI-SHADE DEPTH — by SURFACE, never by data. The cage is one gold
+     family at three steps so a mass reads as a solid: the base line sits in
+     shadow (buildingLit), the shell catches raking light, the roof ring
+     faces the sky. Nothing here varies with height or any figure. */
+  shellLit: '--cid-map-shell-lit',
+  roofLit: '--cid-map-roof-lit',
   hover: '--cid-map-hover',
   massDim: '--cid-map-mass-dim',
   /* The third filter state. Neutral by design — see the token's note. */

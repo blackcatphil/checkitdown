@@ -476,7 +476,13 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           style={{
             font: 'var(--cid-tag)', letterSpacing: 'var(--cid-track-nav)',
             marginTop: 'var(--cid-space-5)', display: 'inline-block',
-            ...(badge.tone === 'verified' ? { color: 'var(--cid-value)' } : {}),
+            /* VERIFIED AND PARTIAL SEPARATE BY WEIGHT, NOT BY HUE. Both are
+               full-strength ink now that --cid-value is a tombstone, so hue
+               alone would have collapsed two distinct states into one
+               treatment on the morning of the swap. The words already differ
+               ("VERIFIED ON SITE" vs "SOME FACTS CONFIRMED ON SITE") and the
+               weight makes the stronger claim look stronger. */
+            ...(badge.tone === 'verified' ? { color: 'var(--cid-text)', fontWeight: 700 } : {}),
             ...(badge.tone === 'partial' ? { color: 'var(--cid-text)' } : {}),
           }}
         >

@@ -268,3 +268,31 @@ jobs:
           # probe will say so on its SKIP lines rather than passing vacuously.
           [ "$n" -ge 23 ] \
             || { echo "::error::only $n pwa assertions ran (expected >= 23) — check the SKIP lines above"; exit 1; }
+
+      - name: "test:palette (every text node clears its floor, opacity composited)"
+        env:
+          BASE_URL: http://localhost:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:palette 2>&1 | tee /tmp/palette.log
+          grep -q '0 failed' /tmp/palette.log \
+            || { echo "::error::the palette probe reported failures"; exit 1; }
+          # OPACITY COMPOSITING IS WHY THIS GATE EXISTS. Every prior audit
+          # reported 0 failing text nodes over a compare-dim state that
+          # measured 2.56:1, because opacity never appears in a computed
+          # colour. If the composited floor check ever stops RUNNING, the
+          # gate is green and the old blindness is back.
+          grep -q 'opacity composited' /tmp/palette.log \
+            || { echo "::error::the composited-opacity floor did not run — it is the point of this gate"; exit 1; }
+          # A PROBE MUST PROVE THE PAGE RENDERED before certifying it clean:
+          # this suite's own first version passed four screens that returned
+          # 500 — zero text nodes, zero fills, zero gold, all 'clean'.
+          grep -q 'the page rendered' /tmp/palette.log \
+            || { echo "::error::the rendered-first guard did not run — an empty page passes every emptiness check"; exit 1; }
+          grep -q 'gold never fills a surface' /tmp/palette.log \
+            || { echo "::error::the gold-fill assertion did not run — the one discipline rule the palette law names"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/palette.log || true)
+          echo "palette assertions: $n"
+          # 25 — the full local count; nothing here is flag-gated.
+          [ "$n" -ge 25 ] \
+            || { echo "::error::only $n palette assertions ran (expected >= 25) — the suite shrank"; exit 1; }

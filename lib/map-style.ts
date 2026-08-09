@@ -15,12 +15,15 @@
  *
  * TWO RULES GOVERN THE COLOURS, and both are about meaning rather than taste:
  *
- * 1. **Nothing on the ground may be mistaken for a signal.** `--cid-value`
- *    (#4FBFAE) means verified and `--cid-gold-*` means nothing at all. Water is
- *    INDIGO rather than teal-slate precisely so it cannot be read as the former;
- *    parks are a desaturated moss whose chroma is far too low to be read as
- *    anything. Where a map layer and a data signal could sit adjacent, the data
- *    signal keeps the saturated value.
+ * 1. **Nothing on the ground may be mistaken for a signal.** As of the steel
+ *    pass NO COLOUR CARRIES A DATA STATE at all — `--cid-value` is a tombstone
+ *    and `--cid-gold-*` means nothing by law — so the only thing left on this
+ *    map that carries meaning is the SELECTION PIN. The ground is now the same
+ *    blue family as that pin, which means hue can no longer separate them and
+ *    the rule is carried by saturation and lightness instead: the mark always
+ *    wins the saturated value, and no ground colour reaches three-quarters of
+ *    its chroma. Parks stay a desaturated moss, far too faint to read as
+ *    anything.
  * 2. **Brightness belongs to the buildings, and the map is ONE FAMILY in
  *    lightness steps** — land (darkest), roads (mid), buildings (lightest).
  *    Asserted as a chain: minor < casing < major < building.

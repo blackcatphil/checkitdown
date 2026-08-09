@@ -1,208 +1,243 @@
 /* CHECK IT DOWN — colour system.
    Dark is the primary mode; [data-cid-theme="light"] is the secondary mode.
 
-   GOLD IS IN, AND IT IS THE ACCENT TIER (reversed 2026-08-04, deliberately).
-   The old rule banned gold outright. The real concern was never gold alone but
-   gold PLUS a second colour lifted from a competitor or a poker room — that
-   combination is what makes a brand read as a casino. Aubergine + gold is ours.
-   Aubergine stays PRIMARY: the one filled action per screen, the mark, active
-   nav. Gold is the accent tier — highlights, hairlines, hover, rules, emphasis,
-   the Strip corridor — and it does the lifting everywhere aubergine does
-   nothing. Gold may repeat; it is not the commitment colour.
+   STEEL BLUE + DECORATIVE GOLD. Ruled 2026-08-09; values transcribed from
+   docs/design/palette-steel-blue-gold.md, which is the in-repo record every hex
+   below traces to. Ratios in these comments are RE-MEASURED against the new
+   backdrops, not carried over — the ground moved, so every old number was void.
 
-   GOLD IS NEVER SEMANTIC. It carries no state, no rank, no provenance:
-   decoration and identity only. Teal still and only means verified.
-   --cid-unverified stays NEUTRAL GREY and must NOT become ochre now that gold
-   is allowed — "not yet confirmed" must read as neither a warning nor a
-   decoration, and gold in the palette makes an ochre flag MORE confusable.
-   Value is TEAL, not green — deutan/protan vision pulls purple toward blue and
-   would collapse a blue "good" marker against the aubergine accent. */
+   THE LAW, and it is not to be re-argued:
+
+     BLUE is brand, base and surface, and carries THE ONE FILLED ACTION per
+     screen with a 1px lit top edge. Nothing else is filled.
+
+     GOLD IS DECORATIVE AND CARRIES NO DATA MEANING — mark rings, header
+     hairline, section rules, a card's top edge, the map's cage and road
+     accents. Gold never fills a surface, and is never the sole carrier of
+     anything a reader must not miss.
+
+     NO DATA STATE IS CARRIED BY COLOUR. Verified is a mark and a date. The true
+     #1 is weight, size and full-strength ink (see the --cid-rank-* trio).
+     Caution is rank position, weight and size. Unverified is --cid-unverified
+     plus a tilde plus a dotted rule — three carriers, only one of them colour.
+
+     NO OCHRE, AMBER OR RED AS CAUTION. All three collide with the brand's own
+     gold, which is exactly why gold had to stop being semantic first.
+
+   This REVERSES the 2026-08-04 "gold is the accent tier, gold is never
+   semantic" note and the teal --cid-value that preceded it. Both are gone: the
+   accent tier is blue, and the colour that meant verified is deprecated in
+   place rather than repointed, because a state colour that changes hue silently
+   keeps every call site and changes every claim. */
 :root {
-  /* base — ink */
-  --cid-ink-900: #08090B;
-  --cid-ink-800: #0C0E11;   /* page */
-  --cid-ink-700: #14171B;   /* raised surface, header, table head */
-  --cid-ink-600: #1B1F26;   /* toast, popup */
-  --cid-ink-500: #232830;
+  /* base — ink, a steel-blue tint rather than a near-neutral. */
+  --cid-ink-900: #070A0E;
+  --cid-ink-800: #0B0F14;   /* page    — paper on it 17.10:1 */
+  --cid-ink-700: #121820;   /* surface — paper on it 15.87:1 */
+  --cid-ink-600: #171F29;   /* head, toast, popup */
+  --cid-ink-500: #1E2733;
 
-  /* accent — aubergine */
-  --cid-accent-900: #3C2560;
-  --cid-accent-700: #5E3A93;  /* the one filled action per screen */
-  --cid-accent-600: #6D45A8;  /* hover */
-  --cid-accent-500: #8A66C9;  /* logo mark */
-  --cid-accent-300: #A98CE8;  /* accent TYPE + the 1px lit top edge */
-  --cid-accent-200: #C4AEF5;  /* link hover */
-  --cid-accent-wash: rgba(94, 58, 147, 0.24);
-  --cid-accent-line: rgba(169, 140, 232, 0.35);
+  /* accent — BLUE. Brand, and the only thing in the product that is filled. */
+  --cid-accent-900: #12365F;
+  --cid-accent-700: #1E4E86;  /* THE one filled action — paper label on it 7.50:1 */
+  --cid-accent-600: #245C9C;  /* hover */
+  --cid-accent-500: #5B8FD1;  /* mark solid, and the map pin — 5.35:1 on surface */
+  --cid-accent-300: #7FB0E8;  /* accent TYPE + the 1px lit top edge
+                                 7.88:1 on surface · 3.73:1 on the fill it edges.
+                                 3.73 is a 1px EDGE, not text: it is a boundary
+                                 between two fills, and the label on that fill is
+                                 the 7.50:1 paper above. */
+  --cid-accent-200: #A6CAF3;  /* link hover */
+  --cid-accent-wash: rgba(30, 78, 134, 0.26);
+  --cid-accent-line: rgba(127, 176, 232, 0.34);
 
-  /* gold — the accent tier. NOT a state, NOT a rank, NOT a provenance.
-     --cid-gold-700 is 3.9:1 on ink-800: FILLS AND HAIRLINES ONLY, never text.
-     A test asserts it is never used as a `color:`. */
+  /* gold — DECORATIVE ONLY, and the ramp below is CANONICAL and byte-identical
+     to what it has always been. The design doc printed --cid-gold #C9A24A and
+     --cid-gold-line #A8853C; both are near-miss duplicates of steps already
+     here (#C9A24A is 2.7 degrees and 13.7 chroma from #C9A227), so they are
+     NOT added. The doc's names are aliased onto real steps below instead —
+     two hexes that differ by less than a shade are two hexes to keep in sync
+     forever, and the one that loses is always the one nobody is looking at.
+
+     RE-MEASURED on the new backdrops (the doc's figures were for #C9A24A):
+       gold-500  7.94 page · 7.37 surface · 6.87 head   (doc printed 8.01/7.43/6.92)
+       gold-700  3.92 page · 3.64 surface                (doc printed 5.17)
+     gold-700 is a FILL AND HAIRLINE STEP, never text — that is why 3.64 is its
+     job rather than its failure, and it is the step the doc's #A8853C hairline
+     role maps onto. */
   --cid-gold-700: #8A6D1F;
-  --cid-gold-500: #C9A227;   /* identity gold, the mark's highlight */
-  --cid-gold-300: #E3C567;   /* gold TYPE on dark — links, emphasis */
-  --cid-gold-200: #F0DC9C;   /* the brightest highlight */
+  --cid-gold-500: #C9A227;
+  --cid-gold-300: #E3C567;
+  --cid-gold-200: #F0DC9C;
   --cid-gold-wash: rgba(201, 162, 39, 0.14);
   --cid-gold-line: rgba(227, 197, 103, 0.34);
+  /* The doc's decorative names, aliased onto the canonical ramp. */
+  --cid-gold: var(--cid-gold-500);        /* mark rings, header hairline */
+  --cid-gold-rule: var(--cid-gold-line);  /* section rules, card top edges */
 
   /* paper */
-  --cid-paper: #F2F4F6;
+  --cid-paper: #EEF2F7;
 
-  /* text — one dim token, do not invent more */
-  --cid-text: var(--cid-paper);
-  --cid-text-2: rgba(242, 244, 246, 0.82);
-  --cid-text-3: rgba(242, 244, 246, 0.72);
-  --cid-dim: rgba(242, 244, 246, 0.58);      /* ~5.3:1 on ink-700 — the floor */
-  --cid-disabled: rgba(242, 244, 246, 0.38); /* non-text markers ONLY */
+  /* text — one dim token, do not invent more. Measured on the surface. */
+  --cid-text: var(--cid-paper);              /* 15.87:1 */
+  --cid-text-2: rgba(238, 242, 247, 0.82);   /* 10.91:1 */
+  --cid-text-3: rgba(238, 242, 247, 0.72);   /*  8.65:1 */
+  --cid-dim: rgba(238, 242, 247, 0.58);      /*  6.02:1 — the floor */
+  --cid-disabled: rgba(238, 242, 247, 0.38); /* non-text markers ONLY */
 
   /* lines + fills */
-  --cid-line-1: rgba(242, 244, 246, 0.09);
-  --cid-line-2: rgba(242, 244, 246, 0.14);
-  --cid-line-3: rgba(242, 244, 246, 0.28);
-  --cid-fill-1: rgba(242, 244, 246, 0.04);
-  --cid-fill-2: rgba(242, 244, 246, 0.08);
+  --cid-line-1: rgba(238, 242, 247, 0.09);
+  --cid-line-2: rgba(238, 242, 247, 0.14);
+  --cid-line-3: rgba(238, 242, 247, 0.28);
+  --cid-fill-1: rgba(238, 242, 247, 0.04);
+  --cid-fill-2: rgba(238, 242, 247, 0.08);
 
-  /* semantic */
-  --cid-value: #4FBFAE;                       /* best-in-city, the true #1 */
-  --cid-value-wash: rgba(79, 191, 174, 0.12);
-  --cid-unverified: rgba(242, 244, 246, 0.58);      /* NEUTRAL GREY, never ochre */
-  --cid-unverified-rule: rgba(242, 244, 246, 0.34); /* dotted underline */
-  --cid-dim-row: 0.42;                        /* opacity for de-emphasised rows */
+  /* semantic — or rather, WHAT IS LEFT OF IT. */
+
+  /* DEPRECATED IN PLACE, AND DELIBERATELY NOT POINTED AT GOLD.
+     This was teal and meant "best-in-city, the true #1". It now resolves to
+     --cid-text, so every existing call site renders as EMPHASIS — full-strength
+     ink — which is exactly what the new law says a #1 is made of. Pointing it
+     at gold would have turned eight call sites into colour claims on the
+     morning gold stopped being allowed to make one.
+     New code uses the --cid-rank-* trio below. This token is kept only so the
+     swap did not have to touch eight files in the same pass that moved every
+     hex; it is not a colour, it is a tombstone. */
+  --cid-value: var(--cid-text);
+  --cid-value-wash: transparent;
+
+  /* NOT YET CONFIRMED. Colour is ONE of three carriers — the tilde and the
+     dotted rule are the other two, and they are the ones that survive a
+     greyscale print, a colour-blind reader and a dimmed row. */
+  --cid-unverified: #8FA2B8;                 /* 6.82 surface · 7.35 page */
+  --cid-unverified-rule: rgba(143, 162, 184, 0.5);
+
+  /* DEPRECATED FOR TEXT — NON-TEXT MARKERS ONLY (dimmed map pins).
+     Opacity scales a row against its backdrop, so a dimmed row measured
+     3.76:1 at the lead and 2.56:1 at the peers — below AA, and no palette can
+     fix it because the mechanism is multiplication, not hue. Text rows now
+     recede by COLOUR STEP: see --cid-row-dim-* below, which holds the same
+     recession at 10.91 / 6.02. A pin has no contrast requirement to fail, so
+     the opacity is still correct there. */
+  --cid-dim-row: 0.42;
+
+  /* THE TRUE #1 IS WEIGHT, SIZE AND FULL-STRENGTH INK — never a colour.
+     Three properties per rank so the distinction survives greyscale: the lead
+     is heavier, larger and brighter than its peers, and any one of the three
+     alone would still separate them. */
+  --cid-rank-lead: var(--cid-text);          /* 15.87:1 */
+  --cid-rank-lead-weight: 700;
+  --cid-rank-lead-size: 15px;
+  --cid-rank-peer: var(--cid-text-3);        /*  8.65:1 */
+  --cid-rank-peer-weight: 500;
+  --cid-rank-peer-size: 13px;
+
+  /* THE COMPARE-DIM, AS A COLOUR STEP. Same recession as the old opacity, and
+     every step still clears AA on the surface it lands on. */
+  --cid-row-dim-lead: var(--cid-text-2);     /* 10.91:1 */
+  --cid-row-dim-text: var(--cid-dim);        /*  6.02:1 */
+  --cid-row-dim-meta: rgba(238, 242, 247, 0.5); /* 4.80:1 */
 
   /* map — GROUND.
-     Aubergine lives in the SHADOWS here, never the highlights. The dark end
-     (land, parks, water depth) is tinted toward the accent; the light end
-     (road bodies, labels) stays close to neutral paper. That ordering is what
-     keeps the extruded buildings and the room pins the brightest things on the
-     map — if the streets went aubergine at the buildings' weight, the towers
-     would stop reading and the whole 3D arc would be for nothing.
+     THE HUES MOVED AUBERGINE -> STEEL BLUE; THE L* LADDER DID NOT MOVE.
+     Every rung below is held to its previous lightness within 0.2 L* and only
+     rotated in hue, because the ladder is one coupled decision and re-picking
+     rungs by eye is how the ground once walked past the road network. The
+     chain, unchanged in ORDER and in SPACING:
+       land 13.9 < land-2 17.0 < minor 21.0 < casing 27.0 < major 29.9 < dim 34.7
+     Two of those rungs (minor, casing) are GOLD and are untouched, which is
+     precisely why the others had to hold their lightness rather than being
+     re-derived: the ladder now mixes two hue families and only L* still
+     orders it.
 
-     WATER IS DESATURATED ON PURPOSE. --cid-value (#4FBFAE) means verified: good
-     rake, confirmed figures, the live dot. A decorative saturated teal on the
-     same screen would compete for that meaning, exactly as a brand-red that
-     cannot mean warning. Same family, far less saturation — the data signal
-     always wins the saturated value. */
-  /* THE GROUND FLOOR, SET BY PERCEPTUAL LIGHTNESS — TARGET L* = 14.
-     The previous note said "2.00x relative luminance", and that raise was
-     correct, committed, live, and INVISIBLE. Luminance is a physical quantity;
-     the eye reads L*, which is roughly its cube root down here. Doubling Y at
-     the bottom of the scale moved L* from 2.75 to 5.55 — under three points of
-     a hundred, RGB 11,9,16 -> 19,17,26 — so "twice as light" was true and
-     unnoticeable.
-     So the target is stated in the scale a person actually sees:
-       --cid-map-land   L* 13.90  (was 5.55, originally 2.75)
-       --cid-map-land-2 L* 17.01  (was 9.16, originally 4.67)
-     which is ~5.6x the original luminance and ~2.8x what the doubling gave.
-     IF THIS IS TUNED AGAIN, MOVE L*, NOT Y. That is the whole reason this
-     comment exists rather than a hex.
-     The hue ratio is preserved (260deg, blue-over-green 1.45) — the earlier
-     purple-cast tradeoff still applies: values that hit a round luminance
-     figure exactly do so by pushing the ground toward being a colour, and the
-     ground is a base. */
-  --cid-map-land: #262130;          /* background / land base */
-  --cid-map-land-2: #2E263D;        /* landuse polygons, one step up */
-  --cid-map-natural: #1C2318;       /* parks, wood, GOLF — desaturated moss */
-  --cid-map-water: #141634;         /* indigo-blue, well clear of the teal signal */
-  --cid-map-water-line: #1E2149;    /* waterways */
-  --cid-map-building: #191322;      /* the tiles' own buildings, kept quiet */
-  --cid-map-building-edge: #251C34; /* their hairline; Positron ships it near-WHITE */
-  /* THE GOLD EDGE ON OUR OWN 16 MASSES. An outline is a LINE, NOT A SURFACE —
-     gold stays an accent by geometry rather than by discipline — and edge
-     definition is exactly what makes massing read.
-     HALVED FOR THE MAP ONLY (#C9A227 -> #8A6D1F, luminance 0.385 -> 0.164).
-     The dimming is scoped to --cid-map-* on purpose: the UI gold does TEXT
-     work with a hard 4.5:1 floor per surface, and halving the shared scale
-     would have taken the eyebrows and links below it. */
+     RE-MEASURED against the new ground (old ratios void — the backdrop moved):
+       mass-dim vs land            1.99  (was 2.01)
+       mass-dim vs tile buildings  2.32  (was 1.91)
+       lit vs dim                  1.60  (was 1.61)
+       wall vs mass-dim            2.35  (was 1.63)
+     Nothing regressed; two margins improved because steel-blue separates from
+     a blue ground by lightness rather than fighting it in hue. */
+  --cid-map-land: #1A2433;          /* L* 13.9 */
+  --cid-map-land-2: #182B42;        /* L* 17.1 */
+  --cid-map-natural: #1C2318;       /* parks, wood, GOLF — moss, NOT aubergine,
+                                       so it was never part of the hue move */
+  --cid-map-water: #001935;         /* L*  8.6 */
+  --cid-map-water-line: #00254B;    /* L* 14.6 */
+  --cid-map-building: #0B1624;      /* the tiles' own buildings, kept quiet */
+  --cid-map-building-edge: #0B2138; /* their hairline; Positron ships it near-WHITE */
+
+  /* THE GOLD CAGE — UNTOUCHED, on purpose. An outline is a LINE, NOT A
+     SURFACE, so gold stays decorative by geometry rather than by discipline.
+     Gold is no longer semantic anywhere, so there is nothing left for the cage
+     to collide with — which is why it needed no change at all this pass. */
   --cid-map-building-lit: #8A6D1F;
-  /* HOVER, AND IT IS DELIBERATELY NOT THE DECORATION GOLD.
-     Hover used --cid-value, the TEAL THAT MEANS VERIFIED — a decorative use of
-     the one hue in this product that carries a claim. That should never have
-     shipped; it is the same mistake as an ochre "unverified", caught late.
-     It cannot simply become the map gold either: that gold is now dim and
-     covers ~16% of the frame, so a hover drawn in it would not read as a hover
-     at all. Separated by VALUE, exactly as brand teal was separated from
-     decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
+  /* HOVER. Stays #E3C567: it was separated from the teal that meant verified,
+     and that teal no longer exists. Gold marks neither selection nor state —
+     selection is the blue pin — so a gold hover claims nothing. */
   --cid-map-hover: #E3C567;
 
-  /* FILTERED OUT, NOT ABSENT.
-     Checking a game filter dims the rooms that lack it, and in 3D the building
-     IS the room — so the mass dims with the pin. It must still read as a
-     BUILDING though: a mass that sinks into the dark theme says "there is
-     nothing there", which is the map lying about a real casino that simply
-     does not spread Omaha. Held well above the ground plane it sits on
-     (--cid-map-land #262130, land-2 #2E263D, the tiles' own buildings
-     #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
-     The gold accents dim with it — a dimmed building wearing a lit roof or a
-     bright edge still reads as selected. */
-  /* TUNED AS RENDERED, NOT AS A SWATCH. The masses draw at
-     fill-extrusion-opacity 0.8 and composite over the ground, which pulled the
-     first value (#4E4370, a comfortable 2.23 against land in isolation) down to
-     1.72 against the tiles' own buildings — the swatch passed and the pixels
-     did not. Measured composited: 2.01 vs land, 1.91 vs tile buildings, and
-     1.63 between a dimmed and a matched mass. Bright enough to be a building,
-     dim enough not to be a match. */
-  /* DO NOT STEP THIS DARKER TO "FIX" THE FLAT-FILL NUMBERS.
-     Two flat-fill margins sit under 1.6 (dim fill vs land 1.44, lit vs dim fill
-     1.40) and they are PASSENGERS, not the signal. The flat mass is carried by
-     its OUTLINE at 2.85 — both colours opaque, so the ground moving does not
-     touch it — and that is what was confirmed by eye at Orleans.
-     This token is squeezed from both sides: darker separates it from the roads
-     and buries it against the land; lighter does the reverse. It is a rung in
-     the ladder above, so moving it is a coupled change to that whole ladder,
-     never a one-line contrast fix. */
-  --cid-map-mass-dim: #564A7C;
-  --cid-map-lit-dim: #5E4C22;
+  /* MULTI-SHADE DEPTH — SHADE BY SURFACE, NEVER BY DATA.
+     The three extrusion layers now carry three distinct shades so a mass reads
+     as a solid rather than a silhouette: the base line sits in shadow, the
+     shell catches raking light, the roof ring faces the sky. All three are
+     EXISTING canonical ramp steps, so depth costs no new hexes and the cage
+     stays one family.
+       base/edge  gold-700  L* 47.5   (shadow)
+       shell      gold-500  L* 68.3   (raking)
+       roof ring  gold-300  L* 80.3   (sky-facing)
+     NO HEIGHT-BANDING: none of these vary with a datum. A taller building is
+     not a different colour, it is a taller building.
+     `fill-extrusion-vertical-gradient` is left at its MapLibre default of true
+     — confirmed unset anywhere in the app — so the wall already shades down its
+     own height for free, and these three only had to separate the surfaces the
+     gradient cannot tell apart.
+     HARD FLOOR: the darkest lit shade is gold-700 at 12.7 L* and 1.60:1 above
+     --cid-map-mass-dim, which is the separation the old ladder measured (1.61).
+     Anything darker than gold-700 stops reading as lit; the monotonic-ladder
+     test pins this band above the dim colour. */
+  --cid-map-shell-lit: var(--cid-gold-500);
+  --cid-map-roof-lit: var(--cid-gold-300);
+
+  /* FILTERED OUT, NOT ABSENT. A dimmed mass must still read as a BUILDING: a
+     mass that sinks into the ground says "there is nothing there", which is the
+     map lying about a real casino that simply does not spread Omaha. */
+  --cid-map-mass-dim: #255484;      /* L* 34.8 */
+  --cid-map-lit-dim: #5E4C22;       /* the cage, dimmed — gold, untouched */
 
   /* THE THIRD FILTER STATE — "not yet checked", separated by CHROMA, not by
-     lightness. It is the NEUTRAL TWIN of the dimmed mass above: L* 34.45
-     against that token's 34.66, and chroma ~0 against its 31.6.
-     Holding lightness is what keeps it out of the road ladder. That ladder
-     (land 13.9 < land-2 17.0 < minor 21.0 < casing 27.0 < major 29.9 < dim
-     34.7) is one coupled decision, and a fourth mass tone picked by eye would
-     have landed somewhere inside it — the exact mistake the ground raise made
-     when it walked past the road rungs. Held at the same rung, it cannot.
-     Neutral is the semantically correct choice, not merely a convenient one:
-     gold is never semantic, teal means verified, and the standing ruling is
-     that unverified stays NEUTRAL GREY. "We have no answer" is precisely the
-     state with no colour to spend. */
+     lightness, and still the NEUTRAL twin of the dimmed mass: L* 34.5 against
+     that token's 34.8, chroma 0 against its 31.6. Holding lightness is what
+     keeps it out of the road ladder. Neutral is the semantically correct
+     choice and now the only one available: no colour carries a data state, so
+     "we have no answer" is the state with no colour to spend. */
   --cid-map-mass-unknown: #515151;
-  --cid-pin-unknown: rgba(242, 244, 246, 0.55);
+  --cid-pin-unknown: rgba(238, 242, 247, 0.55);
 
-  /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
-     glow rather than a black plane. A sky is the one surface that can break the
-     "brightest thing is a building" rule SILENTLY — it is enormous, it sits
-     behind everything, and no existing assertion looked at it. The horizon is
-     therefore held below building luminance and joined to the same chain. */
-  --cid-map-sky: #08070F;           /* zenith */
-  --cid-map-horizon: #2E1B3C;       /* the glow — below a lit building */
-  --cid-map-fog: #1B1226;
-  --cid-map-light: #F0D8B0;         /* the low sun raking the masses */
-  /* GOLD, at the one geometry where it cannot become a surface: the minor grid
-     is the densest thing on the map, so it is held BELOW the casing in
-     luminance. The chain is the weight limit — if a gold minor breaks it, the
-     weight is too high, and the answer is weight, never reverting the hue. */
-  --cid-map-road-minor: #3D3116;   /* L* 21.0 — a rung above land-2 */
-  /* GOLD, AS A CASING — the arterial outline. Positron draws the casing WIDER
-     than the body (3 vs 2 at z10), so gold beneath purple shows as an edge on
-     each side rather than as the road itself. Gold stays a line, which is the
-     rule that broke when the whole network went gold. */
+  /* DUSK. Vegas at night is when poker happens, so the horizon is a low glow
+     rather than a black plane. The sky is the one surface that can break the
+     "brightest thing is a building" rule SILENTLY, so the horizon is held below
+     building luminance and joined to the same chain. */
+  --cid-map-sky: #05080E;           /* zenith */
+  --cid-map-horizon: #002444;       /* the glow — below a lit building */
+  --cid-map-fog: #03172B;
+  --cid-map-light: #F0D8B0;         /* the low sun raking the masses — warm by
+                                       design; a light source is not brand */
+  /* GOLD ROAD ACCENTS — UNTOUCHED. The minor grid is the densest thing on the
+     map, so it is held BELOW the casing in luminance; the casing is drawn wider
+     than the body so gold shows as an edge on each side rather than as the road
+     itself. Gold stays a line, which is the rule that broke when the whole
+     network went gold. */
+  --cid-map-road-minor: #3D3116;   /* L* 21.0 */
   --cid-map-road-casing: #4E3E10;  /* L* 27.0 */
-  /* THE ROAD RUNGS ARE SET BY L*, AS A LADDER, NOT INDIVIDUALLY.
-     Raising the ground to L* 14 walked it PAST the network: road-minor sat at
-     L* 10.8, darker than the land it draws on, and the lightness-family test
-     went red — correctly. Road-major was also within 0.2 L* of the dimmed mass
-     AND the same hue, so a dimmed building and an arterial were near-identical
-     in both. Restated with hues held (within 1 degree) the family reads:
-       land 13.9 < land-2 17.0 < minor 21.0 < casing 27.0 < major 29.9 < dim 34.7
-     Change one of these and re-check the whole ladder; they are one decision. */
-  --cid-map-road-major: #4C4162;   /* L* 29.9 — 4.8 below the dimmed mass, was 0.2 */
-  --cid-map-boundary: rgba(169, 140, 232, 0.22);
+  --cid-map-road-major: #2F4868;   /* L* 30.0 — 4.8 below the dimmed mass */
+  --cid-map-boundary: rgba(127, 176, 232, 0.22);
 
   /* map */
-  --cid-pin: var(--cid-accent-500);
-  --cid-pin-dim: rgba(242, 244, 246, 0.26);
+  --cid-pin: var(--cid-accent-500);   /* SELECTION STAYS BLUE — gold marks
+                                         neither selection nor hover */
+  --cid-pin-dim: rgba(238, 242, 247, 0.26);
   --cid-cluster-partial: var(--cid-accent-300);
-  --cid-scrim: rgba(6, 8, 11, 0.68);
+  --cid-scrim: rgba(5, 8, 11, 0.68);
 
   /* elevation */
   --cid-shadow-pop: 0 18px 40px -16px rgba(0, 0, 0, 0.9);
@@ -210,100 +245,109 @@
 }
 
 [data-cid-theme="light"] {
-  --cid-ink-800: #F2F4F6;
-  --cid-ink-700: #FFFFFF;
+  /* Derived and MEASURED this pass, not carried over from the aubergine light
+     block. Nothing here is a lightened dark value. */
+  --cid-ink-900: #FFFFFF;
+  --cid-ink-800: #F1F3F6;   /* page */
+  --cid-ink-700: #FFFFFF;   /* surface */
   --cid-ink-600: #FFFFFF;
-  --cid-ink-500: #E7E9ED;
+  --cid-ink-500: #E7EAEF;
 
-  --cid-text: #10131A;
-  --cid-text-2: rgba(16, 19, 26, 0.84);
-  --cid-text-3: rgba(16, 19, 26, 0.74);
-  --cid-dim: rgba(16, 19, 26, 0.62);
-  --cid-disabled: rgba(16, 19, 26, 0.4);
+  --cid-accent-900: #0B2E55;
+  --cid-accent-700: #1B5A9E;  /* the one filled action — WHITE label on it 6.99:1 */
+  --cid-accent-600: #164B84;  /* hover — 8.85:1 */
+  --cid-accent-500: #1B5A9E;
+  --cid-accent-300: #1B5A9E;  /* accent type darkens on paper — 6.99:1 */
+  --cid-accent-200: #12365F;  /* link hover — 12.22:1 */
+  --cid-accent-wash: rgba(27, 90, 158, 0.10);
+  --cid-accent-line: rgba(27, 90, 158, 0.34);
 
-  --cid-line-1: rgba(16, 19, 26, 0.1);
-  --cid-line-2: rgba(16, 19, 26, 0.16);
-  --cid-line-3: rgba(16, 19, 26, 0.3);
-  --cid-fill-1: rgba(16, 19, 26, 0.04);
-  --cid-fill-2: rgba(16, 19, 26, 0.07);
+  /* THE LIT EDGE DOES NOT SURVIVE THE INVERSION. --cid-accent-300 on the
+     --cid-accent-700 fill measures 2.05:1 on light: a 1px edge that cannot be
+     seen is not an edge, and brightening it would break the label above it.
+     Light therefore states the action with an UNDERLINE beneath the button
+     instead of a lit edge on top of it. Same job, different geometry, because
+     the geometry is what failed. */
+  --cid-action-underline: #0B2E55;   /* 13.67:1 on surface */
 
-  /* map — ground, on paper. Same ordering inverted: the accent tint now lives
-     in the LIGHT end's shadows, and the buildings still sit above everything. */
+  /* Gold darkens on paper, and the canonical ramp already had these steps.
+     The doc's light gold #7A5C1C (6.22:1) is another near-miss — gold-300's
+     #6B520F measures 7.40:1 on the surface and 6.65:1 on the page, so the
+     canonical step is used and it is the brighter-contrast direction.
+     NEVER use the dark decorative gold here: #C9A227 measures 2.42:1 on white. */
   --cid-gold-700: #6B520F;
   --cid-gold-500: #8A6D1F;
-  --cid-gold-300: #6B520F;   /* gold type darkens on paper */
+  --cid-gold-300: #6B520F;
   --cid-gold-200: #4F3C0A;
   --cid-gold-wash: rgba(138, 109, 31, 0.12);
   --cid-gold-line: rgba(107, 82, 15, 0.34);
+  --cid-gold: var(--cid-gold-300);
+  --cid-gold-rule: var(--cid-gold-line);
 
-  --cid-map-land: #ECEAF0;
-  --cid-map-land-2: #E2DEE9;
+  --cid-paper: #EEF2F7;
+  --cid-text: #0C1219;                       /* 18.81:1 on surface */
+  --cid-text-2: rgba(12, 18, 25, 0.84);
+  --cid-text-3: rgba(12, 18, 25, 0.74);
+  --cid-dim: rgba(12, 18, 25, 0.62);         /* 5.28:1 */
+  --cid-disabled: rgba(12, 18, 25, 0.4);
+
+  --cid-line-1: rgba(12, 18, 25, 0.1);
+  --cid-line-2: rgba(12, 18, 25, 0.16);
+  --cid-line-3: rgba(12, 18, 25, 0.3);
+  --cid-fill-1: rgba(12, 18, 25, 0.04);
+  --cid-fill-2: rgba(12, 18, 25, 0.07);
+
+  --cid-value: var(--cid-text);
+  --cid-value-wash: transparent;
+
+  --cid-unverified: #55637A;                 /* 6.08:1 */
+  --cid-unverified-rule: rgba(85, 99, 122, 0.5);
+  --cid-dim-row: 0.42;
+
+  --cid-rank-lead: var(--cid-text);
+  --cid-rank-lead-weight: 700;
+  --cid-rank-lead-size: 15px;
+  --cid-rank-peer: var(--cid-text-3);
+  --cid-rank-peer-weight: 500;
+  --cid-rank-peer-size: 13px;
+
+  --cid-row-dim-lead: var(--cid-text-2);
+  --cid-row-dim-text: var(--cid-dim);
+  --cid-row-dim-meta: rgba(12, 18, 25, 0.5);
+
+  /* map — ground, on paper. Same L*-held hue rotation as the dark block: every
+     rung keeps its lightness and only moves aubergine -> steel. */
+  --cid-map-land: #E8EBF1;
+  --cid-map-land-2: #DBE0EA;
   --cid-map-natural: #D3DBCD;
-  --cid-map-water: #C6CEE2;
-  --cid-map-water-line: #AFBAD6;
-  --cid-map-building: #DAD4E2;
-  --cid-map-building-edge: #C6BDD3;
+  --cid-map-water: #C4CEE1;
+  --cid-map-water-line: #ACBBD6;
+  --cid-map-building: #D0D7E5;
+  --cid-map-building-edge: #B5C1D7;
   --cid-map-building-lit: #8A6D1F;
-  /* HOVER, AND IT IS DELIBERATELY NOT THE DECORATION GOLD.
-     Hover used --cid-value, the TEAL THAT MEANS VERIFIED — a decorative use of
-     the one hue in this product that carries a claim. That should never have
-     shipped; it is the same mistake as an ochre "unverified", caught late.
-     It cannot simply become the map gold either: that gold is now dim and
-     covers ~16% of the frame, so a hover drawn in it would not read as a hover
-     at all. Separated by VALUE, exactly as brand teal was separated from
-     decorative teal — hover takes the BRIGHT end, decoration keeps the dim. */
   --cid-map-hover: #E3C567;
+  --cid-map-shell-lit: var(--cid-gold-500);
+  --cid-map-roof-lit: var(--cid-gold-300);
 
-  /* FILTERED OUT, NOT ABSENT.
-     Checking a game filter dims the rooms that lack it, and in 3D the building
-     IS the room — so the mass dims with the pin. It must still read as a
-     BUILDING though: a mass that sinks into the dark theme says "there is
-     nothing there", which is the map lying about a real casino that simply
-     does not spread Omaha. Held well above the ground plane it sits on
-     (--cid-map-land #262130, land-2 #2E263D, the tiles' own buildings
-     #191322) and well below a matched mass (--cid-accent-500 #8A66C9).
-     The gold accents dim with it — a dimmed building wearing a lit roof or a
-     bright edge still reads as selected. */
-  /* TUNED AS RENDERED, NOT AS A SWATCH. The masses draw at
-     fill-extrusion-opacity 0.8 and composite over the ground, which pulled the
-     first value (#4E4370, a comfortable 2.23 against land in isolation) down to
-     1.72 against the tiles' own buildings — the swatch passed and the pixels
-     did not. Measured composited: 2.01 vs land, 1.91 vs tile buildings, and
-     1.63 between a dimmed and a matched mass. Bright enough to be a building,
-     dim enough not to be a match. */
-  /* DO NOT STEP THIS DARKER TO "FIX" THE FLAT-FILL NUMBERS.
-     Two flat-fill margins sit under 1.6 (dim fill vs land 1.44, lit vs dim fill
-     1.40) and they are PASSENGERS, not the signal. The flat mass is carried by
-     its OUTLINE at 2.85 — both colours opaque, so the ground moving does not
-     touch it — and that is what was confirmed by eye at Orleans.
-     This token is squeezed from both sides: darker separates it from the roads
-     and buries it against the land; lighter does the reverse. It is a rung in
-     the ladder above, so moving it is a coupled change to that whole ladder,
-     never a one-line contrast fix. */
-  --cid-map-mass-dim: #564A7C;
+  --cid-map-mass-dim: #255484;
   --cid-map-lit-dim: #5E4C22;
   --cid-map-mass-unknown: #515151;
+  --cid-pin-unknown: rgba(12, 18, 25, 0.52);
 
-  /* DUSK. Vegas at night is when poker happens, so the horizon is a low violet
-     glow rather than a black plane. A sky is the one surface that can break the
-     "brightest thing is a building" rule SILENTLY — it is enormous, it sits
-     behind everything, and no existing assertion looked at it. The horizon is
-     therefore held below building luminance and joined to the same chain. */
-  --cid-map-sky: #08070F;           /* zenith */
-  --cid-map-horizon: #2E1B3C;       /* the glow — below a lit building */
-  --cid-map-fog: #1B1226;
-  --cid-map-light: #F0D8B0;         /* the low sun raking the masses */
+  --cid-map-sky: #05080E;
+  --cid-map-horizon: #002444;
+  --cid-map-fog: #03172B;
+  --cid-map-light: #F0D8B0;
   --cid-map-road-minor: #E0D6BA;
   --cid-map-road-casing: #C9B98C;
-  --cid-map-road-major: #F2EDF8;
-  --cid-map-boundary: rgba(94, 58, 147, 0.28);
+  --cid-map-road-major: #EAEFF9;
+  --cid-map-boundary: rgba(27, 90, 158, 0.28);
 
-  --cid-accent-300: #5E3A93;   /* accent type darkens on paper */
-  --cid-accent-wash: rgba(94, 58, 147, 0.1);
-  --cid-value: #0F7A6C;
-  --cid-unverified: rgba(16, 19, 26, 0.62);
-  --cid-unverified-rule: rgba(16, 19, 26, 0.38);
-  --cid-pin-dim: rgba(16, 19, 26, 0.24);
-  --cid-pin-unknown: rgba(16, 19, 26, 0.52);
-  --cid-scrim: rgba(16, 19, 26, 0.4);
+  --cid-pin: var(--cid-accent-500);
+  --cid-pin-dim: rgba(12, 18, 25, 0.24);
+  --cid-cluster-partial: var(--cid-accent-300);
+  --cid-scrim: rgba(12, 18, 25, 0.4);
+
+  --cid-shadow-pop: 0 18px 40px -16px rgba(0, 0, 0, 0.9);
+  --cid-shadow-toast: 0 14px 34px -14px rgba(0, 0, 0, 0.85);
 }

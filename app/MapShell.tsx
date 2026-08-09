@@ -559,8 +559,12 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           type: 'fill-extrusion',
           paint: {
             /* Was a FLAT colour with no case expression at all — the layer that
-               would have kept a bright gold rim around a dimmed mass. */
-            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit, T.massUnknown),
+               would have kept a bright gold rim around a dimmed mass.
+               ITS OWN SHADE since the steel pass: the shell catches raking
+               light, so it sits a step above the base line. Shade by SURFACE,
+               never by data — this varies with which face it is, not with any
+               figure the building carries. */
+            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.shellLit, T.massUnknown),
             'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.9,
@@ -580,7 +584,11 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           source: 'roofs',
           type: 'fill-extrusion',
           paint: {
-            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.buildingLit, T.massUnknown),
+            /* The ROOF faces the sky and takes the brightest of the three
+               shades. The dim arm is unchanged: a filtered-out building loses
+               its depth with everything else, because depth is a property of a
+               lit mass and not a second signal. */
+            'fill-extrusion-color': dimFirst(T.litDim, T.hover, T.roofLit, T.massUnknown),
             /* `max` keeps a short component from inverting base above height. */
             'fill-extrusion-base': ['max', ['-', ['get', 'height'], 2], 0] as ExpressionSpecification,
             'fill-extrusion-height': ['get', 'height'] as ExpressionSpecification,
