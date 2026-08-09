@@ -165,28 +165,19 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
 }
 .cid-maploading p { font: var(--cid-caption); color: var(--cid-dim); margin: var(--cid-space-3) 0 0; }
 
-/* VALLEY HAZE — a screen-space scrim, and deliberately NOT called fog.
-   MapLibre v6 has no fog primitive: `setFog` does not exist (0 occurrences in
-   the shipped types and bundle — that is a Mapbox API), and the fog that DOES
-   exist lives inside `setSky` and blends the ground into the HORIZON. With the
-   horizon off-screen at pitch 52, sweeping `fog-ground-blend` from 0.08 to 0.95
-   changed 0.01% of pixels: measurably nothing.
-   So this is an honest substitute rather than an approximation dressed up as
-   the real thing — a radial vignette in the fog colour, which gives depth and
-   night-in-a-valley at the CURRENT camera with no maxPitch change. It is a
-   large-area surface, so it joins the luminance chain for the same reason the
-   sky did. */
-.cid-mapfog {
-  position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  /* DISTANCE, NOT VIGNETTE. Real haze fades what is FAR AWAY, and under pitch
-     the far ground is the top of the frame — so this is a top-weighted fade
-     rather than a ring around the edges. Measured against a radial vignette it
-     is roughly three times as much visible depth per unit of gold washed out
-     (28.8% of pixels changed for 2.8pp of gold, against 5.2% for 1.6pp),
-     because it puts the haze where the buildings are not. */
-  background: linear-gradient(to bottom, var(--cid-map-fog) 0%, rgba(0, 0, 0, 0) 42%);
-  opacity: 0.9;
-}
+/* THE VALLEY HAZE WAS HERE, AND IT IS GONE — Phil's ruling, 2026-08-09.
+   `.cid-mapfog` was a screen-space scrim: a top-weighted gradient in the fog
+   colour that covered 28.8% of pixels and cost 2.8pp of gold contrast. It was
+   removed by RULING rather than by measurement — it did the job it was built
+   for, and the job is no longer wanted.
+   WHAT STAYS, because it is a different thing wearing a similar name: the
+   `setSky` call in MapShell paints the dusk sky and the horizon glow behind the
+   towers, and `--cid-map-fog` is still consumed there as its `fog-color`. That
+   fog blends the ground into the HORIZON, which at pitch 52 is off-screen —
+   sweeping `fog-ground-blend` from 0.08 to 0.95 moved 0.01% of pixels. Deleting
+   the token because "the fog is gone" would break the sky for a name collision.
+   The far ground is now slightly brighter, which is the expected visual
+   consequence and the thing Phil is looking at on dev. */
 
 .cid-viewbtn {
   flex: 1; min-height: var(--cid-target);

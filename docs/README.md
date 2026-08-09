@@ -958,6 +958,17 @@ with `atmosphere-blend` 0.4 → 1.0 changed **0.01% of pixels, mean difference
 
 ### The nearest real thing: valley haze, and it is not called fog
 
+> **REMOVED 2026-08-09 by Phil's ruling.** `.cid-mapfog` is gone from
+> `MapShell` and `globals.css`. It is kept described below because the
+> measurements are the useful part — they are why a radial vignette is the wrong
+> shape for haze, and they are what the next person will want if this is ever
+> reconsidered. Nothing in this section describes the map as it renders today.
+>
+> **`setSky` was NOT touched and is not the same thing.** The dusk sky and the
+> horizon glow behind the towers stay, and `--cid-map-fog` survives as its
+> `fog-color`. The visible consequence of the removal is that the far ground is
+> slightly brighter.
+
 A screen-space scrim in the fog colour. Named `.cid-mapfog` but described as
 haze everywhere it is explained, because calling an overlay "fog" is how an
 approximation gets mistaken for the API it is standing in for.
@@ -976,9 +987,19 @@ puts the haze where the buildings are not. The first attempt — a heavy radial
 vignette — cut gold from 13.2% to 7.4%, halving the accent three rounds of work
 had just tuned.
 
-The haze is a large-area surface, so it joins the luminance chain on the same
-terms as the sky, and the label floor is now checked **through** it: the scrim
+The haze was a large-area surface, so it joined the luminance chain on the same
+terms as the sky, and the label floor was checked **through** it: the scrim
 composited over the halo, then the text against that.
+
+Both of those went with it on 2026-08-09. The haze left the luminance chain —
+the sky assertion in it is untouched — and the through-the-haze label test was
+**deleted rather than restated**, which this project does not normally do. The
+reason it was the right call there: the test is pure token arithmetic and
+`--cid-map-fog` still exists for `setSky`, so it would have kept PASSING while
+measuring a surface nobody draws. The risk it covered is now bounded by the two
+assertions either side of it — labels against their halo, and labels against the
+horizon. The horizon one is the case that got *harder*, since nothing darkens
+the top of the frame any more.
 
 ## The vertical gold wireframe
 
@@ -1044,9 +1065,13 @@ still drawn at full height, no ping.
 | before haze + wireframe | 13.2% | 16.1% |
 | after | **10.4%** | **11.9%** |
 
-The haze accounts for essentially all of that: it is a translucent scrim over
-the top half of the frame, so it dims gold pixels below both thresholds. Gold
-coverage did not shrink; gold contrast did, which is what a haze is.
+The haze accounted for essentially all of that: a translucent scrim over the top
+half of the frame, dimming gold pixels below both thresholds. Gold coverage did
+not shrink; gold contrast did, which is what a haze is.
+
+*(Measured while the haze shipped. It was removed 2026-08-09 — see above — so
+the "after" column no longer describes the map, and gold's hue share should now
+read closer to the "before" row.)*
 
 ## The wireframe drew nothing for a whole session (2026-08-04)
 

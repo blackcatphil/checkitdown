@@ -1335,9 +1335,13 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
 
       <div style={{ position: 'relative' }}>
         <div ref={holder} style={{ position: 'absolute', inset: 0 }} />
-        {/* Above the canvas, below the panel and popups; pointer-events none so
-            it cannot swallow a click on a pin. */}
-        {in3d && <div className="cid-mapfog" aria-hidden />}
+        {/* THE VALLEY HAZE IS GONE — Phil, 2026-08-09. A `.cid-mapfog` scrim
+            sat here over the top of the frame. Removed by ruling, not by
+            measurement: it worked, and it covered 28.8% of pixels doing it.
+            `setSky` above is UNTOUCHED and is a different thing — the dusk sky
+            and horizon behind the towers stay, and its own `fog-color` moves
+            0.01% of pixels at this camera, which is why removing the scrim does
+            not touch it. */}
 
         {/* "No buildings" and "buildings not downloaded yet" look identical on
             screen and mean opposite things. The instrument cannot tell them
