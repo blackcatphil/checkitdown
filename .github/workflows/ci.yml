@@ -351,9 +351,12 @@ jobs:
           # 53 on 2026-08-10: the entry-camera height sweep (4 viewports) and the
           # scroll-defect assertions, less the two corridor-anchor claims the
           # skyline-first ruling retired.
+          # 55 on 2026-08-10: the map page became a scrolling document — the panel
+          # sits below the map, the document scrolls, and the panel is no longer its
+          # own scroller. Plus the seasonal toggle asserted ABSENT, not deleted quietly.
           # Raise this when assertions are added; never lower it to pass a run.
-          [ "$n" -ge 53 ] \
-            || { echo "::error::only $n mobile assertions ran (expected >= 53) — the suite shrank"; exit 1; }
+          [ "$n" -ge 55 ] \
+            || { echo "::error::only $n mobile assertions ran (expected >= 55) — the suite shrank"; exit 1; }
           # A skip must stay a skip. If these ever stop being skipped without
           # the floor moving, something changed configuration silently.
           s=$(grep -c '^  SKIP' /tmp/mobile.log || true)

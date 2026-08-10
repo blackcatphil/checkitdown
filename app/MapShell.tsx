@@ -350,7 +350,6 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
   const toggleGroup = useCallback(
     (id: string, active: number) => setUserOpen((m) => toggleOpen(id, active, m)),
     [])
-  const [season, setSeason] = useState(false)
   const [compare, setCompare] = useState<string[]>([])
   const [zoom, setZoom] = useState(STRIP_Z)
   const [ready, setReady] = useState(false)
@@ -369,8 +368,15 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
   const diagRef = useRef<Diag>(diag)
 
   const roster = useMemo(
-    () => rooms.filter((r) => (season ? r.status !== 'closed' : inRoster(r))),
-    [rooms, season],
+    /* THE SEASONAL TOGGLE IS GONE — 2026-08-10. It was a stub for a WSOP
+       surface that gets its own page next spring, and a checkbox is not that
+       surface. THE DATA IS UNCHANGED: WSOP·Paris keeps is_seasonal true and
+       stays off the roster, the pins and every count, exactly as it was with
+       the toggle in its default off position. `inRoster` is the one definition
+       and it always was; what went is the ability to override it from the
+       panel. */
+    () => rooms.filter((r) => inRoster(r)),
+    [rooms],
   )
   const { matches, activeKeys } = useMemo(
     () => {
@@ -399,7 +405,7 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      invisibly — the same trap `applyGameFilter` closes for games, arriving here
      for amenities. */
   const groups = useMemo(() => amenityGroups(roster, amenityDefs), [roster, amenityDefs])
-  /* DERIVED FROM THE ROSTER, so it reacts to closures and the seasonal toggle
+  /* DERIVED FROM THE ROSTER, so it reacts to closures
      the way shippableKeys does — there is no list of stakes in the client. */
   const catalogue = useMemo(() => comboCatalogue(roster), [roster])
   const shipped = useMemo(
@@ -1417,14 +1423,32 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
          children were stacked into the 302px one. Only `height` stays inline —
          nothing overrides it. */
       className="cid-mapgrid"
-      style={{ height: 'calc(100dvh - var(--cid-header-h))' }}
+      /* THE HEIGHT COMES THROUGH A CUSTOM PROPERTY, not a literal, because an
+         inline style beats any media query no matter what it sits in — the same
+         trick the dimmed table rows use. Desktop resolves it to the viewport
+         minus the header; the phone query resolves it to `auto` so the page
+         becomes an ordinary scrolling document. */
+      style={{ height: 'var(--cid-mapgrid-h)' }}
     >
       <aside
         className="cid-mappanel"
         data-open={sheetOpen ? 'true' : 'false'}
         style={{
           background: 'var(--cid-ink-700)', borderRight: '1px solid var(--cid-line-2)',
-          padding: 'var(--cid-space-6)', overflowY: 'auto',
+          /* THE PANEL'S SCROLLER IS A DESKTOP PROPERTY, and this is inline, so
+             the phone query cannot switch it off directly — an inline style
+             beats any media query. Same indirection as the grid height above.
+             Desktop: `auto`, because the panel is a fixed-height grid child
+             holding more than fits. Phone: `visible`, because the page scrolls
+             and a scroller inside a scroller is the half-inch slot this layout
+             was rebuilt to remove. */
+          padding: 'var(--cid-space-6)',
+          /* React types overflowY as the CSS keyword union, which a custom
+             property is not. The cast is the narrowest possible statement of
+             "this resolves to one of those at compute time" — the alternative
+             is a literal, and a literal here cannot be switched by the phone
+             query at all. */
+          overflowY: 'var(--cid-panel-overflow)' as React.CSSProperties['overflowY'],
           display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-6)',
         }}
       >
@@ -1624,11 +1648,6 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           )
         })}
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--cid-space-4)', minHeight: 'var(--cid-target)', font: 'var(--cid-body)', color: 'var(--cid-text-3)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={season} onChange={(e) => setSeason(e.target.checked)} />
-          Include series-only rooms
-        </label>
-
         {compare.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-3)' }}>
             <span className="cid-label">
@@ -1647,7 +1666,7 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
         )}
       </aside>
 
-      <div style={{ position: 'relative' }}>
+      <div className="cid-mapcell" style={{ position: 'relative' }}>
         <div ref={holder} style={{ position: 'absolute', inset: 0 }} />
         {/* THE VALLEY HAZE IS GONE — Phil, 2026-08-09. A `.cid-mapfog` scrim
             sat here over the top of the frame. Removed by ruling, not by

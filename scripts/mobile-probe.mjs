@@ -758,13 +758,18 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
   }
 }
 
-/* ═══ THE SCROLL DEFECT — Phil reported it 2026-08-10 ═══
-   The sheet entered handle-only (43px) and the FIRST tap only bought back the
-   peek (92px) without opening it, so the panel looked open while holding
-   1151px of filters in a 92px window. Every drag hauled the whole panel through
-   a slot, which is what a broken scroll looks like from the outside.
-   It was invisible at the device height, where the entry was never handle-only.
-   Both halves are asserted here at Safari's REAL viewport. */
+/* ═══ THE MAP PAGE SCROLLS — 2026-08-10, second ruling ═══
+   The first fix made ONE TAP open the sheet, which turned 92px of usable
+   scroller into 371px. Phil's answer was that the whole model was wrong: a
+   fixed app shell with a sheet over the map gives you a slot to read a panel
+   thousands of pixels tall, however big the slot is. So the map became a block
+   with a height and the page became an ordinary scrolling document.
+
+   ⚠️ THE TRADE THIS ASSERTS AROUND: MapLibre captures touch inside the canvas,
+   so a drag on the map pans the map and does NOT scroll the page. Correct and
+   standard — but it means the map is not a scroll surface, and the affordance
+   has to be the panel below it. That is why the map is 60svh rather than full
+   bleed: the panel must be visibly started at rest. */
 {
   const ctx = await browser.newContext({
     viewport: { width: 393, height: 600 }, deviceScaleFactor: 3,
@@ -774,55 +779,73 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
   await pg.goto(BASE, { waitUntil: 'networkidle' })
   await pg.waitForTimeout(2600)
 
-  const entrySheet = await pg.evaluate(() => {
-    const el = document.querySelector('.cid-mappanel')
-    return { h: el.clientHeight, scrollH: el.scrollHeight }
-  })
-  await pg.locator('.cid-sheet-handle').click()
-  await pg.waitForTimeout(900)
-
-  const opened = await pg.evaluate(() => {
-    const el = document.querySelector('.cid-mappanel')
-    const nav = document.querySelector('.cid-botnav')
-    const navTop = nav.getBoundingClientRect().top
-    /* Scroll the SHEET, not the window. If the map canvas were eating the
-       gesture this would not move. */
-    const before = el.scrollTop
-    el.scrollTop = 400
-    const moved = el.scrollTop - before
-    /* Then to the end, and check the last thing in it lands above the nav. */
-    el.scrollTop = el.scrollHeight
-    const kids = [...el.children]
-    const last = kids[kids.length - 1]
-    const lastBottom = last ? last.getBoundingClientRect().bottom : null
+  const atRest = await pg.evaluate(() => {
+    const cell = document.querySelector('.cid-mapcell')
+    const panel = document.querySelector('.cid-mappanel')
     return {
-      h: el.clientHeight, scrollH: el.scrollHeight,
-      open: el.getAttribute('data-open'), moved,
-      docScrolls: document.documentElement.scrollHeight > document.documentElement.clientHeight,
-      lastBottom: lastBottom == null ? null : Math.round(lastBottom),
-      navTop: Math.round(navTop),
-      reachesAboveNav: lastBottom != null && lastBottom <= navTop + 1,
+      mapH: Math.round(cell.getBoundingClientRect().height),
+      panelTop: Math.round(panel.getBoundingClientRect().top),
+      viewportH: window.innerHeight,
+    }
+  })
+  /* BELOW the map, and visible. The first version of this only asked whether
+     the panel started before the fold, and PASSED against a layout where the
+     panel sat ABOVE the map — the DOM order is panel-then-map for the desktop
+     grid, and removing the overlay stacked them that way. An assertion that
+     cannot tell the intended layout from its inverse is not an assertion. */
+  ok(atRest.panelTop >= atRest.mapH && atRest.panelTop < atRest.viewportH,
+    `the panel sits BELOW the map and is visibly started at rest (map ${atRest.mapH}px, panel begins at y=${atRest.panelTop} of ${atRest.viewportH})`)
+
+  await pg.locator('.cid-sheet-handle').click()
+  await pg.waitForTimeout(800)
+
+  const scrolled = await pg.evaluate(() => {
+    const de = document.documentElement
+    const panel = document.querySelector('.cid-mappanel')
+    const nav = document.querySelector('.cid-botnav')
+    window.scrollTo(0, de.scrollHeight)
+    const groups = [...panel.querySelectorAll('.cid-disclose')]
+    const last = groups[groups.length - 1]
+    const lb = last.getBoundingClientRect()
+    const navTop = nav.getBoundingClientRect().top
+    return {
+      docScrollH: de.scrollHeight, docClientH: de.clientHeight,
+      docScrolls: de.scrollHeight > de.clientHeight,
+      scrolledTo: Math.round(window.scrollY),
+      panelOverflow: getComputedStyle(panel).overflowY,
+      panelIsOwnScroller: panel.scrollHeight > panel.clientHeight + 2,
+      lastGroup: last.querySelector('span')?.textContent.trim(),
+      lastBottom: Math.round(lb.bottom), navTop: Math.round(navTop),
+      lastClearsNav: lb.bottom <= navTop + 1,
     }
   })
 
-  console.log(`  sheet at 393x600      entry ${entrySheet.h}px → one tap ${opened.h}px of ${opened.scrollH}px`)
+  console.log(`  map page at 393x600   document ${scrolled.docScrollH}/${scrolled.docClientH} · map ${atRest.mapH}px · panel overflow-y:${scrolled.panelOverflow}`)
 
-  /* ONE TAP OPENS. The regression was that it took two, and the intermediate
-     state looked open. A threshold rather than an exact height, because the
-     sheet is 62vh and that moves with the viewport. */
-  ok(opened.open === 'true' && opened.h > entrySheet.h * 4,
-    `ONE tap opens the sheet at Safari's real viewport (${entrySheet.h}px → ${opened.h}px, data-open=${opened.open})`)
+  ok(scrolled.docScrolls,
+    `THE DOCUMENT SCROLLS on mobile (${scrolled.docScrollH} > ${scrolled.docClientH}, scrolled to ${scrolled.scrolledTo})`)
 
-  /* THE SHEET SCROLLS INDEPENDENTLY OF THE MAP. The canvas is full-bleed with
-     touch-action:none underneath it, so this is the assertion that a gesture in
-     the sheet belongs to the sheet. */
-  ok(opened.moved === 400,
-    `the sheet's contents scroll independently of the map (scrollTop moved ${opened.moved}px; the document itself does not scroll: ${!opened.docScrolls})`)
+  /* THE NESTED SCROLLER IS THE THING THAT WAS KILLED. A scroller inside a
+     scroller is what produced the half-inch slot; asserting the outer one moves
+     is not enough on its own, because both were true before and the inner one
+     still swallowed the flick. */
+  ok(!scrolled.panelIsOwnScroller && scrolled.panelOverflow !== 'auto' && scrolled.panelOverflow !== 'scroll',
+    `and the filter panel is NOT its own scroller (overflow-y:${scrolled.panelOverflow})`)
 
-  /* AND THE CONTENT ENDS ABOVE THE NAV. A panel whose last row sits under the
-     fixed bar is a panel with an unreachable end. */
-  ok(opened.reachesAboveNav,
-    `content under the map reaches its end above the nav (last child bottom ${opened.lastBottom} vs nav top ${opened.navTop})`)
+  ok(scrolled.lastGroup != null && scrolled.lastClearsNav,
+    `the panel's last group is reachable by page scroll and clears the nav ("${scrolled.lastGroup}" bottom ${scrolled.lastBottom} vs nav top ${scrolled.navTop})`)
+
+  /* THE SEASONAL TOGGLE IS GONE — 2026-08-10. Asserted as ABSENT rather than
+     deleted quietly: the control was a stub for a WSOP surface that gets its
+     own page, and its return would be a decision, not an accident. The DATA is
+     unchanged and the roster assertions elsewhere still prove WSOP·Paris stays
+     out of every count. */
+  const seasonal = await pg.evaluate(() => ({
+    checkboxes: document.querySelectorAll('.cid-mappanel input[type="checkbox"]').length,
+    label: /series-only/i.test(document.querySelector('.cid-mappanel').textContent),
+  }))
+  ok(seasonal.checkboxes === 0 && !seasonal.label,
+    `the seasonal toggle is gone from the panel (${seasonal.checkboxes} checkboxes, series-only text: ${seasonal.label})`)
 
   await ctx.close()
 }

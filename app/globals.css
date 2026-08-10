@@ -297,6 +297,11 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
 .cid-mapgrid {
   display: grid;
   grid-template-columns: var(--cid-panel-w) minmax(0, 1fr);
+  /* Read by the inline styles on the elements — see MapShell. Desktop is the
+     full viewport below the header with a scrolling panel, exactly as it always
+     was. */
+  --cid-mapgrid-h: calc(100dvh - var(--cid-header-h));
+  --cid-panel-overflow: auto;
 }
 
 /* THE CELL WRAPPER IS INVISIBLE ABOVE THE BREAKPOINT.
@@ -372,13 +377,56 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     font-weight: 700;
   }
 
-  /* ---- LANDING MAP: panel becomes a bottom sheet over a full-bleed map */
+  /* ---- LANDING MAP: THE PAGE SCROLLS — 2026-08-10 ----------------------
+     This was a fixed app shell: the map filled the viewport and the panel
+     overlaid it as a sheet with its OWN scroller. Phil measured the result at
+     about half an inch of usable scroll for a panel thousands of pixels tall,
+     which is what a scroller inside a scroller gets you — the outer surface
+     cannot move, so the inner one carries everything through a slot.
+     So the map becomes a BLOCK with a height, the panel becomes an ordinary
+     block beneath it, and the document scrolls like a document. The map leaving
+     the screen while you choose filters is fine and was ruled so.
+
+     ⚠️ THE TRADE, NAMED: MapLibre captures touch inside the canvas, so a drag
+     ON THE MAP pans the map and does not scroll the page. That is correct and
+     standard — a map you cannot drag is a broken map — but it means the map
+     area is not a scroll surface. The page is scrolled from the panel below it,
+     which is why the map is given a height that leaves the panel visibly
+     started underneath: the affordance has to be on screen at rest. */
   .cid-mapgrid {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
+    grid-template-rows: auto auto;
+    /* Not the viewport any more — the grid is as tall as its content, and the
+       panel has no scroller of its own. Both are read by inline styles. */
+    --cid-mapgrid-h: auto;
+    --cid-panel-overflow: visible;
   }
-  /* Both children occupy the single cell; the sheet sits above the map. */
-  .cid-mapgrid > * { grid-area: 1 / 1; }
+  /* Undo the overlay: the two children stack in flow.
+     ORDER, BECAUSE THE DOM SAYS PANEL-THEN-MAP. That order is right for the
+     desktop grid, where the columns place the panel on the left — but stacked
+     in flow it puts the filters above the map, which is neither what was ruled
+     nor what a reader expects on landing. `order` moves the boxes without
+     touching the source order, so the desktop grid and the tab sequence are
+     untouched: a keyboard reader still meets the panel first, which is the
+     useful order for someone not looking at the map at all. */
+  .cid-mapgrid > * { grid-area: auto; }
+  .cid-mapcell { order: -1; }
+  .cid-mapcell {
+    /* 60svh, NOT 60vh. On iOS `vh` resolves against the LARGE viewport — the
+       one with the browser chrome hidden — so a vh-sized map is taller than the
+       space actually on screen and pushes the panel's first row under the fold,
+       which is precisely the affordance this layout depends on.
+       The plain `vh` line is the fallback for anything without svh; the svh
+       line wins where it is supported.
+       MEASURED: masses at z14.5 hold at every height down to 280px (7 of them),
+       so the skyline survives the shorter block — the fixed entry camera is
+       what makes that true. 60svh is 360px on a 600px Safari viewport (9
+       masses) and 343px on an iPhone SE (8). */
+    height: 60vh;
+    height: 60svh;
+    min-height: 300px;
+    max-height: 520px;
+  }
 
   /* THE STACKING, WHICH IS THE NAMED LANDMINE.
      The sheet and its handle must sit ABOVE the bottom nav, and the handle must
@@ -388,24 +436,29 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
      bottom of the viewport is the same hazard wearing different clothes, so the
      sheet is lifted above it (z-index 30 > the nav's 20) and its foot is padded
      by the full nav clearance so the handle can never be underneath the bar. */
+  /* THE PANEL IS AN ORDINARY BLOCK NOW, not a sheet floating over the map.
+     No position, no z-index, no max-height and — the point of the exercise —
+     NO overflow of its own. It is as tall as its content and the page scrolls
+     it. The sheet's shadow and rounded top go with it: those said "this floats
+     above something", and it does not any more. */
   .cid-mappanel {
-    position: relative;
-    z-index: 30;
-    align-self: end;
     width: 100%;
-    max-height: var(--cid-sheet-max);
+    max-height: none;
+    overflow: visible;
     border-right: none;
     border-top: 1px solid var(--cid-line-2);
-    border-radius: var(--cid-r-md) var(--cid-r-md) 0 0;
-    box-shadow: var(--cid-shadow-pop);
-    /* The collapsed sheet still shows the count line — the one thing worth
-       reading without opening anything. */
-    transition: max-height var(--cid-dur) var(--cid-ease);
   }
+  /* The handle survives as a COLLAPSE control rather than a sheet gesture: the
+     panel is thousands of pixels tall and a reader who wants the map back
+     should not have to scroll past all of it. Collapsed, it is the peek and
+     nothing more — the one place a max-height and a hidden overflow are still
+     correct, because that IS the collapsed state. */
   .cid-mappanel[data-open="false"] {
     max-height: var(--cid-sheet-peek);
     overflow: hidden;
+    transition: max-height var(--cid-dur) var(--cid-ease);
   }
+
   /* THE NESTED SCROLL IS GONE — 2026-08-09, superseded by collapsible groups.
      `.cid-stakes` was capped at 46vh with its own scroller because 26
      checkboxes could not fit a phone sheet. That made the sheet scroll AND the
@@ -523,7 +576,16 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     min-height: var(--cid-target);
   }
   /* A 13px checkbox is a control, not prose. */
-  .cid-mappanel input[type="checkbox"] { width: 22px; height: 22px; }
+  /* THE ONLY <input type="checkbox"> IN THE PANEL WENT WITH THE SEASONAL
+     TOGGLE — 2026-08-10, so this rule is removed with it. It was also the only
+     native form control in the app that carried no colours of its own, which is
+     why it rendered white against the panel: a native checkbox paints itself
+     from the UA stylesheet unless something says otherwise, and nothing did.
+     CHECKED, SO THE BUG DOES NOT OUTLIVE THE CONTROL: the filter "checkboxes"
+     are <button class="cid-check">, not inputs, and the two real inputs left in
+     the app — the admin email field and the correction form's contact field —
+     both set background, border and colour explicitly. Nothing else shares the
+     path. */
 
   /* THE NOTCH AND THE HOME INDICATOR. `viewportFit: 'cover'` lets the app draw
      under both, which is what makes an installed app look installed — and also
