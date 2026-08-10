@@ -271,6 +271,37 @@ for (const [name, path] of SCREENS) {
         grid.offPalette === 0 ? `all ${grid.count} cells on --cid-ink-700` : `${grid.offPalette} cell(s) off-palette`)
     }
 
+    /* PROSE IS PARAGRAPHS, NOT A WALL. The body is stored with its blank-line
+       breaks and was rendered in a single <p>, where HTML collapses every
+       newline to a space — 2359 characters of Wynn in one block. Asserted as a
+       COUNT rather than "it renders", because one paragraph is exactly what the
+       bug produced and "it renders" was true throughout. */
+    const proseSet = await page.evaluate(() => {
+      const ps = [...document.querySelectorAll('.cid-prose-body')]
+      const date = document.querySelector('.cid-prose-date')
+      if (ps.length === 0) return null
+      const cs = getComputedStyle(ps[0])
+      const w = ps[0].getBoundingClientRect().width
+      const cv = document.createElement('canvas').getContext('2d')
+      cv.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+      const avg = cv.measureText('abcdefghijklmnopqrstuvwxyz ').width / 27
+      return { paras: ps.length, chars: Math.round(w / avg),
+               dateShown: date != null && date.getBoundingClientRect().height > 0,
+               dateText: date?.textContent.trim() ?? null }
+    })
+    if (proseSet == null) {
+      console.log(`  SKIP  ${name}: the prose section — this room carries no description`)
+    } else {
+      ok(`${name}: the review renders as paragraphs, not one block`,
+        proseSet.paras > 1, `${proseSet.paras} paragraphs`)
+      /* 45–75 is the comfortable measure; 68ch was setting 80 because `ch` is
+         the zero glyph and overshoots for lowercase. */
+      ok(`${name}: the reading measure is within the comfortable band`,
+        proseSet.chars >= 45 && proseSet.chars <= 75, `~${proseSet.chars} characters per line`)
+      ok(`${name}: the first-seen date stays visible`,
+        proseSet.dateShown, proseSet.dateText ?? 'absent')
+    }
+
     /* ⚠️ A CONFIRMED ABSENCE MUST NOT RENDER AS THE NOT-CHECKED DASH. Caesars
        Palace says "Checked on site — no amenities" further down this page; if
        its parking and food tiles showed the em-dash, one page would make two

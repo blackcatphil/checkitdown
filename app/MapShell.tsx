@@ -312,10 +312,21 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
   const rosterRef = useRef<MapRoom[]>([])
   const [checked, setChecked] = useState<string[]>([])
   const [amenChecked, setAmenChecked] = useState<string[]>([])
-  /* Closed on arrival. The map is the landing view; a sheet covering it on
-     first paint would answer a question nobody asked yet. Desktop ignores this
-     entirely — the panel is always open above the breakpoint. */
-  const [sheetOpen, setSheetOpen] = useState(false)
+  /* OPEN ON ARRIVAL — 2026-08-10. This was `false`, with the reasoning that the
+     map is the landing view and a sheet covering it would answer a question
+     nobody asked. That was TRUE OF THE SHEET and stopped being true the moment
+     the panel became a block below the map: nothing is covered any more, and
+     the closed default instead capped the filters at the 92px peek over a
+     1087px panel — the exact slot the scrolling rebuild was meant to remove.
+     The page shipped with the defect still in it, because the layout was right
+     and the default was wrong.
+     Phil ruled the trade explicitly: "I don't mind if the map is out of view
+     while selecting filters." So the map scrolling away is the intended
+     experience, not a cost, and the handle stays as a COLLAPSE control for
+     getting the map back rather than as the way in.
+     Desktop ignores this entirely — `data-open` is only read inside the phone
+     query, and above the breakpoint the panel is always open. */
+  const [sheetOpen, setSheetOpen] = useState(true)
 
   /* COLLAPSE STATE IS UI CHROME, NOT TRUTH — and it is deliberately NOT in the
      URL. The URL carries the compare set, and a shared link must not ship the

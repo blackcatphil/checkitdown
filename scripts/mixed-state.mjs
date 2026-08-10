@@ -1177,6 +1177,46 @@ try {
       !/cid-prose/.test(none), 'empty-safe by construction')
   })()
 
+
+  /* ═══ FORMATTING IS PRESENTATION; THE BODY IS QUOTED MATERIAL ═══
+     The renderer splits the stored body on its blank lines so the author's
+     paragraphs survive. It must do NOTHING ELSE — no re-wrapping, no smart
+     quotes, no ellipsis substitution, no trimming inside a paragraph. So the
+     rendered paragraphs are reassembled and compared to what the database
+     holds, character for character. A formatting change that alters an author's
+     words is not formatting. */
+  await (async () => {
+    console.log('\n== PARTNER PROSE — rendered paragraphs are the stored text ==')
+    const slug = sql("select r.slug from room_descriptions d join rooms r on r.id = d.room_id order by length(d.body) desc limit 1")
+    if (!slug) {
+      console.log('   SKIP  no room carries a description — run the differ first')
+      return
+    }
+    const stored = sql(`select d.body from room_descriptions d
+      join rooms r on r.id = d.room_id where r.slug = '${slug}'`)
+    const raw = await roomPageRaw(slug)
+    const section = raw.match(/<section class="cid-prose">([\s\S]*?)<\/section>/)?.[1] ?? ''
+    const paras = [...section.matchAll(/class="cid-prose-body"[^>]*>([\s\S]*?)<\/p>/g)]
+      .map((m) => m[1]
+        .replace(/<[^>]+>/g, '')
+        .replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x2F;/g, '/'))
+
+    check('the review renders as paragraphs, not one block', paras.length > 1,
+      `${slug}: ${paras.length} paragraphs`)
+
+    /* psql -qtAX folds the body's newlines into the row it returns, so the
+       comparison is made on the TEXT with its separators normalised away — the
+       claim is that no character of the author's prose changed, not that the
+       whitespace round-trips through a shell. */
+    const flat = (t) => t.replace(/\s+/g, ' ').trim()
+    check('and the text is unaltered — no rewrap, no typographic substitution',
+      flat(paras.join(' ')) === flat(stored),
+      flat(paras.join(' ')) === flat(stored)
+        ? `${stored.length} characters match`
+        : `rendered ${flat(paras.join(' ')).length} vs stored ${flat(stored).length}`)
+  })()
+
 } finally {
   restore()
   /* THE ASSERTION THAT CATCHES THIS WHOLE CLASS. Not "is everything back to

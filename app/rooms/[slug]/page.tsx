@@ -650,7 +650,21 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           year. The answer is the date, not a ban on the sentence. */}
       {desc?.publish && descRow != null && (
         <section className="cid-prose">
-          <p className="cid-prose-body">{desc.text}</p>
+          {/* PARAGRAPHS, BECAUSE THE AUTHOR WROTE PARAGRAPHS. The body is stored
+              with its blank-line breaks — Wynn's review is 8 of them across 428
+              words — and rendering it in ONE <p> collapsed every newline to a
+              space, per HTML's whitespace rules. The result was a 2359-character
+              wall. Nothing was wrong with the data; the renderer was throwing
+              away structure the author put in.
+              SPLIT ONLY, NEVER REWRAP. The text is quoted material: this splits
+              on the breaks the author typed and changes nothing else — no
+              re-wrapping, no smart quotes, no ellipsis substitution, no trimming
+              of anything but the blank lines used as separators. A single
+              newline inside a paragraph stays inside that paragraph, because it
+              is the author's line and not ours to reflow. */}
+          {desc.text.split(/\n{2,}/).map((para, i) => (
+            <p key={i} className="cid-prose-body">{para}</p>
+          ))}
           <p className="num cid-prose-date">
             WRITTEN {new Date(descRow.written_at).toISOString().slice(0, 10)}
           </p>

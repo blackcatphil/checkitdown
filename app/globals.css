@@ -647,10 +647,24 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
 .cid-prose-body {
   font: var(--cid-body);
   color: var(--cid-text);
-  /* A READING MEASURE. The facts grid wants the full width; a paragraph at
-     1440px is a paragraph nobody finishes. */
-  max-width: 68ch;
+  /* A READING MEASURE, RE-MEASURED 2026-08-10. The facts grid wants the full
+     width; a paragraph at 1440px is a paragraph nobody finishes.
+     68ch was measuring 80 characters a line on desktop, because `ch` is the
+     width of the ZERO GLYPH and lowercase prose runs narrower than that — the
+     unit overshoots for text. The comfortable band is 45–75 and the classic
+     target is around 66, so the cap comes down to 60ch, which measures ~70.
+     The phone is unaffected: at 393px the paragraph is 379px and 58 characters,
+     well inside the band already, and the cap never binds there. */
+  max-width: 60ch;
   margin: 0;
+}
+/* PARAGRAPH SEPARATION HAS TO BEAT THE LEADING. The section's flex gap was
+   12px against a 20.9px line-height, so the space between paragraphs was barely
+   more than the space between lines and eight paragraphs read as one block with
+   pauses. Spaced on their own so the date below keeps the section's own
+   rhythm — the paragraphs are a group, the date is not part of it. */
+.cid-prose-body + .cid-prose-body {
+  margin-top: var(--cid-space-3);
 }
 /* STALENESS IS DATED, NOT HIDDEN — the same treatment every verified date
    gets, so a reader already knows how to read it. */

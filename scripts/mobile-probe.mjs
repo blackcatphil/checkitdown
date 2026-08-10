@@ -705,7 +705,13 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
         navH: nav ? Math.round(nav.getBoundingClientRect().height) : 0,
       }
     })
-    ok(staged && d != null, `the description section renders at 390px${d ? ` (${d.chars} characters)` : ' — NO SECTION, nothing below is measured'}`)
+    /* WHOEVER PUT THE ROW THERE. The fixture stages one with `on conflict do
+       nothing`, which is correct — a real description must win over a test
+       one — but it means `staged` is false once the differ has delivered the
+       partner reviews, and gating on it failed against a page that was
+       rendering prose perfectly well. What this asserts is that the section
+       renders; where the row came from is not its business. */
+    ok(d != null, `the description section renders at 390px${d ? ` (${d.chars} characters${staged ? ', fixture' : ', real'})` : ' — NO SECTION, nothing below is measured'}`)
     if (d) {
       ok(d.right <= d.vw, `the reading measure does not push the page sideways (section right ${d.right} <= viewport ${d.vw})`)
       ok(d.docW <= d.vw, `no horizontal overflow on a room page with prose (scrollWidth ${d.docW} <= ${d.vw})`)
@@ -795,6 +801,61 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
      cannot tell the intended layout from its inverse is not an assertion. */
   ok(atRest.panelTop >= atRest.mapH && atRest.panelTop < atRest.viewportH,
     `the panel sits BELOW the map and is visibly started at rest (map ${atRest.mapH}px, panel begins at y=${atRest.panelTop} of ${atRest.viewportH})`)
+
+  /* ═══ AT REST, WITH NOTHING TAPPED — the hole this suite had ═══
+     Every panel assertion in this file OPENED the panel before measuring, so
+     the whole set passed against a page that shipped with the filters capped at
+     the 92px peek over a 1087px panel. The layout was right and the default was
+     wrong, and no assertion could tell, because they all started by fixing it.
+     So the state a reader actually lands in is measured first and separately.
+     A probe that taps before it looks is a probe that cannot see a bad
+     default. */
+  const rest = await pg.evaluate(() => {
+    const panel = document.querySelector('.cid-mappanel')
+    const de = document.documentElement
+    const peek = parseFloat(getComputedStyle(de).getPropertyValue('--cid-sheet-peek')) || 92
+    return {
+      open: panel.getAttribute('data-open'),
+      panelH: panel.clientHeight, panelScrollH: panel.scrollHeight,
+      peek, overflow: getComputedStyle(panel).overflowY,
+      docScrolls: de.scrollHeight > de.clientHeight,
+      docH: de.scrollHeight, viewportH: de.clientHeight,
+    }
+  })
+  console.log(`  at rest, untapped     panel ${rest.panelH}px (peek ${rest.peek}) overflow-y:${rest.overflow} · document ${rest.docH}/${rest.viewportH}`)
+
+  ok(rest.panelH > rest.peek * 2,
+    `AT REST the panel is open, not capped at the peek (${rest.panelH}px vs peek ${rest.peek}px, data-open=${rest.open})`)
+  ok(rest.docScrolls,
+    `AT REST the document scrolls (${rest.docH} > ${rest.viewportH}) — no tap required to reach the filters`)
+
+  const restReach = await pg.evaluate(() => {
+    const panel = document.querySelector('.cid-mappanel')
+    const nav = document.querySelector('.cid-botnav')
+    window.scrollTo(0, document.documentElement.scrollHeight)
+    const groups = [...panel.querySelectorAll('.cid-disclose')]
+    const last = groups[groups.length - 1]
+    const lb = last.getBoundingClientRect()
+    const navTop = nav.getBoundingClientRect().top
+    return { label: last.querySelector('span')?.textContent.trim(),
+             bottom: Math.round(lb.bottom), navTop: Math.round(navTop),
+             clears: lb.bottom <= navTop + 1 }
+  })
+  ok(restReach.clears,
+    `AT REST the last filter group is reachable by page scroll alone ("${restReach.label}" bottom ${restReach.bottom} vs nav top ${restReach.navTop})`)
+  await pg.evaluate(() => window.scrollTo(0, 0))
+  await pg.waitForTimeout(300)
+
+  /* AND THE HANDLE STILL COLLAPSES, which is now its only job: getting the map
+     back without scrolling past the whole panel. */
+  await pg.locator('.cid-sheet-handle').click()
+  await pg.waitForTimeout(800)
+  const collapsed = await pg.evaluate(() => {
+    const panel = document.querySelector('.cid-mappanel')
+    return { open: panel.getAttribute('data-open'), h: panel.clientHeight }
+  })
+  ok(collapsed.open === 'false' && collapsed.h <= rest.peek + 4,
+    `the handle collapses the panel to the peek (${collapsed.h}px, data-open=${collapsed.open})`)
 
   await pg.locator('.cid-sheet-handle').click()
   await pg.waitForTimeout(800)

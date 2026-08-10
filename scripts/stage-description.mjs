@@ -30,9 +30,17 @@ export const STAGED_SOURCE = 'https://example.test/probe-staged-description'
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 
+/* MULTI-PARAGRAPH ON PURPOSE. The real partner reviews are 3–8 paragraphs and
+   the renderer splits on blank lines; a single-paragraph fixture cannot tell a
+   working splitter from the wall-of-text bug it replaced, and it duly reported
+   "1 paragraphs" against a page rendering eight. A fixture that cannot exhibit
+   the failure is not a fixture for it. */
 const BODY =
   'A long room off the main floor, quiet on weeknights and busy the moment a '
   + 'series lands. The smallest game is {stakes_lowest} across {table_count} tables.'
+  + '\n\n'
+  + 'The second paragraph exists so the renderer has a blank line to split on. '
+  + 'Its content does not matter; its separation does.'
 
 export function stageDescription(slug) {
   sql(`
