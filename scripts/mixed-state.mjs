@@ -334,11 +334,31 @@ const RECEIPT = /Confirmed in person on/
    the game's `verified_at`; rake and drop ride `rake_verified_at`. DRESS CODE
    and DRINKS are absent because roster coverage hides those tiles. */
 const expectedTildes = () => new Map(sql(`
+  with cover as (
+    select bool_or(dress_code is not null) as dress, bool_or(drinks_note is not null) as drinks
+      from rooms
+  )
   select r.slug || '|' ||
+    /* THE FACTS GRID — nine fixed slots since 2026-08-10, plus the two
+       coverage-gated ones. Six ride the ROOM's stamp; the three amenity slots
+       ride their OWN row's, which is why they are counted separately below. */
     ((case when r.verified_at is null then
-        (r.table_count is not null)::int + (r.hours_note is not null)::int
-      + (r.comp_rate_hourly is not null)::int + (r.loyalty_program is not null)::int
+        (r.table_count is not null)::int
+      + (r.is_24h or r.hours_note is not null)::int          -- HOURS folds is_24h
+      + (r.min_age is not null)::int
+      + (r.comp_rate_hourly is not null)::int
+      + (r.loyalty_program is not null)::int
+      + (r.phone is not null)::int
+      + ((select dress from cover) and r.dress_code is not null)::int
+      + ((select drinks from cover) and r.drinks_note is not null)::int
       else 0 end)
+    /* AN AMENITY TILE TILDES ON ITS OWN STAMP. A confirmed ABSENCE renders the
+       words "None" and its date, never a tilde — the absence is a fact, not an
+       unverified figure. */
+    + coalesce((select count(*) from room_amenities ra
+        join amenity_types at on at.id = ra.amenity_id
+        where ra.room_id = r.id and at.slug in ('freeself', 'tableside', 'cocktail')
+          and ra.available and ra.verified_at is null), 0)
     + coalesce((select sum(
         (case when g.verified_at is null then
            (g.min_buy_in is not null)::int + ((g.is_uncapped or g.max_buy_in is not null))::int

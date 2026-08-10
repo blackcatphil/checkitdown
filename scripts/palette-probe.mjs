@@ -234,6 +234,68 @@ for (const [name, path] of SCREENS) {
      simply absent — the vacuous shape this file already guards against with
      "the page rendered". */
   if (path.startsWith('/rooms/')) {
+    /* ═══ THE FACTS GRID: NO ORPHAN CELL, AND NO CELL SHOWING THE LINE ═══
+       Phil reported "two boxes in the wrong colour". They were not mis-painted
+       tiles — they were MISSING tiles. The grid is three columns fed by an
+       array, and a room with four facts left the last row two short, so the
+       container's --cid-line-1 showed through the gap and read as a value.
+       That makes this a palette assertion as much as a layout one: the failure
+       presented as a colour, and the fix is that every cell in the grid paints
+       the tile background. */
+    const grid = await page.evaluate(() => {
+      const el = document.querySelector('.cid-tiles')
+      if (el == null) return null
+      const cs = getComputedStyle(el)
+      const cols = cs.gridTemplateColumns.split(' ').filter(Boolean).length
+      const cells = [...el.children]
+      const probe = document.createElement('span')
+      probe.style.background = 'var(--cid-ink-700)'
+      document.body.appendChild(probe)
+      const tile = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return {
+        cols, count: cells.length,
+        offPalette: cells
+          .map((c) => getComputedStyle(c).backgroundColor)
+          .filter((bg) => bg !== tile).length,
+      }
+    })
+    if (grid == null) {
+      ok(`${name}: the facts grid renders`, false, 'no .cid-tiles on the page')
+    } else {
+      ok(`${name}: the facts grid has no orphan cell`,
+        grid.count % grid.cols === 0,
+        `${grid.count} cells across ${grid.cols} columns — ${grid.count % grid.cols} orphan(s)`)
+      ok(`${name}: every cell paints the tile background, none shows the grid line`,
+        grid.offPalette === 0,
+        grid.offPalette === 0 ? `all ${grid.count} cells on --cid-ink-700` : `${grid.offPalette} cell(s) off-palette`)
+    }
+
+    /* ⚠️ A CONFIRMED ABSENCE MUST NOT RENDER AS THE NOT-CHECKED DASH. Caesars
+       Palace says "Checked on site — no amenities" further down this page; if
+       its parking and food tiles showed the em-dash, one page would make two
+       contradictory statements about the same visit. Asserted on the room that
+       actually has the data, by name, rather than on whichever room the screen
+       list happens to open. */
+    const absent = await page.evaluate(async () => {
+      const res = await fetch('/rooms/caesars-palace')
+      const html = await res.text()
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      const tiles = [...(doc.querySelector('.cid-tiles')?.children ?? [])]
+      const read = (label) => {
+        const t = tiles.find((c) => c.querySelector('.cid-label')?.textContent.trim() === label)
+        return t == null ? null : t.textContent.replace(label, '').trim()
+      }
+      return { parking: read('FREE PARKING'), food: read('TABLESIDE FOOD'), cocktails: read('COCKTAILS') }
+    })
+    ok(`${name}: a confirmed-absent fact never renders as the not-checked dash`,
+      absent.parking != null && !absent.parking.includes('\u2014') && /None/.test(absent.parking)
+      && absent.food != null && !absent.food.includes('\u2014') && /None/.test(absent.food),
+      `caesars-palace parking "${absent.parking}" · food "${absent.food}"`)
+    ok(`${name}: and a genuinely unchecked fact still does`,
+      absent.cocktails != null && absent.cocktails.includes('\u2014'),
+      `caesars-palace cocktails "${absent.cocktails}" — no row, so no check`)
+
     const prose = await page.evaluate(() => {
       const el = document.querySelector('.cid-prose-body')
       return el == null ? null : el.textContent.trim().length

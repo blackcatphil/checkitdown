@@ -413,6 +413,9 @@ jobs:
           # 31 on 2026-08-09: +6 for the room-detail screen, added so the new
           # prose text nodes are composited like every other. It surfaced two
           # em-dash markers at 3.29:1 on a page this probe had never opened.
+          # 35 on 2026-08-10: +4 for THE FACTS grid — no orphan cell, every cell on
+          # the tile background, and the confirmed-absent-vs-never-checked split.
+          # The orphan bug presented AS a colour, so it is gated here.
           # 25 — the full local count; nothing here is flag-gated.
-          [ "$n" -ge 31 ] \
-            || { echo "::error::only $n palette assertions ran (expected >= 31) — the suite shrank"; exit 1; }
+          [ "$n" -ge 35 ] \
+            || { echo "::error::only $n palette assertions ran (expected >= 35) — the suite shrank"; exit 1; }

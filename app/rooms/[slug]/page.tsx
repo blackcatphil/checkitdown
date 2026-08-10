@@ -127,7 +127,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     .from('rooms')
     .select(
       'id,slug,name,property,area,status,is_seasonal,closed_on,latitude,longitude,'
-      + 'table_count,phone,website_url,hours_note,is_24h,'
+      + 'table_count,phone,website_url,hours_note,is_24h,min_age,'
       + 'loyalty_program,comp_rate_hourly,comp_notes,dress_code,drinks_note,'
       + 'source_url,fetched_at,verified_at,'
       + 'cash_games(stakes_label,game,min_buy_in,max_buy_in,is_uncapped,rake_type,rake_percent,'
@@ -166,7 +166,8 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     status: RoomStatus; is_seasonal: boolean; closed_on: string | null
     latitude: number; longitude: number
     table_count: number | null; phone: string | null; website_url: string | null
-    hours_note: string | null; loyalty_program: string | null; comp_rate_hourly: number | null
+    hours_note: string | null; is_24h: boolean | null; min_age: number | null
+    loyalty_program: string | null; comp_rate_hourly: number | null
     comp_notes: string | null; dress_code: string | null; drinks_note: string | null
     source_url: string | null; fetched_at: string | null; verified_at: string | null
     cash_games: Array<{
@@ -317,20 +318,114 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     (a, b) => (Number(a.big_blind ?? a.big_bet ?? 0)) - (Number(b.big_blind ?? b.big_bet ?? 0)),
   )
 
-  /* DRESS CODE and DRINKS are 0/17 and researched to stay there — the only
-     first-party dress code that exists is the Venetian's, and it governs the
-     casino floor rather than the poker room. A tile that can only ever hold a
-     dash teaches a reader that our dashes mean nothing, which costs more than
-     the tile is worth. They reappear the moment one room has a value; the
-     columns and the floor-visit checklist are untouched. */
-  const facts: Array<[string, string | null]> = [
-    ['TABLES', room.table_count != null ? String(room.table_count) : null],
-    ['HOURS', room.hours_note],
-    ['COMPS', room.comp_rate_hourly != null ? `$${Number(room.comp_rate_hourly).toFixed(2)}/hr` : null],
-    ['CLUB', room.loyalty_program],
-    ...(coverage.dressCode ? [['DRESS CODE', room.dress_code] as [string, string | null]] : []),
-    ...(coverage.drinks ? [['DRINKS', room.drinks_note] as [string, string | null]] : []),
+  /* ═══ THE FACTS: FIXED SLOTS, THE SAME NINE FOR EVERY ROOM ═══
+     Phil reported two boxes in the wrong colour on a room page. They were not
+     tiles with a bad background — they were the ABSENCE of tiles. The grid is
+     three columns fed by a variable-length array, and a room with four facts
+     leaves the last row two cells short; the container's --cid-line-1 shows
+     through the gap and reads as a value nobody can identify.
+     So the array stops being variable. Nine slots, three full rows, rendered
+     for every room whether or not we hold the fact — which is also the honest
+     shape, because a fact we have not checked is a fact about the room and
+     hiding the tile hides that.
+
+     WHY THESE NINE. Chosen by what `rooms` and `room_amenities` actually carry
+     across the seventeen, not by what would be nice:
+
+       TABLES 16/17 · HOURS 17/17 · MIN AGE 17/17     — the room
+       COMPS  13/17 · CLUB  12/17 · PHONE   15/17     — the player
+       FREE PARKING 13/17 · TABLESIDE FOOD 15/17 · COCKTAILS 3/17
+
+     MIN AGE, PHONE and the 24-hour flag were already being FETCHED and never
+     rendered. HOURS folds `is_24h` into `hours_note`, because "24 hours" is the
+     answer to the question the tile asks and two tiles would split one fact.
+
+     COCKTAILS IS THE WEAK ONE and it is named as such: three rooms carry the
+     row, so fourteen tiles show the not-yet-checked dash. That is a real state
+     this product exists to display rather than a hole — but it is the slot to
+     drop if the grid should go to six. DRESS CODE and DRINKS stay out: 0/17
+     with research saying they will remain so, and a tile that can only ever
+     hold a dash teaches a reader that our dashes mean nothing.
+
+     ⚠️ TWO KINDS OF EMPTY, and the grid may not conflate them — the /facts Cell
+     distinction, brought here. A never-checked fact gets the em-dash. A fact
+     CONFIRMED ABSENT says so, with the date somebody stood there. Caesars
+     Palace carries "Checked on site — no amenities" further down this very
+     page while its parking and food tiles would otherwise read as unknown; two
+     statements about the same visit, disagreeing.
+     The absent state is derived from `room_amenities` — the same rows `present`
+     and `amenitiesCheckedAt` read — and from each row's OWN verified_at, never
+     from the room's. That is the distinction the amenities block already draws:
+     a completed amenity check whose finding is "neither of these is here" is a
+     finding, not a gap. */
+  type Slot = {
+    label: string
+    value: string | null
+    /** Set only when the fact was CHECKED and found absent. */
+    absentOn?: string | null
+    /** A row-filling cell: tile background, no label, no value, no claim. */
+    filler?: boolean
+    /** THE STAMP THAT GOVERNS THIS FACT. Room columns ride the room's, but an
+        amenity rides its OWN row's — "whether the amenities were checked is an
+        amenity fact, not a room fact", which the amenities block above already
+        settled. Reading the room's stamp here would tilde a figure a person
+        confirmed on the floor, which is the Wynn 40-tildes error in a new
+        place. */
+    verifiedAt?: string | null
+  }
+
+  const amenity = (slug: string, yes: string): Slot => {
+    const row = room.room_amenities.find((a) => a.amenity_types?.slug === slug)
+    if (row == null) return { label: '', value: null }
+    if (row.available) return { label: '', value: row.detail ?? yes, verifiedAt: row.verified_at }
+    /* CONFIRMED ABSENT — but only if somebody actually confirmed it. An
+       available=false row with no stamp is a claim nobody has stood behind, so
+       it stays a dash rather than borrowing the room's date. */
+    return { label: '', value: null, absentOn: row.verified_at }
+  }
+  const named = (label: string, s: Slot): Slot => ({ ...s, label })
+
+  const hours = room.is_24h ? '24 hours' : room.hours_note
+
+  const facts: Slot[] = [
+    { label: 'TABLES', value: room.table_count != null ? String(room.table_count) : null },
+    { label: 'HOURS', value: hours },
+    { label: 'MIN AGE', value: room.min_age != null ? `${room.min_age}+` : null },
+
+    { label: 'COMPS', value: room.comp_rate_hourly != null ? `$${Number(room.comp_rate_hourly).toFixed(2)}/hr` : null },
+    { label: 'CLUB', value: room.loyalty_program },
+    { label: 'PHONE', value: room.phone },
+
+    named('FREE PARKING', amenity('freeself', 'Yes')),
+    named('TABLESIDE FOOD', amenity('tableside', 'Yes')),
+    named('COCKTAILS', amenity('cocktail', 'Yes')),
+
+    /* THE ZERO-COVERAGE SURFACES STILL COME BACK ON THEIR OWN. Dress code and
+       drinks are 0/17 and hidden, and the moment ONE room on the roster carries
+       either, the tile appears for every room — the gate is roster coverage,
+       not this room's value, so a reader can see that we now ask a question
+       this room has not answered.
+       Keeping that mechanism is why the grid pads rather than fixing its length
+       at nine: a conditional slot makes the count 10 or 11, and a fixed nine
+       would have deleted a tested behaviour to tidy a layout. */
+    ...(coverage.dressCode ? [{ label: 'DRESS CODE', value: room.dress_code }] : []),
+    ...(coverage.drinks ? [{ label: 'DRINKS', value: room.drinks_note }] : []),
   ]
+
+  /* ═══ THE LAST ROW IS ALWAYS FULL ═══
+     The orphan cells Phil saw were the grid running out mid-row: the container
+     paints --cid-line-1 and the 1px gaps let it through as the grid lines, so a
+     missing cell shows that line colour across a whole tile and reads as a
+     value nobody can identify.
+     Padding is the general fix rather than a slot count that happens to divide:
+     the set above is conditional, so its length is 9, 10 or 11 depending on
+     roster coverage, and any rule of the form "pick a multiple of three" breaks
+     the first time a surface comes back. The pad carries the tile background
+     and nothing else — it is the absence of a further fact, which is exactly
+     what it looks like. */
+  const COLUMNS = 3
+  const pad = (COLUMNS - (facts.length % COLUMNS)) % COLUMNS
+  for (let i = 0; i < pad; i++) facts.push({ label: `\u200b${i}`, value: null, filler: true })
 
   /* WHAT WAS CONFIRMED, one line per kind of fact, each with its own date.
      Rake, stakes and amenities are confirmed on separate visits soon enough.
@@ -564,12 +659,33 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
 
       <Block label="THE FACTS">
         <div className="cid-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
-          {facts.map(([label, value]) => (
-            <div key={label} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-2)' }}>
-              <span className="cid-label">{label}</span>
-              {/* Room-level facts, so they ride the ROOM's stamp — the one
-                  column that legitimately governs them. */}
-              <Figure value={value} verifiedAt={room.verified_at} />
+          {facts.map((f) => (
+            <div key={f.label} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-2)' }}>
+              {f.filler ? null : <span className="cid-label">{f.label}</span>}
+              {f.filler ? null : f.absentOn != null ? (
+                /* CONFIRMED ABSENT. Not the dash: somebody stood here and found
+                   none, and the dash means the opposite — that nobody has
+                   looked. Rendered as words with the date, so the tile agrees
+                   with the amenities block further down the same page instead
+                   of contradicting it.
+                   NOT `num`, because "None" is not a figure, and no colour,
+                   because a confirmed absence is an ordinary fact rather than a
+                   warning. */
+                <span
+                  style={{ font: 'var(--cid-body)', color: 'var(--cid-text-2)' }}
+                  title={`Checked on site on ${new Date(f.absentOn).toISOString().slice(0, 10)} — this room has none`}
+                >
+                  None
+                  <span className="num" style={{ font: 'var(--cid-caption)', color: 'var(--cid-text-3)', marginLeft: 'var(--cid-space-2)' }}>
+                    {new Date(f.absentOn).toISOString().slice(0, 10)}
+                  </span>
+                </span>
+              ) : (
+                /* Room-level facts ride the ROOM's stamp — the one column that
+                   legitimately governs them. An amenity slot with no row at all
+                   also lands here, which is right: no row is no check. */
+                <Figure value={f.value} verifiedAt={f.verifiedAt !== undefined ? f.verifiedAt : room.verified_at} />
+              )}
             </div>
           ))}
         </div>
