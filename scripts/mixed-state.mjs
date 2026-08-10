@@ -1183,18 +1183,46 @@ try {
      paragraphs survive. It must do NOTHING ELSE — no re-wrapping, no smart
      quotes, no ellipsis substitution, no trimming inside a paragraph. So the
      rendered paragraphs are reassembled and compared to what the database
-     holds, character for character. A formatting change that alters an author's
-     words is not formatting. */
+     holds, character for character.
+
+     ⚠️ THE SUITE STAGES ITS OWN ROW. This first read whichever description
+     happened to be in the database and skipped when there was none — which
+     passed locally, where the differ had delivered the partner reviews, and ran
+     NOTHING on CI, where seed carries no prose by design. Two assertions
+     silently not running took mixed from 146 to 144 and turned main red.
+     A suite that measures whatever is lying around is measuring the
+     environment, not the product — the same shape as the probe that gated on
+     `staged`.
+
+     THE FIXTURE IS TOKEN-FREE, deliberately, and not the one
+     stage-description.mjs uses: that body carries {stakes_lowest} and
+     {table_count} so it can exercise interpolation, which means its rendered
+     text is NOT its stored text and a fidelity comparison against it would be
+     asserting the wrong thing. This assertion is about paragraphs surviving
+     verbatim, so the fixture holds nothing that is meant to change.
+     `partner`, so the figures are allowed — a Check It Down description may not
+     type one (migration 009) and the quoted-material case is the one with
+     paragraphs in it anyway. */
   await (async () => {
     console.log('\n== PARTNER PROSE — rendered paragraphs are the stored text ==')
-    const slug = sql("select r.slug from room_descriptions d join rooms r on r.id = d.room_id order by length(d.body) desc limit 1")
-    if (!slug) {
-      console.log('   SKIP  no room carries a description — run the differ first')
-      return
-    }
-    const stored = sql(`select d.body from room_descriptions d
-      join rooms r on r.id = d.room_id where r.slug = '${slug}'`)
-    const raw = await roomPageRaw(slug)
+
+    /* Bellagio: never one of the four rooms the reviews cover, so the fixture
+       cannot collide with a real description on any database. */
+    const SLUG = 'bellagio'
+    const BODY = [
+      "First paragraph. It's got an apostrophe, a $5 figure and a \"quoted\" phrase — all of which must survive verbatim.",
+      'Second paragraph, separated by a blank line. This is the break the renderer splits on.',
+      'Third paragraph, so the count is unambiguous rather than merely plural.',
+    ].join('\n\n')
+    const b64 = Buffer.from(BODY, 'utf8').toString('base64')
+
+    mutate([SLUG], `
+      insert into room_descriptions (room_id, body, author_kind, written_at, source_url, fetched_at)
+      select id, convert_from(decode('${b64}', 'base64'), 'UTF8'), 'partner', '2026-08-10',
+             'https://example.test/mixed-prose', now()
+        from rooms where slug = '${SLUG}'`)
+
+    const raw = await roomPageRaw(SLUG)
     const section = raw.match(/<section class="cid-prose">([\s\S]*?)<\/section>/)?.[1] ?? ''
     const paras = [...section.matchAll(/class="cid-prose-body"[^>]*>([\s\S]*?)<\/p>/g)]
       .map((m) => m[1]
@@ -1202,19 +1230,20 @@ try {
         .replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"')
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x2F;/g, '/'))
 
-    check('the review renders as paragraphs, not one block', paras.length > 1,
-      `${slug}: ${paras.length} paragraphs`)
+    check('the review renders as paragraphs, not one block', paras.length === 3,
+      `${SLUG}: ${paras.length} paragraphs (staged 3)`)
 
-    /* psql -qtAX folds the body's newlines into the row it returns, so the
-       comparison is made on the TEXT with its separators normalised away — the
-       claim is that no character of the author's prose changed, not that the
-       whitespace round-trips through a shell. */
+    /* Compared with whitespace normalised: psql folds the body's newlines into
+       the row it returns, so the claim is that no CHARACTER of the prose
+       changed — not that the separators round-trip through a shell. */
     const flat = (t) => t.replace(/\s+/g, ' ').trim()
     check('and the text is unaltered — no rewrap, no typographic substitution',
-      flat(paras.join(' ')) === flat(stored),
-      flat(paras.join(' ')) === flat(stored)
-        ? `${stored.length} characters match`
-        : `rendered ${flat(paras.join(' ')).length} vs stored ${flat(stored).length}`)
+      flat(paras.join(' ')) === flat(BODY),
+      flat(paras.join(' ')) === flat(BODY)
+        ? `${BODY.length} characters match, apostrophe/quote/figure intact`
+        : `rendered "${flat(paras.join(' ')).slice(0, 70)}" vs staged "${flat(BODY).slice(0, 70)}"`)
+
+    restore()
   })()
 
 } finally {
