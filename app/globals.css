@@ -415,16 +415,13 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
      Measured: the group was 1513px open; collapsed it is the height of its
      heads. */
 
-  /* HANDLE-ONLY ENTRY — 2026-08-09 ruling. The panel collapses to the handle's
-     own target height so the corridor fit can afford the pixels the summary
-     line would otherwise take. Driven by a data attribute the MAP sets from a
-     measurement, not by a media query: the trigger is "the fit cannot clear
-     MASS_ZOOM with the full peek", which no CSS query can ask. */
-  .cid-mappanel[data-peek="handle"] {
-    max-height: var(--cid-target);
-    padding-top: 0;
-    padding-bottom: 0;
-  }
+  /* THE HANDLE-ONLY ENTRY IS GONE — 2026-08-10. It existed so the corridor fit
+     could afford the pixels the summary line would have taken, and the phone
+     entry is no longer a fit: it is a fixed camera that does not consult the
+     canvas at all. With nothing to buy back, the sheet enters at its normal
+     peek and one tap opens it. The two-stage disclosure this rule supported was
+     what Phil experienced as a scrolling defect. */
+
   /* The handle is the whole affordance: no drag gesture, no double-tap.
      A button, because it is one. */
   .cid-sheet-handle {

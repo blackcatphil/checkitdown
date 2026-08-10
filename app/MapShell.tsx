@@ -114,18 +114,14 @@ const VALLEY_Z = 10
 const VALLEY_Z_PHONE = 9.6
 const STRIP: [number, number] = [-115.1726, 36.1120]
 const STRIP_Z = 14.5
+/* THE PHONE ENTRY ZOOM. Chosen against MASS_ZOOM rather than against a screen:
+   at 14.5 it clears the massing threshold (13.5) by a full zoom level, so the
+   skyline draws on every canvas height we support — down to the iPhone SE's
+   ~507px — without the camera ever consulting the canvas. That margin is the
+   whole design: a fit re-derives the zoom from the height and can therefore
+   fall through the floor; a constant cannot. */
+const PHONE_Z = 14.5
 
-/* THE CORRIDOR — the phone's definition of "the Strip". Ruled 2026-08-09.
-   A phone at the desktop camera showed FIVE of seventeen rooms. Rather than
-   pick a zoom number and hope, the frame is stated as the two rooms that must
-   both be in it and the camera is derived from them: MGM Grand at the south
-   end, Wynn/Encore at the north.
-   THE COORDINATES ARE READ FROM THE ROOM DATA, never retyped here. A lat/lng
-   typed into a constant is the plausible-wrong-pointer failure with a decimal
-   point: it looks right, it is in Las Vegas, and it is silently a hundred
-   metres off the building. The same rule that rejected "Venetian" resolving to
-   the Sphere applies to a hardcoded anchor. */
-const CORRIDOR_ANCHORS = ['mgm-grand', 'wynn-encore'] as const
 
 const CLUSTER_RADIUS = 50
 const PITCH = 52
@@ -307,6 +303,9 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
   const holder = useRef<HTMLDivElement>(null)
   const roseRef = useRef(false)
   const lastActivity = useRef(0)
+  /* THE DRIFT'S OWN STOP, published so code outside that effect can use it.
+     See stopDrift: marking activity is not the same as halting the loop. */
+  const haltDrift = useRef<(() => void) | null>(null)
   const wireRef = useRef<WireframeLayer | null>(null)
   const mapRef = useRef<InstanceType<typeof MLMap> | null>(null)
   const hovered = useRef<string | null>(null)
@@ -317,10 +316,6 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      first paint would answer a question nobody asked yet. Desktop ignores this
      entirely — the panel is always open above the breakpoint. */
   const [sheetOpen, setSheetOpen] = useState(false)
-  /* HANDLE-ONLY ENTRY. Set from the measured corridor fit (see stripCamera),
-     never from a device test. False on desktop and on any phone tall enough to
-     afford the full peek. */
-  const [handleOnly, setHandleOnly] = useState(false)
 
   /* COLLAPSE STATE IS UI CHROME, NOT TRUTH — and it is deliberately NOT in the
      URL. The URL carries the compare set, and a shared link must not ship the
@@ -1169,6 +1164,10 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
       raf = null
     }
 
+    /* Published before the welcome starts, so a button pressed in the first
+       frame can still stop it. */
+    haltDrift.current = () => { stopped = true; halt() }
+
     start()                       // the welcome, unconditionally
 
     const interact = () => { stopped = true; lastActivity.current = Date.now(); halt() }
@@ -1184,6 +1183,7 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
     }, 1000)
 
     return () => {
+      haltDrift.current = null
       window.clearInterval(tick)
       halt()
       for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const) {
@@ -1301,7 +1301,22 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      The pointer listener on the canvas never sees these — they are panel
      buttons — and an ambient orbit that keeps turning the camera after somebody
      asked for a specific view is the map arguing with them. */
-  const stopDrift = useCallback(() => { lastActivity.current = Date.now() }, [])
+  const stopDrift = useCallback(() => {
+    lastActivity.current = Date.now()
+    /* ⚠️ AND ACTUALLY STOP IT. This used to set the timestamp and nothing else,
+       while the comment above claimed these buttons "kill the drift outright".
+       They did not, and the consequence was not subtle: the drift's frame loop
+       calls map.setBearing() every frame, a direct camera setter CANCELS an
+       in-flight easeTo, and so THE STRIP and WHOLE VALLEY did nothing at all
+       while the welcome drift was still running — which is precisely when a
+       visitor first reaches for them. The canvas listeners that do halt the
+       loop never fire for these, because they are panel buttons, and that is
+       the case the comment had already identified and the code had not
+       handled. Found 2026-08-10 when THE STRIP could not restore the camera in
+       a probe whose context, alone among this file's contexts, did not set
+       reducedMotion — so the drift was live and the bug was reachable. */
+    haltDrift.current?.()
+  }, [])
 
   /* ONE DEFINITION OF "THE STRIP" PER PLATFORM.
      This is what the entry camera uses AND what the THE STRIP button restores,
@@ -1309,119 +1324,45 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
      exactly what would have happened if the entry were a fitBounds and the
      toggle stayed an easeTo to a hardcoded centre.
      Desktop is untouched: same centre, same zoom, same pitch as before. */
-  const stripCamera = useCallback((map: InstanceType<typeof MLMap>) => {
+  const stripCamera = useCallback(() => {
     const css = getComputedStyle(document.documentElement)
     const px = (n: string, f: number) => {
       const v = parseFloat(css.getPropertyValue(n))
       return Number.isFinite(v) ? v : f
     }
     const phone = window.matchMedia(`(max-width: ${px('--cid-bp-phone', 860)}px)`).matches
-    if (!phone) return { center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18, handleOnly: false }
 
-    const anchors = rosterRef.current.filter((r) => (CORRIDOR_ANCHORS as readonly string[]).includes(r.slug))
-    /* Both or nothing. A fit over ONE anchor is a fit over a point, which
-       answers with maxZoom — a silently wrong frame that still looks like a
-       deliberate camera. */
-    if (anchors.length !== CORRIDOR_ANCHORS.length) {
-      return { center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18, handleOnly: false }
-    }
-    const pts = anchors.map((r) => [r.longitude, r.latitude] as [number, number])
-    const center: [number, number] = [
-      (pts[0][0] + pts[1][0]) / 2,
-      (pts[0][1] + pts[1][1]) / 2,
-    ]
+    /* DESKTOP IS UNTOUCHED. It has the height for a fit and keeps the camera it
+       always had. */
+    if (!phone) return { center: STRIP, zoom: STRIP_Z, pitch: PITCH, bearing: -18 }
 
-    /* THE SAFE BOX, IN CANVAS COORDINATES.
-       The header is NOT over the canvas — it is sticky above it, and the canvas
-       is already shortened by its height (390x780 inside an 844 viewport). The
-       first version padded the top by the header anyway and threw away 64 of
-       780 pixels, which is why the flat fit landed at z13.25 and drew no masses
-       at all. The chrome that genuinely overlays the canvas is the nav bar and
-       the collapsed sheet, both at the bottom.
-       CLEAR is a pin's own radius plus margin: an anchor centred exactly on the
-       padding line still has a 7px dot and a stroke outside it. */
-    const CLEAR = 24
-    const { width, height } = map.getCanvas().getBoundingClientRect()
-    const boxFor = (bottomChrome: number) => ({
-      x0: px('--cid-gutter', 20) + CLEAR,
-      x1: width - px('--cid-gutter', 20) - CLEAR,
-      y0: CLEAR,
-      y1: height - (px('--cid-botnav-h', 56) + bottomChrome + CLEAR),
-    })
-
-    /* DERIVED BY SEARCH, BECAUSE cameraForBounds CANNOT DO THIS.
-       It ignores a `pitch` option outright (measured: identical zoom with and
-       without), and it fits the ROTATED BOUNDING BOX rather than the two points
-       — at bearing -18 that is a bigger thing to fit, and it answered 13.399
-       where the corridor actually holds at 13.68.
-       So the test is the honest one: put the camera somewhere and ask the map
-       where the two anchors land. Binary search the highest zoom at which both
-       are still inside the box. 14 steps over a 3-zoom range resolves to under
-       0.0002, and every jumpTo here is synchronous — nothing paints until the
-       final camera, so this costs a few transform updates and no frames. */
-    const bestZoom = (box: ReturnType<typeof boxFor>, pitch: number) => {
-      const holds = (z: number) => {
-        map.jumpTo({ center, zoom: z, pitch, bearing: -18 })
-        return pts.every((c) => {
-          const q = map.project(c)
-          return q.x >= box.x0 && q.x <= box.x1 && q.y >= box.y0 && q.y <= box.y1
-        })
-      }
-      let lo = 11
-      let hi = 17
-      for (let i = 0; i < 14; i++) {
-        const mid = (lo + hi) / 2
-        if (holds(mid)) lo = mid
-        else hi = mid
-      }
-      return lo
-    }
-
-    /* THE SHEET RULING, 2026-08-09 — AND THE TRIGGER IS THE MEASUREMENT.
-       On a real iPhone Safari draws its URL bar over the page, so the canvas is
-       ~600px rather than the 780 the device's own 844 would suggest. Reserving
-       the full collapsed peek (92) out of 600 dropped the corridor fit to
-       z13.397 — below MASS_ZOOM — and the entry flattened to a pins-only frame
-       with no skyline. That is what Phil saw, and the harness never did because
-       it measured the SCREEN size instead of the viewport.
-       So the sheet enters as its HANDLE ONLY when, and only when, the full peek
-       cannot be afforded. The condition is the measurement itself — fit it with
-       the peek reserved and ask whether the answer clears MASS_ZOOM — never a
-       device sniff and never a hardcoded height. A taller phone that fits with
-       the peek keeps the peek, and gets there by the same code path. */
-    const peekZoom = bestZoom(boxFor(px('--cid-sheet-peek', 92)), PITCH)
-    const handleOnly = peekZoom < MASS_ZOOM
-    let lo = handleOnly ? bestZoom(boxFor(px('--cid-target', 44)), PITCH) : peekZoom
-
-    /* SEARCH AT THE PITCH WE WILL ACTUALLY RENDER.
-       The camera flattens below MIN_3D_ZOOM, and a pitched projection is not a
-       flat one — so a frame searched at 52 and rendered at 0 puts the anchors
-       somewhere the search never tested. On a 375x635 phone that is exactly
-       what happened: the fit "held" both anchors at pitch 52, then rendered
-       flat with MGM Grand behind the sheet. If the answer is going to be flat,
-       re-derive it flat. */
-    const willFlatten = lo < MIN_3D_ZOOM
-    if (willFlatten) {
-      lo = bestZoom(boxFor(handleOnly ? px('--cid-target', 44) : px('--cid-sheet-peek', 92)), 0)
-    }
-    /* PITCH IS KEPT — it is what makes this frame work. Pitching pushes the far
-       ground up the screen, so a pitched camera holds the same two anchors at a
-       HIGHER zoom than a flat one, which is the whole reason the skyline draws
-       here and did not before. Below MIN_3D_ZOOM the camera still flattens;
-       that rule is untouched and nothing inflates to reach it. */
-    return { center, zoom: lo, pitch: willFlatten ? 0 : PITCH, bearing: -18, handleOnly }
+    /* ═══ SKYLINE-FIRST ON A PHONE — Phil ruled the priority 2026-08-10 ═══
+       The entry was a FIT over MGM Grand and Wynn, and a fit has a property that
+       is fatal on a phone: the shorter the canvas, the further out it must zoom
+       to hold both anchors. Below MASS_ZOOM the massing honestly stops drawing,
+       so on Safari's real ~600px canvas the fit landed flat — pins on a plan.
+       That was the geometry doing exactly what it was asked, not a bug, and no
+       amount of padding arithmetic fixes a fit that is being asked for more than
+       the canvas has.
+       So the phone gets a GUARANTEE instead of a fit: a fixed camera on the
+       Strip core, at a zoom chosen to clear MASS_ZOOM by construction and
+       independent of canvas height. On a phone the map's job is to look like the
+       city you are standing in; "show me everything" is one tap away on WHOLE
+       VALLEY.
+       BOTH ANCHORS ARE NO LONGER REQUIRED. Fewer rooms are on screen at entry
+       and that is the accepted cost of a skyline that actually draws. */
+    return { center: STRIP, zoom: PHONE_Z, pitch: PITCH, bearing: -18 }
   }, [])
 
   const goStrip = useCallback(() => {
     stopDrift()
     const map = mapRef.current
     if (!map) return
-    const cam = stripCamera(map)
+    const cam = stripCamera()
     /* THE STRIP restores the frame AND the sheet state it was framed for —
        otherwise pressing it on a short phone would put the camera back while
        leaving the peek in place, which is the state the camera was derived to
        avoid. */
-    setHandleOnly(cam.handleOnly)
     map.easeTo(cam)
   }, [stopDrift, stripCamera])
 
@@ -1440,8 +1381,7 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
     const map = mapRef.current
     if (!map || !ready || framed.current) return
     framed.current = true
-    const cam = stripCamera(map)
-    setHandleOnly(cam.handleOnly)
+    const cam = stripCamera()
     map.jumpTo(cam)
   }, [ready, stripCamera])
   /* The breakpoint decides the zoom, read from the same token the CSS uses so
@@ -1482,7 +1422,6 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
       <aside
         className="cid-mappanel"
         data-open={sheetOpen ? 'true' : 'false'}
-        data-peek={handleOnly && !sheetOpen ? 'handle' : 'full'}
         style={{
           background: 'var(--cid-ink-700)', borderRight: '1px solid var(--cid-line-2)',
           padding: 'var(--cid-space-6)', overflowY: 'auto',
@@ -1498,12 +1437,21 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           className="cid-sheet-handle"
           aria-expanded={sheetOpen}
           onClick={() => {
-            /* THE FIRST TOUCH BUYS BACK THE PEEK, not the whole sheet. Entry is
-               handle-only because the corridor needed those pixels; once the
-               reader reaches for the sheet they have stopped looking at the
-               frame, so the summary line comes back and every touch after this
-               toggles open/closed exactly as it always did. */
-            if (handleOnly) { setHandleOnly(false); return }
+            /* ONE TAP OPENS, and there is only one stage left to open.
+               This used to spend the first touch buying back a peek the entry
+               had withheld — `if (handleOnly) { setHandleOnly(false); return }`
+               — because the corridor fit needed those pixels. On a real phone
+               that read as a broken scroll: the sheet visibly grew 43px -> 92px,
+               so the tap plainly did something and the panel looked open, while
+               what you actually had was 1151px of filters in a 92px window.
+               Phil reported it as a scrolling problem, which is what it looks
+               like from the outside.
+               It never showed on a tall canvas, because the withholding only
+               happened when the fit could not afford the peek — and the harness
+               measured 844px, where it always could. Safari draws its chrome
+               over the page and leaves ~600px, which is where it existed.
+               The fixed phone camera removed the reason to withhold anything,
+               so the whole two-stage disclosure is gone rather than repaired. */
             setSheetOpen((v) => !v)
           }}
         >

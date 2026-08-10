@@ -305,9 +305,9 @@ if (!hasMapHandle) {
   skip('all 17 rooms are accounted for at 390px', 'same — the camera and source cannot be read')
   skip('zero overlap between rendered pins at 390px', 'same')
 } else {
-  /* THE PHONE ENTRY FRAMES THE CORRIDOR *WITH* THE SKYLINE — and this claim
-     has now inverted twice in one day, which is why the history is here rather
-     than in a commit message.
+  /* THE PHONE ENTRY DRAWS THE SKYLINE — and this claim has now inverted THREE
+     times, which is why the whole history sits here rather than in three commit
+     messages nobody will line up.
 
        original      entry was the desktop camera (z14.5): masses drew, and this
                      asserted a mass renders at entry.
@@ -315,17 +315,30 @@ if (!hasMapHandle) {
                      nothing drew. The assertion was restated to "the skyline
                      ARRIVES on zoom-in" — a deferral, not a disappearance.
        2026-08-09 b  Phil pitched the same corridor by hand and the skyline was
-                     THERE. His screenshot is the acceptance image. The flat fit
-                     had been low for a mechanical reason, not a geometric one:
-                     it padded the top of the canvas by the header height, and
-                     the header is not over the canvas. Removing 64 of 780
-                     wasted pixels, and pitching — which pushes the far ground
-                     up the frame — puts the corridor back above MASS_ZOOM.
+                     THERE. His screenshot was the acceptance image. The flat fit
+                     had been low for a mechanical reason: it padded the top of
+                     the canvas by the header height, and the header is not over
+                     the canvas. Inverted back to masses-at-entry, plus both
+                     anchors provably on-screen.
+       2026-08-10 c  AND IT WAS STILL WRONG ON A REAL PHONE, because (b) was
+                     measured at the DEVICE height. Safari draws its chrome over
+                     the page and leaves ~600px, and a fit re-derives its zoom
+                     from the canvas: at 536px it answered z13.14 and flattened
+                     to pitch 0 with ZERO masses. Measured, both cameras, same
+                     build — old fit 0 masses at 507px and 536px, new camera 9
+                     and 12. The fit was not broken; it was being asked for more
+                     than a phone canvas has.
+                     So the phone entry stopped being a fit. It is a FIXED camera
+                     at z14.5, a full zoom above MASS_ZOOM, which cannot fall
+                     through the floor because it never consults the canvas.
 
-     So the claim inverts back, and stronger than the original: masses present
-     at entry AND both anchors provably on-screen. The anchor half is the part
-     that would have caught the mistake in (a) — a frame can draw masses while
-     quietly cropping one end of the corridor. */
+     THE ASSERTION IS THEREFORE THE STRONGEST OF THE FOUR: masses at entry at
+     EVERY viewport height we support, down to the iPhone SE's ~507px canvas.
+     Not "at this viewport" — a height-independent camera earns a
+     height-independent claim, and asserting it at one height is what let (b)
+     ship. The anchor half is gone with the fit: both anchors are no longer
+     required on screen, by ruling, and asserting a cropped corridor would be
+     asserting the old design. */
   /* MEASURED ON A FRESH ENTRY, because the WHOLE VALLEY test above flew the
      camera to z9.6 and left it there — at which point the anchors are inside a
      cluster and `querySourceFeatures` returns the cluster, not the rooms. The
@@ -344,37 +357,45 @@ if (!hasMapHandle) {
   })
   console.log(`  entry frame           z${entry.z} pitch ${entry.pitch} · ${entry.masses} masses`)
   ok(entry.masses > 0, `masses draw at the phone entry frame (${entry.masses} at z${entry.z}, pitch ${entry.pitch})`)
-  const anchorsOk = await page.evaluate(() => {
-    const m = window.__cid_map
-    const { width, height } = m.getCanvas().getBoundingClientRect()
-    const want = ['mgm-grand', 'wynn-encore']
-    const seen = {}
-    for (const f of m.querySourceFeatures('rooms')) {
-      const s = f.properties.slug
-      if (want.includes(s) && !seen[s]) seen[s] = m.project(f.geometry.coordinates)
-    }
-    const nav = document.querySelector('.cid-botnav')
-    const navTop = nav
-      ? nav.getBoundingClientRect().top - m.getCanvas().getBoundingClientRect().top
-      : height
-    return want.map((s) => {
-      const q = seen[s]
-      if (!q) return { s, ok: false, why: 'not in source' }
-      const onScreen = q.x >= 0 && q.x <= width && q.y >= 0 && q.y <= height
-      return { s, ok: onScreen && q.y < navTop, x: Math.round(q.x), y: Math.round(q.y) }
-    })
-  })
-  for (const a of anchorsOk) {
-    ok(a.ok, `corridor anchor ${a.s} is on-screen and clear of the nav${a.x != null ? ` (${a.x},${a.y})` : ` — ${a.why}`}`)
-  }
+  /* THE ENTRY CAMERA IS A CONSTANT, so it is asserted as one. z14.5 clears
+     MASS_ZOOM (13.5) by a full level and does not consult the canvas — the
+     height-independence IS the design, and the sweep below is what proves it.
+     The two corridor-anchor assertions that stood here are gone: both anchors
+     on screen was the old fit's contract, and Phil ruled it away on 2026-08-10
+     in exchange for a skyline that draws. Asserting it now would be asserting
+     the design we replaced. */
+  ok(entry.z > 13.5, `the entry zoom clears MASS_ZOOM by construction (z${entry.z} > 13.5)`)
+  ok(entry.pitch > 0, `and it enters pitched, not flat (pitch ${entry.pitch})`)
 
-  /* ONE DEFINITION OF "THE STRIP" PER PLATFORM, proven by coordinates rather
+  /* ⚠️ THIS CONTEXT DELIBERATELY DOES NOT SET reducedMotion, unlike every other
+     context in this file — and that is what caught a real bug on 2026-08-10.
+     With motion live the welcome drift is running, and the drift's frame loop
+     calls map.setBearing() every frame; a direct camera setter cancels an
+     in-flight easeTo, so THE STRIP restored nothing at all. `stopDrift` marked a
+     timestamp and never halted the loop, while the comment beside it claimed
+     these buttons killed the drift outright.
+     So: leave the motion on here. A control that suppresses the condition also
+     suppresses the failure, and this assertion's whole job is to press a button
+     under the conditions a visitor presses it under.
+
+     ONE DEFINITION OF "THE STRIP" PER PLATFORM, proven by coordinates rather
      than by reading the source. Fly somewhere else, press the button, and the
      camera must come back to the same frame the app entered on — otherwise the
      toggle is a second, different Strip that happens to look similar. */
   await page.evaluate(() => window.__cid_map.jumpTo({ center: [-115.30, 36.20], zoom: 11, pitch: 0, bearing: 0 }))
   await page.waitForTimeout(700)
-  await page.locator('.cid-sheet-handle').click().catch(() => {})
+  /* OPEN IT ONLY IF IT IS CLOSED. The handle used to spend its first tap
+     clearing handle-only, so a blind click always ended up open; now it is a
+     plain toggle and a blind click closes an already-open sheet — which is how
+     this test came to press THE STRIP on a hidden button and read back the
+     camera it had just flown away to. */
+  await page.evaluate(async () => {
+    const el = document.querySelector('.cid-mappanel')
+    if (el.getAttribute('data-open') !== 'true') {
+      document.querySelector('.cid-sheet-handle').click()
+      await new Promise((r) => setTimeout(r, 500))
+    }
+  })
   await page.waitForTimeout(400)
   const stripBtn = page.locator('button.cid-viewbtn:has-text("THE STRIP")')
   let restored = null
@@ -392,9 +413,9 @@ if (!hasMapHandle) {
       && Math.abs(restored.lng - entry.lng) < 0.0005
       && Math.abs(restored.lat - entry.lat) < 0.0005
       && restored.pitch === entry.pitch
-    ok(same, `THE STRIP restores the entry corridor exactly (z${restored.z} pitch ${restored.pitch} vs entry z${entry.z} pitch ${entry.pitch})`)
+    ok(same, `THE STRIP reproduces the entry camera exactly (z${restored.z} pitch ${restored.pitch} @ ${restored.lng},${restored.lat} vs entry z${entry.z} pitch ${entry.pitch} @ ${entry.lng},${entry.lat})`)
   } else {
-    skip('THE STRIP restores the entry corridor', 'button not found at this viewport')
+    skip('THE STRIP reproduces the entry camera', 'button not found at this viewport')
   }
 
   ok(reach != null && reach.pins + reach.clustered === 17,
@@ -572,9 +593,21 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
   })
   if (r) {
     console.log(`  Safari-height entry   canvas ${r.ch}px · z${r.z} pitch ${r.p} · ${r.n} masses · sheet "${r.peek}"`)
-    ok(r.n > 0, `the corridor keeps its skyline at Safari's real viewport (canvas ${r.ch}px, z${r.z}, ${r.n} masses)`)
-    ok(r.peek === 'handle', `the sheet entered handle-only to afford it (data-peek="${r.peek}")`)
-    ok(r.clear, 'both corridor anchors clear the nav AND the sheet at that viewport')
+    ok(r.n > 0, `the skyline draws at Safari's real viewport (canvas ${r.ch}px, z${r.z}, ${r.n} masses)`)
+    /* THE TWO ASSERTIONS THAT STOOD HERE ARE GONE, BY RULING (2026-08-10):
+         "the sheet entered handle-only to afford it" — there is nothing to
+         afford. The entry camera no longer consults the canvas, so the sheet
+         keeps its normal peek and the handle-only state was deleted, not
+         disabled. Its two-stage tap was the scroll defect Phil reported.
+         "both corridor anchors clear the nav AND the sheet" — the corridor fit
+         is gone. Fewer rooms on screen is the accepted cost of a skyline that
+         draws at 507px, and asserting the old contract would pin the design we
+         replaced.
+       What replaces them is the claim the new camera actually makes: the same
+       frame, at this viewport, as everywhere else. */
+    ok(r.peek === null, `the sheet keeps its normal peek — no handle-only stage to tap through (data-peek=${r.peek})`)
+    ok(Math.abs(r.z - 14.5) < 0.01 && r.p > 0,
+      `the entry camera is the same constant here as at every other height (z${r.z} pitch ${r.p})`)
   } else {
     skip('the corridor keeps its skyline at Safari\'s real viewport', 'map did not boot')
   }
@@ -685,6 +718,113 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
   } finally {
     unstageDescription()
   }
+}
+
+/* ═══ THE HEIGHT SWEEP — the assertion a height-independent camera earns ═══
+   Every inversion in this file's history came from measuring ONE viewport and
+   generalising. (b) measured 844px and shipped a camera that drew nothing at
+   600px. So the claim is checked at every height we support, including the two
+   Safari actually gives a phone once its chrome is drawn, and the iPhone SE at
+   the bottom of the range. */
+{
+  const HEIGHTS = [
+    ['iPhone SE, Safari chrome',         375, 571],
+    ['iPhone 14 Pro, Safari chrome',     393, 600],
+    ['iPhone 14 Pro Max, Safari chrome', 430, 660],
+    ['device height, no chrome',         390, 844],
+  ]
+  for (const [label, w, h] of HEIGHTS) {
+    const ctx = await browser.newContext({
+      viewport: { width: w, height: h }, deviceScaleFactor: 3,
+      isMobile: true, hasTouch: true, reducedMotion: 'reduce',
+    })
+    const pg = await ctx.newPage()
+    await pg.goto(BASE, { waitUntil: 'networkidle' })
+    await pg.waitForFunction(() => typeof window.__cid_map !== 'undefined', null, { timeout: 9000 }).catch(() => {})
+    await pg.waitForTimeout(3200)
+    const r = await pg.evaluate(() => {
+      const m = window.__cid_map
+      if (!m) return null
+      const c = m.getCanvas().getBoundingClientRect()
+      let n = 0
+      try { n = m.queryRenderedFeatures({ layers: ['rooms-fp'] }).length } catch { n = 0 }
+      return { canvasH: Math.round(c.height), z: +m.getZoom().toFixed(3),
+               pitch: Math.round(m.getPitch()), masses: n }
+    })
+    if (r == null) { skip(`the skyline draws at ${label}`, 'map did not boot'); await ctx.close(); continue }
+    console.log(`  ${label.padEnd(34)} canvas ${String(r.canvasH).padStart(3)}px · z${r.z} pitch ${r.pitch} · ${r.masses} masses`)
+    ok(r.masses > 0, `the skyline draws at ${label} (${r.masses} masses on a ${r.canvasH}px canvas, z${r.z})`)
+    await ctx.close()
+  }
+}
+
+/* ═══ THE SCROLL DEFECT — Phil reported it 2026-08-10 ═══
+   The sheet entered handle-only (43px) and the FIRST tap only bought back the
+   peek (92px) without opening it, so the panel looked open while holding
+   1151px of filters in a 92px window. Every drag hauled the whole panel through
+   a slot, which is what a broken scroll looks like from the outside.
+   It was invisible at the device height, where the entry was never handle-only.
+   Both halves are asserted here at Safari's REAL viewport. */
+{
+  const ctx = await browser.newContext({
+    viewport: { width: 393, height: 600 }, deviceScaleFactor: 3,
+    isMobile: true, hasTouch: true, reducedMotion: 'reduce',
+  })
+  const pg = await ctx.newPage()
+  await pg.goto(BASE, { waitUntil: 'networkidle' })
+  await pg.waitForTimeout(2600)
+
+  const entrySheet = await pg.evaluate(() => {
+    const el = document.querySelector('.cid-mappanel')
+    return { h: el.clientHeight, scrollH: el.scrollHeight }
+  })
+  await pg.locator('.cid-sheet-handle').click()
+  await pg.waitForTimeout(900)
+
+  const opened = await pg.evaluate(() => {
+    const el = document.querySelector('.cid-mappanel')
+    const nav = document.querySelector('.cid-botnav')
+    const navTop = nav.getBoundingClientRect().top
+    /* Scroll the SHEET, not the window. If the map canvas were eating the
+       gesture this would not move. */
+    const before = el.scrollTop
+    el.scrollTop = 400
+    const moved = el.scrollTop - before
+    /* Then to the end, and check the last thing in it lands above the nav. */
+    el.scrollTop = el.scrollHeight
+    const kids = [...el.children]
+    const last = kids[kids.length - 1]
+    const lastBottom = last ? last.getBoundingClientRect().bottom : null
+    return {
+      h: el.clientHeight, scrollH: el.scrollHeight,
+      open: el.getAttribute('data-open'), moved,
+      docScrolls: document.documentElement.scrollHeight > document.documentElement.clientHeight,
+      lastBottom: lastBottom == null ? null : Math.round(lastBottom),
+      navTop: Math.round(navTop),
+      reachesAboveNav: lastBottom != null && lastBottom <= navTop + 1,
+    }
+  })
+
+  console.log(`  sheet at 393x600      entry ${entrySheet.h}px → one tap ${opened.h}px of ${opened.scrollH}px`)
+
+  /* ONE TAP OPENS. The regression was that it took two, and the intermediate
+     state looked open. A threshold rather than an exact height, because the
+     sheet is 62vh and that moves with the viewport. */
+  ok(opened.open === 'true' && opened.h > entrySheet.h * 4,
+    `ONE tap opens the sheet at Safari's real viewport (${entrySheet.h}px → ${opened.h}px, data-open=${opened.open})`)
+
+  /* THE SHEET SCROLLS INDEPENDENTLY OF THE MAP. The canvas is full-bleed with
+     touch-action:none underneath it, so this is the assertion that a gesture in
+     the sheet belongs to the sheet. */
+  ok(opened.moved === 400,
+    `the sheet's contents scroll independently of the map (scrollTop moved ${opened.moved}px; the document itself does not scroll: ${!opened.docScrolls})`)
+
+  /* AND THE CONTENT ENDS ABOVE THE NAV. A panel whose last row sits under the
+     fixed bar is a panel with an unreachable end. */
+  ok(opened.reachesAboveNav,
+    `content under the map reaches its end above the nav (last child bottom ${opened.lastBottom} vs nav top ${opened.navTop})`)
+
+  await ctx.close()
 }
 
 await browser.close()
