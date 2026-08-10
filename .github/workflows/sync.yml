@@ -1,0 +1,159 @@
+name: source sync
+
+# ═══ DAILY, EARLY, BEFORE PHIL IS UP ═══
+#
+# 12:00 UTC = 05:00 Pacific in summer, 04:00 in winter. GitHub cron is UTC only
+# and does not follow daylight saving, so the local time drifts by an hour twice
+# a year. That is stated rather than fixed: an hour of drift at five in the
+# morning costs nothing, and a job that rewrites its own schedule to chase it
+# would be a moving part with no benefit.
+#
+# ═══ WHAT HAPPENS ON FAILURE — the question that decides whether this is
+#     worth having ═══
+#
+# A job that dies silently is a summary that stops arriving, and nobody notices
+# a thing that stops happening. Four separate ways this refuses to die quietly:
+#
+#   1. THE RUN FAILS LOUDLY. `differ` exits non-zero on any fault, so the
+#      workflow goes red and GitHub emails the repo owner. A precedence refusal
+#      is NOT a fault — that is the law working and it exits 0.
+#   2. A RUN THAT READ NO SOURCE FAILS. Every section of the summary prints a
+#      cheerful zero when nothing was reachable, and "nothing changed" is what a
+#      healthy day looks like. On a daily job that is the worst possible false
+#      negative, so zero-sources-read is an explicit failure.
+#   3. THE SUMMARY IS ON THE RUN PAGE, not buried in a log. It is written to
+#      $GITHUB_STEP_SUMMARY, so the run itself is the report.
+#   4. THE HEARTBEAT. GitHub DISABLES a scheduled workflow after 60 days with no
+#      repo activity — silently, with an email that is easy to miss. That is the
+#      one failure mode none of the above catches, because the job simply stops
+#      existing. The keepalive step below touches a file on the first of each
+#      month so the clock never runs out.
+#
+# ═══ ⚠️ WHICH DATABASE ROLE THIS NEEDS, AND WHY A READ-ONLY ONE FAILS ═══
+#
+# CID_PROD_DATABASE_URL MUST CONNECT AS `postgres`. Not a read-only role, not a
+# bespoke `cid_sync` user, not the anon/service REST key — the session pooler
+# URI Supabase gives you under Connect, which connects as postgres.
+#
+# The reason is `is_service_caller()`, which the applying path goes through:
+#
+#     select session_user in ('postgres', 'supabase_admin')
+#
+# It is session_user rather than current_user on purpose — inside a SECURITY
+# DEFINER function current_user is the function's OWNER and reads `postgres` for
+# every caller alive, which would have opened the write path to anon. session_user
+# is the role that actually connected, and it is what this test needs to see.
+#
+# So a read-only role does not get a permissions warning or a partial run. It
+# gets, verified against a real read-only role on 2026-08-09:
+#
+#     ERROR:  not authorised
+#     CONTEXT:  PL/pgSQL function approve_change(uuid,boolean) line 21 at RAISE
+#
+# — at 05:00, in a log nobody is reading, from a job that had been working. That
+# is the failure this comment exists to prevent, so it is written here rather
+# than left to be rediscovered.
+#
+# A DRY RUN, BY CONTRAST, IS HAPPY READ-ONLY. Also verified: with DIFFER_APPLY
+# unset the job only SELECTs, and a read-only role produced the full four-part
+# summary and exited 0. So a read-only URI is a fine way to inspect prod before
+# committing to the schedule — it just cannot be the one the schedule uses.
+#
+# WHERE THE VALUE GOES — two places, set once:
+#   · .env.local                      for local runs (git-ignored)
+#   · GitHub → Settings → Secrets → Actions → CID_PROD_DATABASE_URL
+#
+# The four source URLs go in the same two places, same names:
+#   CID_PARTNER_FLOOR_CSV   CID_PARTNER_FLOOR_DOC
+#   CID_PARTNER_REVIEWS_CSV CID_PARTNER_REVIEWS_DOC
+#
+# ⚠️ THIS WRITES TO PRODUCTION. `DIFFER_APPLY: '1'` is set in the run step
+# below — deliberately a visible line in a reviewed file rather than a dashboard
+# toggle nobody can see in a diff. Removing it is how you make this dry again,
+# and that is a one-line commit anyone can review.
+#
+# It was turned on 2026-08-10, after a hand-run against prod applied 2 rake
+# figures and 4 partner reviews and was verified row by row. Precedence decides
+# every write (migration 008), so the worst a bad source can do is be refused
+# and counted.
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:        # so a run can be triggered by hand to check it
+
+concurrency:
+  group: source-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Assert the secrets are present
+        # A missing secret is an empty string, and an empty URL would be
+        # reported as "source not read" — true, and indistinguishable from a
+        # document somebody unpublished. Named here instead.
+        env:
+          FLOOR_CSV: ${{ secrets.CID_PARTNER_FLOOR_CSV }}
+          FLOOR_DOC: ${{ secrets.CID_PARTNER_FLOOR_DOC }}
+          REVIEWS_CSV: ${{ secrets.CID_PARTNER_REVIEWS_CSV }}
+          REVIEWS_DOC: ${{ secrets.CID_PARTNER_REVIEWS_DOC }}
+          DB: ${{ secrets.CID_PROD_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for v in FLOOR_CSV FLOOR_DOC REVIEWS_CSV REVIEWS_DOC DB; do
+            [ -n "${!v:-}" ] || missing="$missing $v"
+          done
+          [ -z "$missing" ] || { echo "::error::missing repository secrets:$missing"; exit 1; }
+
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: source sync
+        env:
+          PSQL: psql
+          # Must connect as `postgres` — see the role note in the header.
+          DATABASE_URL: ${{ secrets.CID_PROD_DATABASE_URL }}
+          CID_PARTNER_FLOOR_CSV: ${{ secrets.CID_PARTNER_FLOOR_CSV }}
+          CID_PARTNER_FLOOR_DOC: ${{ secrets.CID_PARTNER_FLOOR_DOC }}
+          CID_PARTNER_REVIEWS_CSV: ${{ secrets.CID_PARTNER_REVIEWS_CSV }}
+          CID_PARTNER_REVIEWS_DOC: ${{ secrets.CID_PARTNER_REVIEWS_DOC }}
+          # THE LINE THAT WRITES. See the header before changing it.
+          DIFFER_APPLY: '1'
+        run: |
+          set -euo pipefail
+          npm run --silent differ 2>&1 | tee /tmp/sync.log
+          {
+            echo '## Check It Down — source sync'
+            echo '```'
+            cat /tmp/sync.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the schedule alive
+        # GitHub disables a cron workflow after 60 days of repo inactivity. On a
+        # repo that goes quiet — which is exactly what a finished product looks
+        # like — the sync would stop and the only signal would be an email in a
+        # month nobody is reading. One commit a month costs nothing.
+        if: github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+          [ "$(date -u +%d)" = "01" ] || { echo "not the first — nothing to do"; exit 0; }
+          date -u +"%Y-%m-%d" > .github/last-sync-heartbeat
+          git config user.name  "cid-sync"
+          git config user.email "noreply@checkitdown.com"
+          git add .github/last-sync-heartbeat
+          git commit -m "chore: sync heartbeat, keeping the schedule alive"
+          git push

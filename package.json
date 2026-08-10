@@ -21,7 +21,7 @@
     "test:palette": "node scripts/palette-probe.mjs",
     "test:auth": "node scripts/auth-probe.mjs",
     "differ": "node scripts/differ.mjs",
-    "test:differ": "node --test lib/differ.test.mjs"
+    "test:differ": "node --test lib/differ.test.mjs lib/floor-sheet.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

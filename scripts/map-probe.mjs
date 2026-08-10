@@ -652,7 +652,12 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
     pre(omaha.length === 6, `Omaha stays unmerged — 6 combos under OTHER (${omaha.length})`)
     /* Counts are ROW-LEVEL. $1/2 NLH is spread by 8 rooms; ARIA is not one. */
     const half = shape.boxes.find((b) => b.label === '$1/2')
-    pre(half != null && half.count === 8, `$1/2 NLH counts 8 rooms, row-level (${half ? half.count : 'missing'})`)
+    /* 6 since the 2026-08-09 partner apply: Golden Nugget and South Point were
+       recorded as spreading $1/2 and the floor visit corrected both to $1/3.
+       The number is the point of the assertion — it is row-level, so it counts
+       rooms that spread THIS stakes at THIS variant — so it moves when the
+       data does, and pinning it is what caught the change. */
+    pre(half != null && half.count === 6, `$1/2 NLH counts 6 rooms, row-level (${half ? half.count : 'missing'})`)
   }
 
   /* ═══ THE FEATURE-STATE HALF NEEDS THE FLAG-GATED HANDLE ═══

@@ -482,10 +482,33 @@ try {
        never rank. That is the whole point of keeping the two counts apart, and
        it survives whatever the partner data ranks elsewhere. */
     const confirmedRankable = ROOMS.slice(0, 15).filter((s) => expect.includes(s)).length
-    check('a confirmed room that publishes no rake is not ranked', !expect.includes('horseshoe'))
-    check('the page states the overlap, not a subtraction of totals',
-      new RegExp(`${confirmedRankable} of those can be ranked on rake`).test(text),
-      `${confirmedRankable} of the 15 confirmed rooms are rankable`)
+    /* DERIVED FROM THE RULE THE PAGE USES, NOT NAMED AND NOT GUESSED.
+       This asserted `!expect.includes('horseshoe')` because Horseshoe was the
+       room that published no rake — the 2026-08-09 apply gave it one, so the
+       assertion failed while the product was correct.
+       The first fix derived it from `rake_cap is not null`, which is NOT the
+       page's rule: `rankedSlugs()` also requires the min-cap row to be
+       rake-VERIFIED. Deriving from the wrong rule is how a fixed test starts
+       lying, so it derives from the same one now. */
+    const notRankable = ROOMS.slice(0, 15).filter((s) => !expect.includes(s))
+    if (notRankable.length === 0) {
+      console.log('   SKIP  a confirmed room that publishes no rake is not ranked'
+        + ' — since 2026-08-09 every confirmed room is rankable, so the case has no instance')
+    } else {
+      check('a confirmed room that publishes no rake is not ranked',
+        notRankable.every((sl) => !expect.includes(sl)), notRankable.join(', '))
+    }
+    /* THE OVERLAP CLAUSE ONLY RENDERS WHEN SOMETHING IS EXCLUDED — see
+       app/facts/page.tsx, `confirmedNotRankable > 0`. With every confirmed room
+       rankable it is correctly ABSENT, and asserting the absence means its
+       return is noticed rather than silently accepted. */
+    check(notRankable.length === 0
+      ? 'no overlap clause, because every confirmed room can be ranked'
+      : 'the page states the overlap, not a subtraction of totals',
+      notRankable.length === 0
+        ? !/can be ranked on rake/.test(text)
+        : new RegExp(`${confirmedRankable} of those can be ranked on rake`).test(text),
+      `${confirmedRankable} rankable of ${ROOMS.slice(0, 15).length} confirmed`)
   })
 
   await scenario('SIXTEEN — single exclusion reads singular', ROOMS.slice(0, 16), ({ text }) => {
@@ -495,7 +518,23 @@ try {
 
   await scenario('ALL SEVENTEEN — no exclusion line at all', ROOMS, ({ text }) => {
     check('no unverified exclusion', !/not confirmed on site yet/.test(text))
-    check('unpublished exclusion still names Horseshoe', /Horseshoe is confirmed but publish/.test(text))
+    /* Same rule, same reasoning. The unpublished exclusion names rooms that are
+       confirmed but cannot be ranked; since 2026-08-09 there are none, so the
+       line is correctly absent and that absence is what gets asserted. */
+    const unranked = ROOMS.filter((sl) => !rankedSlugs().includes(sl))
+    check(unranked.length === 0
+      ? 'no unpublished-rake exclusion, because every confirmed room can be ranked'
+      : 'unpublished exclusion names every room that cannot be ranked',
+      unranked.length === 0
+        /* SCOPED TO THE RAKE METRIC. The same phrase is emitted for the other
+           ranked columns — "publishes no table count", "no food amenity" — and
+           an unscoped regex matched those and failed on a page that was right.
+           The assertion this replaced said "Horseshoe is confirmed but publish",
+           which was scoped by accident of naming a room; scoping by metric is
+           what it actually meant. */
+        ? !/confirmed but publish(es)? no rake/.test(text)
+        : /confirmed but publish(es)? no rake/.test(text),
+      unranked.join(', ') || 'none')
   })
   await scenario('CLOSED room keeps a dated page, not a 404', [], async () => {
     mutate(['skyline'], `update rooms set status = 'closed', closed_on = date '2026-03-30' where slug = 'skyline'`)

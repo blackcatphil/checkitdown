@@ -57,9 +57,12 @@ jobs:
           # 137 on 2026-08-09: +11 for lib/description, the prose interpolation.
           # 149 on 2026-08-09: +12 for lib/differ — the CSV parse, the diff and
           # the rake batching that makes a gained rake expressible at all.
+          # 159 on 2026-08-09: +10 for lib/floor-sheet — the real sheet shape, the
+          # rake notation, and the room-name resolution that refuses to guess.
+          # 163 on 2026-08-09: +4 for first-seen dating and the partner-prose scope.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 149 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 149) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 163 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 163) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -98,9 +101,13 @@ jobs:
           # 79 on 2026-08-09: +22 for THE PRECEDENCE LAW — every cell of the
           # matrix separately, the grouped-rake transaction and its all-or-nothing
           # rollback, and the service-caller boundary.
+          # 80 on 2026-08-09: +1, and every rake fixture pinned by identity — three
+          # of them drew a random row per reset and failed about one run in three.
+          # 86 on 2026-08-10: +6 pinning jackpot_drop as a rake field — the receipt
+          # went to the wrong column and reached production before anything caught it.
           # and 41 of those could have vanished under the old number.
-          [ "${n:-0}" -ge 79 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 79) — a shrinking suite is a silent regression"; exit 1; }
+          [ "${n:-0}" -ge 86 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 86) — a shrinking suite is a silent regression"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
@@ -180,8 +187,10 @@ jobs:
           # 145 on 2026-08-09: +9 for the description scenario, which asserts the
           # no-typed-figures rule against RENDERED output and carries its own
           # planted-stray negative control.
+          # 144 on 2026-08-09: the no-rake-room assertions now DERIVE the room from the
+          # ranking rule and skip when the case has no instance, so the count moved.
           # and the only floor that had been kept roughly current).
-          [ "$n" -ge 145 ] || { echo "::error::only $n assertions ran (expected >= 145) — the suite shrank, which is a silent regression"; exit 1; }
+          [ "$n" -ge 144 ] || { echo "::error::only $n assertions ran (expected >= 144) — the suite shrank, which is a silent regression"; exit 1; }
 
       - name: Assert the database was left clean
         run: |
@@ -233,9 +242,11 @@ jobs:
           done
           # 14 on 2026-08-09, the first run of this gate.
           # 20 on 2026-08-09: +6 for the open-redirect spellings and the
+          # 21 on 2026-08-09: +1, a guard that a web-ranked room exists to test
+          # authorisation against — the seed sync re-sourced the row it used to draw.
           # legitimate-next control that stops "refuse everything" passing.
-          [ "$n" -ge 20 ] \
-            || { echo "::error::only $n auth assertions ran (expected >= 20) — the suite shrank"; exit 1; }
+          [ "$n" -ge 21 ] \
+            || { echo "::error::only $n auth assertions ran (expected >= 21) — the suite shrank"; exit 1; }
 
       - name: lint
         run: npm run lint

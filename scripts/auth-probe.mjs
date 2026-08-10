@@ -270,12 +270,28 @@ try {
   /* A real pending change, so the refusal is about WHO IS ASKING rather than
      about the row not existing — "no such pending change" would look like a
      refusal and prove nothing. */
+  /* THE TARGET MUST BE WEB-RANKED, and it is CHOSEN rather than drawn.
+     This said `order by r.id limit 1` — a random row per reset, since every id
+     is a gen_random_uuid(). After the 2026-08-09 seed sync it started landing
+     on a room the partner sheet had re-sourced, and the admin's approval was
+     refused by PRECEDENCE (CID03) before authorisation was ever tested. The
+     probe reported the admin being refused, which is the opposite of what this
+     assertion is for.
+     So: ask the database for a room whose hours_note is still web-ranked. That
+     keeps this about WHO IS ASKING, which is the only thing this gate tests,
+     and it re-derives itself the next time the data moves. */
+  const webRoom = sql(`
+    select r.id from public.rooms r
+     where public.fact_source_kind('rooms', r.id, 'hours_note') = 'web'
+     order by r.slug limit 1`)
+  ok(webRoom !== '', 'a web-ranked room exists to test authorisation against',
+    webRoom ? 'found one' : 'NONE — the assertion below would test precedence, not authorisation')
+
   const pcId = sql(`
     insert into public.pending_changes
       (target_table, target_id, room_id, operation, field, new_value, agent, source_url)
-    select 'rooms', r.id, r.id, 'update', 'hours_note', '"auth-probe"'::jsonb,
-           'auth-probe', 'https://example.test/auth-probe'
-      from public.rooms r order by r.id limit 1
+    values ('rooms', '${webRoom}'::uuid, '${webRoom}'::uuid, 'update', 'hours_note',
+            '"auth-probe"'::jsonb, 'auth-probe', 'https://example.test/auth-probe')
     returning id`)
 
   const anonApprove = await rpc('approve_change', null, { p_id: pcId })

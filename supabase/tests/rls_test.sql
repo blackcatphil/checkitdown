@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(79);
+select plan(86);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -286,6 +286,12 @@ insert into public.pending_changes (target_table, target_id, room_id, field, old
 select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(9), 'pgtap-matched',
        'https://example.test/matched'
   from public.cash_games c where c.rake_cap is not null and c.rake_verified_at is null
+   /* AND WEB-RANKED — `rake_verified_at is null` is not the same test. Bellagio's
+      rake carries no stamp but cites the floor sheet, so it ranks floor and a
+      web proposal is refused by PRECEDENCE before this assertion's real subject
+      is reached. Passed by luck for two runs because the row was drawn at
+      random from a gen_random_uuid() ordering. */
+   and public.fact_source_kind('cash_games', c.id, 'rake_cap') = 'web'
   and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
  order by c.id
  limit 1;
@@ -410,6 +416,14 @@ insert into public.pending_changes (target_table, target_id, room_id, field, old
 select 'room_amenities', ra.id, ra.room_id, 'available', to_jsonb(ra.available), to_jsonb(false), 'pgtap-amen',
        (select id from public.sources where data_type = 'cash' limit 1), 'https://example.test/amen'
   from public.room_amenities ra where ra.verified_at is null
+   /* AND WEB-RANKED. `verified_at is null` is NOT the rank test: the three
+      review-sourced amenity rows added on 2026-08-09 carry no stamp and cite a
+      floor document, so they rank floor and a web proposal onto them is refused
+      by PRECEDENCE before this assertion's real subject is reached. Which row
+      gets drawn depends on a gen_random_uuid() ordering, so this failed about
+      one run in three — on a correct database, for a reason unrelated to what
+      it tests. */
+   and public.fact_source_kind('room_amenities', ra.id, 'available') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
  order by ra.id
  limit 1;
@@ -451,6 +465,14 @@ insert into public.pending_changes (target_table, target_id, room_id, field, old
 select 'room_amenities', ra.id, ra.room_id, 'verified_at', 'null'::jsonb, to_jsonb(now()::text), 'pgtap-stamp-web',
        (select id from public.sources where data_type = 'cash' limit 1)
   from public.room_amenities ra where ra.verified_at is null
+   /* AND WEB-RANKED. `verified_at is null` is NOT the rank test: the three
+      review-sourced amenity rows added on 2026-08-09 carry no stamp and cite a
+      floor document, so they rank floor and a web proposal onto them is refused
+      by PRECEDENCE before this assertion's real subject is reached. Which row
+      gets drawn depends on a gen_random_uuid() ordering, so this failed about
+      one run in three — on a correct database, for a reason unrelated to what
+      it tests. */
+   and public.fact_source_kind('room_amenities', ra.id, 'available') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
  order by ra.id
  limit 1;
@@ -467,6 +489,14 @@ insert into public.pending_changes (target_table, target_id, room_id, field, old
 select 'room_amenities', ra.id, ra.room_id, 'verified_at', 'null'::jsonb, to_jsonb(now()::text), 'pgtap-stamp-floor',
        (select id from public.sources where data_type = 'floor' limit 1)
   from public.room_amenities ra where ra.verified_at is null
+   /* AND WEB-RANKED. `verified_at is null` is NOT the rank test: the three
+      review-sourced amenity rows added on 2026-08-09 carry no stamp and cite a
+      floor document, so they rank floor and a web proposal onto them is refused
+      by PRECEDENCE before this assertion's real subject is reached. Which row
+      gets drawn depends on a gen_random_uuid() ordering, so this failed about
+      one run in three — on a correct database, for a reason unrelated to what
+      it tests. */
+   and public.fact_source_kind('room_amenities', ra.id, 'available') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
  order by ra.id
  limit 1;
@@ -484,6 +514,14 @@ insert into public.pending_changes (target_table, target_id, room_id, field, old
 select 'room_amenities', ra.id, ra.room_id, 'available', to_jsonb(ra.available), to_jsonb(false), 'pgtap-floor-nostamp',
        (select id from public.sources where data_type = 'floor' limit 1), 'https://example.test/nostamp'
   from public.room_amenities ra where ra.verified_at is null
+   /* AND WEB-RANKED. `verified_at is null` is NOT the rank test: the three
+      review-sourced amenity rows added on 2026-08-09 carry no stamp and cite a
+      floor document, so they rank floor and a web proposal onto them is refused
+      by PRECEDENCE before this assertion's real subject is reached. Which row
+      gets drawn depends on a gen_random_uuid() ordering, so this failed about
+      one run in three — on a correct database, for a reason unrelated to what
+      it tests. */
+   and public.fact_source_kind('room_amenities', ra.id, 'available') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
  order by ra.id
  limit 1;
@@ -600,6 +638,12 @@ select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb
        'https://docs.google.com/spreadsheets/d/PGTAP/edit'
   from public.cash_games c
  where c.rake_cap is not null and c.rake_verified_at is null and c.rake_type = 'pot'
+   /* AND WEB-RANKED. `rake_verified_at is null` is NOT the same thing: after the
+      2026-08-09 sync Bellagio's rake carries no stamp but DOES cite the floor
+      sheet, so it ranks floor and a web proposal onto it is refused by
+      precedence before it can be applied. These tests want a row a web source
+      may legitimately write. */
+   and public.fact_source_kind('cash_games', c.id, 'rake_cap') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
  order by c.id
  limit 1;
@@ -638,6 +682,12 @@ select 'room_amenities', ra.id, ra.room_id, 'verified_at', 'null'::jsonb, to_jso
        'https://docs.google.com/spreadsheets/d/PGTAP/edit'
   from public.room_amenities ra
  where ra.verified_at is null and ra.source_url is not null
+   /* AND WEB-RANKED, so this floor proposal is a floor->web APPLY rather than a
+      floor->floor that would need the override. The three review-sourced rows
+      rank floor without a stamp, and drawing one made this fail intermittently.
+      Same root cause as the other amenity fixtures, different WHERE shape —
+      which is why a blanket replace missed it. */
+   and public.fact_source_kind('room_amenities', ra.id, 'available') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = ra.id)
  order by ra.id
  limit 1;
@@ -667,6 +717,12 @@ select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb
        'https://vegasadvantage.com/pgtap-detector'
   from public.cash_games c
  where c.rake_cap is not null and c.rake_verified_at is null and c.rake_type = 'pot'
+   /* AND WEB-RANKED. `rake_verified_at is null` is NOT the same thing: after the
+      2026-08-09 sync Bellagio's rake carries no stamp but DOES cite the floor
+      sheet, so it ranks floor and a web proposal onto it is refused by
+      precedence before it can be applied. These tests want a row a web source
+      may legitimately write. */
+   and public.fact_source_kind('cash_games', c.id, 'rake_cap') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
  order by c.id
  limit 1;
@@ -736,6 +792,12 @@ insert into public.pending_changes (target_table, target_id, room_id, field, old
 select 'cash_games', c.id, c.room_id, 'rake_cap', to_jsonb(c.rake_cap), to_jsonb(3), 'pgtap-update-uncited'
   from public.cash_games c
  where c.rake_cap is not null and c.rake_verified_at is null
+   /* AND WEB-RANKED — `rake_verified_at is null` is not the same test. Bellagio's
+      rake carries no stamp but cites the floor sheet, so it ranks floor and a
+      web proposal is refused by PRECEDENCE before this assertion's real subject
+      is reached. Passed by luck for two runs because the row was drawn at
+      random from a gen_random_uuid() ordering. */
+   and public.fact_source_kind('cash_games', c.id, 'rake_cap') = 'web'
    and not exists (select 1 from public.pending_changes p where p.target_id = c.id)
  order by c.id
  limit 1;
@@ -883,11 +945,22 @@ begin
 end $$;
 
 -- Fixtures: one row made floor-sourced (a person stood there), one left web.
+/* Same reasoning as the group fixture below: pinned, not drawn at random. */
 create temp table pgtap_prec as
   select
-    (select c.id from public.cash_games c where c.rake_verified_at is not null order by c.id limit 1) as floor_row,
-    (select c.id from public.cash_games c where c.rake_verified_at is null
-       and c.rake_type is not null order by c.id limit 1) as web_row,
+    (select c.id from public.cash_games c
+       join public.rooms r on r.id = c.room_id
+      /* Re-pinned 2026-08-09: South Point's $1/2 was corrected to $1/3 by the
+         partner apply, so the old pin selected NOTHING and every assertion below
+         silently compared against NULL. */
+      where c.rake_verified_at is not null and r.slug = 'aria' and c.stakes_label = '$1/3') as floor_row,
+    (select c.id from public.cash_games c
+       join public.rooms r on r.id = c.room_id
+      where c.rake_verified_at is null and c.rake_type is not null
+        /* Bellagio's NLH rake now cites the sheet and ranks FLOOR. Its PLO rows
+           were untouched — an unqualified room rake is the no-limit rake — so
+           they are what is still web-ranked. */
+        and r.slug = 'bellagio' and c.stakes_label = '$1/2 PLO') as web_row,
     /* A SECOND, UNTOUCHED web row. The first draft reused one for both the
        floor->web and web->web cells and web->web then failed with CID03 —
        correctly. The floor write had MOVED THE CITATION to the floor document
@@ -895,8 +968,10 @@ create temp table pgtap_prec as
        the web write arrived. The law was right and the fixture was wrong,
        which is worth keeping as a comment: precedence is a property of the
        fact's current citation, not of the row's history. */
-    (select c.id from public.cash_games c where c.rake_verified_at is null
-       and c.rake_type is not null order by c.id offset 1 limit 1) as web_row_2;
+    (select c.id from public.cash_games c
+       join public.rooms r on r.id = c.room_id
+      where c.rake_verified_at is null and c.rake_type is not null
+        and r.slug = 'bellagio' and c.stakes_label = '$2/5 PLO') as web_row_2;
 
 select is(
   public.fact_source_kind('cash_games', (select floor_row from pgtap_prec), 'rake_cap'),
@@ -982,8 +1057,18 @@ select has_view('public', 'pending_review',
 -- time. Asserted as the FAILURE FIRST, so the group's success is known to be
 -- doing something rather than to be unnecessary.
 select is(
-  pg_temp.try_apply('rake_cap', '5'::jsonb, 'cash',
-    (select c.id from public.cash_games c where c.rake_type is null order by c.id limit 1)),
+  pg_temp.try_apply('rake_cap', '5'::jsonb, 'floor', /* floor-sourced, see below */
+    /* THE SAME PINNED ROW the group test uses below. This line kept its own
+       `order by c.id limit 1` after the fixtures were pinned, and stayed flaky
+       on its own — one random draw is enough. */
+    (select c.id from public.cash_games c
+       join public.rooms r on r.id = c.room_id
+      /* Re-pinned: Horseshoe GAINED a rake in the apply, so it is no longer
+         model-less. Golden Nugget's $4/8 limit is the only such row left and it
+         ranks FLOOR, so the proposal must be floor-sourced with the override —
+         otherwise precedence refuses first and this never reaches the constraint
+         it exists to assert. */
+      where c.rake_type is null and r.slug = 'golden-nugget' and c.stakes_label = '$4/8 limit'), true),
   '23514',
   'a cap alone onto a model-less row is refused by rake_model_coherent — which is why groups exist'
 );
@@ -998,7 +1083,10 @@ declare
   v_room uuid; v_src uuid; v_ids uuid[];
 begin
   select room_id into v_room from public.cash_games where id = p_target;
-  select id into v_src from public.sources where data_type = 'cash' limit 1;
+  /* FLOOR-sourced: the only model-less row left ranks floor, so a web proposal
+     would be refused by precedence before the constraint under test is ever
+     reached. The group tests are about ORDERING, not about precedence. */
+  select id into v_src from public.sources where data_type = 'floor' limit 1;
   insert into public.pending_changes
     (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
   select 'cash_games', p_target, v_room, 'update', f.field, f.val, 'pgtap-group',
@@ -1019,11 +1107,24 @@ begin
   end;
 end $$;
 
+/* PINNED BY IDENTITY, NOT BY `order by id limit 1`.
+   Every id here is a gen_random_uuid(), so "the first row" is a DIFFERENT row
+   on every reset. Three rows carry no rake model and one of them — Golden
+   Nugget's $4/8 limit — is FLOOR-ranked, so roughly one run in three this test
+   drew that row and got a precedence refusal (CID03) instead of the constraint
+   violation (23514) it exists to assert. It failed intermittently, on a
+   correct database, for a reason that had nothing to do with what it tests.
+   A flaky gate is worse than a missing one: it teaches you to re-run. */
 create temp table pgtap_group as
-  select (select c.id from public.cash_games c where c.rake_type is null order by c.id limit 1) as bare_row;
+  select (select c.id from public.cash_games c
+            join public.rooms r on r.id = c.room_id
+           where c.rake_type is null and r.slug = 'golden-nugget' and c.stakes_label = '$4/8 limit') as bare_row;
+
+select isnt((select bare_row from pgtap_group), null,
+  'the grouped-rake fixture row exists — a NULL here would make every assertion below vacuous');
 
 select is(
-  pg_temp.try_group((select bare_row from pgtap_group)),
+  pg_temp.try_group((select bare_row from pgtap_group), true),
   'APPLIED',
   'a room GAINS A RAKE through a group — model before figures, one transaction'
 );
@@ -1050,7 +1151,10 @@ declare
   v_room uuid; v_src uuid; v_ids uuid[];
 begin
   select room_id into v_room from public.cash_games where id = p_target;
-  select id into v_src from public.sources where data_type = 'cash' limit 1;
+  /* FLOOR-sourced: the only model-less row left ranks floor, so a web proposal
+     would be refused by precedence before the constraint under test is ever
+     reached. The group tests are about ORDERING, not about precedence. */
+  select id into v_src from public.sources where data_type = 'floor' limit 1;
   insert into public.pending_changes
     (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
   select 'cash_games', p_target, v_room, 'update', f.field, f.val, 'pgtap-badgroup',
@@ -1060,7 +1164,7 @@ begin
   begin
     execute 'set local role authenticated';
     perform set_config('request.jwt.claims', '{"email":"admin@example.test"}', true);
-    perform public.approve_change_group(v_ids, false);
+    perform public.approve_change_group(v_ids, true);
     perform set_config('request.jwt.claims', null, true);
     reset role;
     return 'APPLIED';
@@ -1105,6 +1209,62 @@ select ok(
   or not pg_temp.runs_as('authenticated', '{"email":"stranger@example.test"}'::jsonb,
     $$ select case when public.is_service_caller() then 1 else 1/0 end $$),
   'and it is NOT satisfied by anon or by an ordinary signed-in user'
+);
+
+-- ─── jackpot_drop IS A RAKE FIELD (migration 010) ────────────────────
+-- Three tests asked "is this a rake field?" with `field like 'rake%'`, which
+-- every rake column matches except jackpot_drop. It was unreachable until
+-- something wrote a drop ON ITS OWN — every earlier apply moved it beside
+-- rake_cap, whose name matched, so the drop rode along on the right branch.
+-- The first real differ run did write one alone, and it moved the row's STAKES
+-- citation to a sheet that does not state stakes. Pinned here so it cannot come
+-- back the same way.
+select ok(public.is_rake_field('jackpot_drop'),
+  'jackpot_drop is a rake field — the member whose name breaks the rake_ pattern');
+select ok(public.is_rake_field('rake_cap'), 'and so are the ones that do match it');
+select ok(not public.is_rake_field('stakes_label'),
+  'and a stakes column is not — the predicate is a list, not a guess');
+
+-- THE CONSEQUENCE, ASSERTED AT THE LEVEL IT ACTUALLY BIT: a drop change must
+-- rank against the RAKE's citation, not the row's.
+select is(
+  public.fact_source_kind('cash_games', (select floor_row from pgtap_prec), 'jackpot_drop'),
+  public.fact_source_kind('cash_games', (select floor_row from pgtap_prec), 'rake_cap'),
+  'a jackpot_drop write ranks against the same fact as a rake_cap write'
+);
+
+-- AND THE RECEIPT GOES TO THE RAKE COLUMN. This is the assertion that would
+-- have caught the production misattribution before it happened.
+do $$
+declare v_id uuid; v_target uuid; v_room uuid; v_src uuid;
+begin
+  select c.id, c.room_id into v_target, v_room from public.cash_games c
+   where public.fact_source_kind('cash_games', c.id, 'rake_cap') = 'web'
+     and c.rake_type is not null order by c.id limit 1;
+  select id into v_src from public.sources where data_type = 'cash' limit 1;
+  insert into public.pending_changes
+    (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
+  values ('cash_games', v_target, v_room, 'update', 'jackpot_drop', '3'::jsonb,
+          'pgtap-drop-receipt', v_src, 'https://vegasadvantage.com/pgtap-drop')
+  returning id into v_id;
+  perform pg_temp.runs_as('authenticated', '{"email":"admin@example.test"}'::jsonb,
+    format('select public.approve_change(%L::uuid)', v_id));
+end $$;
+
+select is(
+  (select c.rake_source_url from public.cash_games c
+    join public.pending_changes p on p.target_id = c.id
+   where p.agent = 'pgtap-drop-receipt'),
+  'https://vegasadvantage.com/pgtap-drop',
+  'a jackpot_drop change moves the RAKE receipt — not the row''s stakes citation'
+);
+
+select isnt(
+  (select c.source_url from public.cash_games c
+    join public.pending_changes p on p.target_id = c.id
+   where p.agent = 'pgtap-drop-receipt'),
+  'https://vegasadvantage.com/pgtap-drop',
+  '...and leaves the stakes citation alone — the exact misattribution that reached production'
 );
 
 select * from finish();
