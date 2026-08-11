@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(86);
+select plan(95);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -1265,6 +1265,68 @@ select isnt(
    where p.agent = 'pgtap-drop-receipt'),
   'https://vegasadvantage.com/pgtap-drop',
   '...and leaves the stakes citation alone — the exact misattribution that reached production'
+);
+
+-- ─── TOURNAMENTS: the first real rows these tables have held ─────────
+-- Five tables sat at zero rows since they were created, so every constraint on
+-- them was a hypothesis. The Wynn pilot exercises them; these assert the ones
+-- that would let bad data in.
+select ok(
+  pg_temp.works_as('anon', $$ select 1 from public.tournament_templates limit 1 $$),
+  'anon may read tournaments — a schedule is for readers'
+);
+select ok(
+  not pg_temp.works_as('anon',
+    $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount)
+       values ((select id from public.rooms limit 1), 'x', 'x', '12:00', 1, 1) $$),
+  'anon may NOT write one'
+);
+
+-- THE GENERATED COLUMNS ARE THE HONEST BUY-IN, so they are asserted against the
+-- document's own arithmetic rather than trusted.
+select is(
+  (select total_buy_in from public.tournament_templates where slug = 'wynn-daily-200-nlh-10k'),
+  200.00::numeric,
+  'the split reproduces the poster: 162 prize + 26 house + 12 staff = the $200 advertised'
+);
+select is(
+  (select fee_percent from public.tournament_templates where slug = 'wynn-daily-200-nlh-10k'),
+  13.00::numeric,
+  'and fee%% is the HOUSE cut over the total — 26/200 — not the staff charge as well'
+);
+
+-- 0=Sun..6=Sat. An out-of-range day never matches a query and an empty array
+-- claims a weekly that runs on no day at all.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, days_of_week)
+     values ((select id from public.rooms limit 1), 'bad-day', 'x', '12:00', 1, 1, array[7]::smallint[]) $$,
+  '23514', null, 'a day outside 0-6 is refused rather than silently never matching');
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, days_of_week)
+     values ((select id from public.rooms limit 1), 'no-day', 'x', '12:00', 1, 1, array[]::smallint[]) $$,
+  '23514', null, 'and an empty day array cannot claim a weekly that never runs');
+
+-- ⚠️ A DOCUMENT DATE MUST BE EXPLAINED (migration 011). A date with no
+-- provenance is the same failure as a figure with no source: a PDF's
+-- CreationDate is evidence, a printed date is a statement, and storing them
+-- indistinguishably would let an inference read as a claim.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, document_effective_on)
+     values ((select id from public.rooms limit 1), 'undated', 'x', '12:00', 1, 1, '2026-01-01') $$,
+  '23514', null, 'a document date with no stated origin is refused');
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount,
+       document_effective_on, document_date_source)
+     values ((select id from public.rooms limit 1), 'dated-ok', 'x', '12:00', 1, 1, '2026-01-01', 'printed') $$,
+  'and one that says where it came from is accepted');
+
+-- PRECEDENCE: a room's own PDF is WEB, not floor. Nobody stood in the room, and
+-- ranking it as floor would block the correction a floor visit is for.
+select is(
+  public.source_kind_of(
+    (select structure_pdf_url from public.tournament_templates where slug = 'wynn-daily-200-nlh-10k'), null),
+  'web',
+  'a room-published schedule PDF ranks WEB, so a later floor visit corrects it without an override'
 );
 
 select * from finish();

@@ -45,6 +45,9 @@ const SCREENS = [
      not render and this screen would measure a page that has no description on
      it at all. */
   ['room detail (with prose)', '/rooms/aria'],
+  /* Wynn is the only room with tournaments, so it is the only screen where
+     those text nodes exist to be composited. */
+  ['room detail (tournaments)', '/rooms/wynn-encore'],
   ['just the facts', '/facts'],
   ['facts + compare (the dim state)', '/facts?compare=venetian,south-point'],
   ['tournaments', '/tournaments'],
@@ -189,7 +192,13 @@ page.on('console', (m) => {
   if (!DEV_NOISE.test(t)) consoleNoise.push(t)
 })
 
-const staged = stageDescription('aria')
+/* STAGED FOR EVERY ROOM SCREEN, not just the first. A second room screen was
+   added for the tournaments text nodes and the prose assertions duly reported
+   "NO SECTION" against it — the fixture covered one room and the assertions
+   covered all of them. A suite has to stage everything it measures. */
+const ROOM_SCREENS = SCREENS.filter(([, path]) => path.startsWith('/rooms/'))
+  .map(([, path]) => path.replace('/rooms/', ''))
+const staged = ROOM_SCREENS.map((slug) => stageDescription(slug)).every(Boolean)
 if (!staged) {
   console.log('  FAIL  the prose fixture could not be staged — the room-detail screen would measure a page with no description')
   fail++

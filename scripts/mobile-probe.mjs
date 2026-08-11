@@ -911,6 +911,66 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
   await ctx.close()
 }
 
+/* ═══ THE TOURNAMENTS SECTION AT 390px ═══
+   Five labelled figures per event on a phone: the row wraps rather than
+   scrolling sideways, and the schedule's own date has to survive the wrap
+   because a schedule without its date is the failure the section exists to
+   avoid. EMPTY-SAFE is asserted on a room that has none, not inferred. */
+{
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 600 }, deviceScaleFactor: 3,
+    isMobile: true, hasTouch: true, reducedMotion: 'reduce',
+  })
+  const pg = await ctx.newPage()
+  await pg.goto(`${BASE}/rooms/wynn-encore`, { waitUntil: 'load' })
+  await pg.waitForTimeout(1200)
+  const t = await pg.evaluate(() => {
+    const rows = [...document.querySelectorAll('.cid-tourney-facts')]
+    if (rows.length === 0) return null
+    const meta = [...document.querySelectorAll('.cid-tourney-meta')]
+    return {
+      events: rows.length,
+      docW: Math.round(document.documentElement.scrollWidth),
+      vw: window.innerWidth,
+      widest: Math.max(...rows.map((r) => Math.round(r.getBoundingClientRect().width))),
+      wraps: rows.every((r) => r.getBoundingClientRect().width <= window.innerWidth),
+      dated: meta.filter((m) => /SCHEDULE DATED|PUBLISHES NO DATE/.test(m.textContent)).length,
+      structureLinks: document.querySelectorAll('.cid-tourney-meta a').length,
+    }
+  })
+  if (t == null) {
+    ok(false, 'the tournaments section renders at 390px — none found on wynn-encore')
+  } else {
+    ok(t.events === 4, `the tournaments section renders all four Wynn dailies at 390px (${t.events})`)
+    ok(t.docW <= t.vw, `and no horizontal overflow (scrollWidth ${t.docW} <= ${t.vw})`)
+    ok(t.wraps, `the five figures wrap rather than running off the phone (widest row ${t.widest}px of ${t.vw})`)
+    /* THE DATE SURVIVES THE WRAP. Every event says either when the schedule is
+       dated or that the room publishes no date — never neither. */
+    ok(t.dated === t.events,
+      `every event states its schedule date, or says the room publishes none (${t.dated}/${t.events})`)
+    ok(t.structureLinks === t.events,
+      `and each links the room's own structure PDF (${t.structureLinks})`)
+  }
+
+  /* EMPTY-SAFE, on a room that genuinely has none. Sixteen of seventeen. */
+  await pg.goto(`${BASE}/rooms/aria`, { waitUntil: 'load' })
+  await pg.waitForTimeout(900)
+  const none = await pg.evaluate(() => {
+    /* SCOPED TO THE SECTION, not the page. `body.textContent` matched the
+       header's own TOURNAMENTS nav link and failed against a room that was
+       correctly rendering nothing — the assertion was reading the site
+       furniture rather than the block under test. */
+    const main = document.querySelector('main')
+    const label = [...main.querySelectorAll('.cid-label')]
+      .some((e) => /^TOURNAMENTS/.test(e.textContent.trim()))
+    return { label, rows: main.querySelectorAll('.cid-tourney-facts').length }
+  })
+  ok(!none.label && none.rows === 0,
+    'a room with no tournaments renders no section at all — empty-safe, like descriptions')
+
+  await ctx.close()
+}
+
 await browser.close()
 console.log(`\n  ${failed} failed${skipped ? `, ${skipped} skipped` : ''}\n`)
 process.exit(failed ? 1 : 0)

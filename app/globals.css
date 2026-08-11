@@ -711,3 +711,28 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     padding-left: var(--cid-space-4);
   }
 }
+
+/* ═══ TOURNAMENTS ON A ROOM PAGE ═══
+   A wrapping row of labelled figures rather than a fixed grid: the count is the
+   same for every tournament, but a phone cannot hold five of them across and
+   the facts grid's answer — pad the row — would be wrong here, because these
+   are one event's facts and not nine independent slots. */
+.cid-tourney-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cid-space-3) var(--cid-space-6);
+  align-items: baseline;
+}
+.cid-tourney-when {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-text-3);
+}
+/* The date line and the structure link. Quiet, because it is meta about the
+   document rather than a fact about the room — but PRESENT, because a schedule
+   without its date is the failure this section exists to avoid. */
+.cid-tourney-meta {
+  font: var(--cid-caption);
+  color: var(--cid-text-3);
+  margin: 0;
+}

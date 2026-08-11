@@ -9,6 +9,7 @@ import {
   provenanceState, unverifiedSources,
 } from '@/lib/provenance'
 import { resolveDescription } from '@/lib/description'
+import { dayLabel, timeLabel } from '@/lib/tournaments'
 import { formatRake } from '@/lib/figures'
 import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { supabase } from '@/lib/supabase'
@@ -141,7 +142,13 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       /* PROSE, fetched with everything else. `author_kind` is deliberately
          NOT selected: it is stored for content management and never rendered,
          and a column the renderer cannot see is a byline it cannot grow. */
-      + ',room_descriptions(body,written_at,source_url,verified_at)',
+      + ',room_descriptions(body,written_at,source_url,verified_at)'
+      /* TOURNAMENTS. Empty for sixteen of seventeen rooms today, and the
+         section simply does not render for them — the same empty-safe shape
+         descriptions ship with. */
+      + ',tournament_templates(slug,name,start_time,days_of_week,total_buy_in,fee_percent,'
+      + 'guarantee_amount,starting_stack,level_minutes,late_reg_level,reentry_note,'
+      + 'structure_pdf_url,document_effective_on,document_date_source,source_url,verified_at,is_active)',
     )
     .eq('slug', slug)
     .maybeSingle()
@@ -187,6 +194,16 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     room_formats: Array<{
       slug: string; label: string | null; note: string | null
       source_url: string | null; verified_at: string | null
+    }>
+
+    tournament_templates: Array<{
+      slug: string; name: string; start_time: string; days_of_week: number[] | null
+      total_buy_in: number | null; fee_percent: number | null
+      guarantee_amount: number | null; starting_stack: number | null
+      level_minutes: number | null; late_reg_level: number | null
+      reentry_note: string | null; structure_pdf_url: string | null
+      document_effective_on: string | null; document_date_source: string | null
+      source_url: string | null; verified_at: string | null; is_active: boolean
     }>
 
     room_descriptions: Array<{
@@ -313,6 +330,13 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
      grid below renders. An unresolved token withholds the whole paragraph
      rather than printing a hole; see lib/description.ts. */
   const desc = descRow == null ? null : resolveDescription(descRow.body, room)
+
+  /* Active only, earliest first. `is_active` is the room's own flag for a
+     tournament it has stopped running — kept rather than deleted, so the row
+     retains its provenance. */
+  const tourneys = [...(room.tournament_templates ?? [])]
+    .filter((t) => t.is_active)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time) || a.name.localeCompare(b.name))
 
   const games = [...room.cash_games].sort(
     (a, b) => (Number(a.big_blind ?? a.big_bet ?? 0)) - (Number(b.big_blind ?? b.big_bet ?? 0)),
@@ -669,6 +693,64 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
             WRITTEN {new Date(descRow.written_at).toISOString().slice(0, 10)}
           </p>
         </section>
+      )}
+
+      {/* ═══ TOURNAMENTS — EMPTY-SAFE ═══
+          Sixteen of seventeen rooms hold none, and they render no section at
+          all rather than an empty one. Same shape as descriptions: the gate is
+          the data, not a flag anybody has to maintain.
+
+          STALENESS IS SHOWN, NOT FOOTNOTED. A schedule is a claim about what
+          runs TODAY, so the document's own date is printed beside it — and when
+          the room publishes no date, that says so instead. A reader deciding
+          whether to drive across town is entitled to know the schedule is two
+          months old, and equally entitled to know we could not tell.
+
+          THE STRUCTURE IS A LINK, by the standing rule: a daily points at the
+          room's own PDF rather than a transcription that can drift from it. */}
+      {tourneys.length > 0 && (
+        <Block label={`TOURNAMENTS · ${tourneys.length}`}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
+            {tourneys.map((t) => (
+              <div key={t.slug} style={{ background: 'var(--cid-ink-700)', padding: 'var(--cid-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-3)' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--cid-space-4)', alignItems: 'baseline' }}>
+                  <span style={{ font: 'var(--cid-body-strong)', color: 'var(--cid-text)' }}>{t.name}</span>
+                  <span className="num cid-tourney-when">{dayLabel(t.days_of_week)} · {timeLabel(t.start_time)}</span>
+                </div>
+                <div className="cid-tourney-facts">
+                  {/* THE BUY-IN SPLIT IS THE POINT. A room advertises "$200";
+                      what a player pays the house is the fee, and showing the
+                      percentage is the whole reason the columns are separate. */}
+                  <span><span className="cid-label">BUY-IN</span>{' '}
+                    <Figure value={t.total_buy_in != null ? `$${Number(t.total_buy_in).toFixed(0)}` : null} verifiedAt={t.verified_at} /></span>
+                  <span><span className="cid-label">FEE</span>{' '}
+                    <Figure value={t.fee_percent != null ? `${Number(t.fee_percent)}%` : null} verifiedAt={t.verified_at} /></span>
+                  <span><span className="cid-label">GUARANTEE</span>{' '}
+                    <Figure value={t.guarantee_amount != null ? `$${Number(t.guarantee_amount).toLocaleString('en-US')}` : null} verifiedAt={t.verified_at} /></span>
+                  <span><span className="cid-label">STACK</span>{' '}
+                    <Figure value={t.starting_stack != null ? Number(t.starting_stack).toLocaleString('en-US') : null} verifiedAt={t.verified_at} /></span>
+                  <span><span className="cid-label">LEVELS</span>{' '}
+                    <Figure value={t.level_minutes != null ? `${t.level_minutes} min` : null} verifiedAt={t.verified_at} /></span>
+                </div>
+                {t.reentry_note && (
+                  <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-text-3)', margin: 0, maxWidth: '60ch' }}>{t.reentry_note}</p>
+                )}
+                <p className="num cid-tourney-meta">
+                  {t.structure_pdf_url && (
+                    <>
+                      <a href={t.structure_pdf_url} target="_blank" rel="noopener noreferrer">FULL STRUCTURE (PDF)</a>
+                      {' · '}
+                    </>
+                  )}
+                  {t.document_effective_on
+                    ? `SCHEDULE DATED ${new Date(t.document_effective_on).toISOString().slice(0, 10)}`
+                      + (t.document_date_source === 'pdf_created' ? ' (from the file, not printed on it)' : '')
+                    : 'THE ROOM PUBLISHES NO DATE ON THIS SCHEDULE'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Block>
       )}
 
       <Block label="THE FACTS">

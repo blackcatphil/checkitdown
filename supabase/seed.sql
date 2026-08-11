@@ -1464,6 +1464,114 @@ end $$;
 commit;
 
 -- =====================================================================
+-- TOURNAMENTS — WYNN DAILIES. The first real rows in these tables.
+-- Ingested 2026-08-10 from the LIVE documents on wynnlasvegas.com.
+-- =====================================================================
+-- The five tournament tables have held zero rows since they were created; the
+-- tournaments page has been showing design-comp data. This is the pilot, and
+-- it is deliberately the DAILIES only — see the report for the series, which is
+-- upcoming rather than stale and needs the full level-by-level transcription
+-- the standing rule requires.
+--
+-- ⚠️ CITED TO THE LIVE URL, NOT THE LAPTOP. Both PDFs were fetched from
+-- wynnlasvegas.com/casino/poker on 2026-08-10 and are BYTE-IDENTICAL to the
+-- local copies (sha256 compared, 2861483 and 266329 bytes) — so the local
+-- reading is confirmed current and the citation points somewhere a reader can
+-- open.
+--
+-- PRECEDENCE: `data_type = 'tournaments'`, which is a WEB tier. Nobody stood in
+-- the room; a room publishing its own PDF is a first-party page, not a floor
+-- visit. That ranking is what lets a later floor correction land without an
+-- override — see migration 008.
+insert into sources (data_type, url, label, cadence_hours, status, last_fetched_at, last_ok_at)
+values
+  ('tournaments', 'https://cdn.wynnresorts.com/image/upload/v1752011166/visitwynn_pdfs_files/Poker/Daily%20Tournaments/poker-daily-tournament-poster.pdf',
+   'Wynn — daily tournament poster (PDF)', 168, 'ok', '2026-08-10', '2026-08-10'),
+  ('tournaments', 'https://cdn.wynnresorts.com/image/upload/v1752011191/visitwynn_pdfs_files/Poker/Daily%20Tournaments/Poker-All_Daily_Structures.pdf',
+   'Wynn — all daily structures (PDF)', 168, 'ok', '2026-08-10', '2026-08-10')
+on conflict (url, data_type) do nothing;
+
+-- THE FOUR DAILIES.
+--
+-- THE BUY-IN SPLIT IS THE DOCUMENT'S OWN, not a guess: each structure sheet
+-- states it outright — "The $200 Entry Fee will be distributed as follows: $26
+-- for the Tournament fee, $12 for the poker staff service charge, and $162 for
+-- the Tournament prize pool." So entry_amount is the PRIZE POOL contribution,
+-- fee_amount the house's cut and staff_amount the dealers'. The generated
+-- fee_percent is therefore the house's share of the total, which is the
+-- convention the tournaments surface already states.
+--
+-- DAYS: 0=Sun..6=Sat. Saturday and Sunday are ONE template — the structure
+-- sheet is a single "Saturday & Sunday" event, and splitting it would claim two
+-- tournaments where the room publishes one.
+--
+-- STRUCTURE IS LINKED, NOT TRANSCRIBED. The standing rule: dailies link the
+-- room's PDF with its fetched date. The levels are published and readable, and
+-- transcribing them here would duplicate a document that changes without
+-- telling us — the link cannot go stale in the way a copy can.
+--
+-- document_effective_on: the poster and the structures print NO date, so this
+-- falls to the PDF's own CreationDate and says so in document_date_source. See
+-- migration 011 for why the URL's Cloudinary version stamp is not used: it
+-- reads eleven months earlier than the file it serves.
+insert into tournament_templates (
+  room_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed, reentry_note,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source,
+  source_url, fetched_at)
+select r.id, v.slug, v.name, 'nlh'::game_kind, v.start_time, v.days,
+       v.entry, v.fee, v.staff, v.guarantee,
+       25000, v.mins, v.late_level, v.reentry, v.note,
+       'https://cdn.wynnresorts.com/image/upload/v1752011191/visitwynn_pdfs_files/Poker/Daily%20Tournaments/Poker-All_Daily_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       v.doc_date, 'pdf_created',
+       'https://cdn.wynnresorts.com/image/upload/v1752011166/visitwynn_pdfs_files/Poker/Daily%20Tournaments/poker-daily-tournament-poster.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, (values
+    ('wynn-daily-200-nlh-10k',  'Daily $200 NLH — $10,000 Guarantee',
+     time '12:00', array[1,2,3,4]::smallint[],
+     162.00, 26.00, 12.00, 10000.00, 30, 9, true,
+     'Re-entry allowed until the start of level 9 (approximately 4:30 p.m.).',
+     date '2026-06-19'),
+    ('wynn-daily-240-nlh-rebuy-40k', 'Friday $240 NLH Rebuy — $40,000 Guarantee',
+     time '12:00', array[5]::smallint[],
+     190.00, 35.00, 15.00, 40000.00, 30, 9, false,
+     'Re-entry is NOT allowed. Unlimited $200 rebuys at 15,000 chips or less, '
+     'and one $100 add-on, until the start of level 9 (approximately 4:30 p.m.).',
+     date '2026-06-19'),
+    ('wynn-daily-200-nlh-25k',  'Weekend $200 NLH — $25,000 Guarantee',
+     time '12:00', array[6,0]::smallint[],
+     162.00, 26.00, 12.00, 25000.00, 30, 11, true,
+     'Re-entry and one $100 add-on until the start of level 11 (approximately 5:30 p.m.).',
+     date '2026-06-19'),
+    ('wynn-nightly-160-nlh-10k', 'Nightly $160 NLH — $10,000 Guarantee',
+     time '18:00', array[0,1,2,3,4,5,6]::smallint[],
+     130.00, 20.00, 10.00, 10000.00, 20, 9, true,
+     'Re-entry and one $100 add-on until the start of level 9 (approximately 9:00 p.m.).',
+     date '2026-06-19')
+  ) as v(slug, name, start_time, days, entry, fee, staff, guarantee,
+         mins, late_level, reentry, note, doc_date)
+ where r.slug = 'wynn-encore'
+on conflict (slug) do nothing;
+
+do $$
+declare n int; t numeric; f numeric;
+begin
+  select count(*) into n from tournament_templates;
+  if n <> 4 then raise exception 'expected 4 Wynn dailies, got %', n; end if;
+
+  -- The split must reproduce the poster's headline number, or the honesty of
+  -- the breakdown is decorative.
+  select total_buy_in, fee_percent into t, f
+    from tournament_templates where slug = 'wynn-daily-200-nlh-10k';
+  if t <> 200.00 then raise exception 'the $200 daily totals %, not 200', t; end if;
+  if f <> 13.00 then raise exception 'the $200 daily fee%% is %, not 13.00', f; end if;
+
+  select total_buy_in into t from tournament_templates where slug = 'wynn-nightly-160-nlh-10k';
+  if t <> 160.00 then raise exception 'the nightly totals %, not 160', t; end if;
+end $$;
+
+-- =====================================================================
 -- THE SEED CHECKS ITSELF.
 --
 -- The seed and production have diverged twice: once silently, once
@@ -1486,10 +1594,10 @@ begin
   select count(*) into n_fmt   from room_formats;
 
   if (n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt)
-     is distinct from (17, 78, 5, 58, 44, 15, 2) then
+     is distinct from (17, 78, 5, 58, 46, 15, 2) then
     raise exception
-      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources / % waitlist / % formats (expected 17 / 78 / 5 / 58 / 44 / 15 / 2)',
+      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources / % waitlist / % formats (expected 17 / 78 / 5 / 58 / 46 / 15 / 2)',
       n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt;
   end if;
-  raise notice 'seed matches production: 17 rooms / 78 games / 5 game-verified / 58 rake-verified / 44 sources / 15 waitlist / 2 formats';
+  raise notice 'seed matches production: 17 rooms / 78 games / 5 game-verified / 58 rake-verified / 46 sources / 15 waitlist / 2 formats';
 end $$;

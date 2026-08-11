@@ -60,9 +60,10 @@ jobs:
           # 159 on 2026-08-09: +10 for lib/floor-sheet — the real sheet shape, the
           # rake notation, and the room-name resolution that refuses to guess.
           # 163 on 2026-08-09: +4 for first-seen dating and the partner-prose scope.
+          # 169 on 2026-08-10: +6 for lib/tournaments — how a schedule reads.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 163 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 163) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 169 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 169) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -105,9 +106,12 @@ jobs:
           # of them drew a random row per reset and failed about one run in three.
           # 86 on 2026-08-10: +6 pinning jackpot_drop as a rake field — the receipt
           # went to the wrong column and reached production before anything caught it.
+          # 95 on 2026-08-10: +9 for the tournament tables, which had held ZERO rows
+          # since they were created. Every constraint on them was a hypothesis; one
+          # of them turned out to enforce nothing.
           # and 41 of those could have vanished under the old number.
-          [ "${n:-0}" -ge 86 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 86) — a shrinking suite is a silent regression"; exit 1; }
+          [ "${n:-0}" -ge 95 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 95) — a shrinking suite is a silent regression"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
@@ -362,9 +366,11 @@ jobs:
           # 59 on 2026-08-10: +4 for the AT-REST assertions. Every panel check in this
           # file tapped the handle first, so the suite passed against a page that
           # shipped with the filters capped at the 92px peek.
+          # 65 on 2026-08-10: +6 for the tournaments section at 390px, including
+          # empty-safe on a room that has none.
           # Raise this when assertions are added; never lower it to pass a run.
-          [ "$n" -ge 59 ] \
-            || { echo "::error::only $n mobile assertions ran (expected >= 59) — the suite shrank"; exit 1; }
+          [ "$n" -ge 65 ] \
+            || { echo "::error::only $n mobile assertions ran (expected >= 65) — the suite shrank"; exit 1; }
           # A skip must stay a skip. If these ever stop being skipped without
           # the floor moving, something changed configuration silently.
           s=$(grep -c '^  SKIP' /tmp/mobile.log || true)
@@ -429,6 +435,8 @@ jobs:
           # The orphan bug presented AS a colour, so it is gated here.
           # 38 on 2026-08-10: +3 for the review formatting — paragraphs not a wall,
           # the reading measure inside 45-75, and the first-seen date still shown.
+          # 51 on 2026-08-10: +13 for the Wynn room screen — the tournament text
+          # nodes composited like every other.
           # 25 — the full local count; nothing here is flag-gated.
-          [ "$n" -ge 38 ] \
-            || { echo "::error::only $n palette assertions ran (expected >= 38) — the suite shrank"; exit 1; }
+          [ "$n" -ge 51 ] \
+            || { echo "::error::only $n palette assertions ran (expected >= 51) — the suite shrank"; exit 1; }
