@@ -152,6 +152,11 @@ jobs:
           # takes nothing, about a room that has published no claim at all.
           # Plus the Bellagio shape — a $133 mandatory entry, a voluntary $17
           # at-registration gratuity, and the room's "$150" quoted beside it.
+          # 145 on 2026-08-11: +4 for migration 016 — a level length the integer
+          # cannot hold. The one that earns its place is "a numeric AND a note
+          # is refused": the surface renders the numeric when there is one, so a
+          # row holding both would carry a claim no reader can see, and an
+          # invisible claim is one nobody can catch being wrong.
           # 125 on 2026-08-11: +18 for the rebuy and add-on constraints
           # (migration 014). Half are refusals — a threshold with no price,
           # "unlimited" with nothing to buy, two answers to "how many" — and
@@ -160,8 +165,8 @@ jobs:
           # price with nothing else. Plus the backfill itself, asserted BEFORE
           # the constraints so a migration that applied against zero matching
           # rows cannot pass this section on an empty table.
-          [ "${n:-0}" -ge 141 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 141) — a shrinking suite is a silent regression"; exit 1; }
+          [ "${n:-0}" -ge 145 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 145) — a shrinking suite is a silent regression"; exit 1; }
 
       # --- GATE 2b: THE PROSE WRITE PATH, which writes to prod every morning. ---
       #

@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(141);
+select plan(145);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -1419,8 +1419,15 @@ select is(
 -- ⚠️ THE BACKFILL LANDED, and it is asserted before the constraints are, so a
 -- migration that applied cleanly against zero matching rows cannot pass this
 -- section on an empty table.
+-- ⚠️ SCOPED TO WYNN, which is what it always claimed and never measured. The
+-- first version counted `series_id is null and addon_amount is not null` across
+-- EVERY room, so it read 3 only while Wynn was the only room with dailies. The
+-- Orleans ingest landed a Sunday Special carrying a $100 add-on and this went to
+-- 4 — an assertion about one room failing because of another. CI would not have
+-- caught it, because CI reseeds and has no Orleans rows.
 select is(
-  (select count(*)::int from tournament_templates where series_id is null and addon_amount is not null),
+  (select count(*)::int from tournament_templates t join rooms r on r.id = t.room_id
+    where r.slug = 'wynn-encore' and t.series_id is null and t.addon_amount is not null),
   3, 'three of the four Wynn dailies carry the published $100 add-on'
 );
 select is(
@@ -1631,6 +1638,43 @@ select throws_ok(
        published_buy_in, advertised_as)
      values ((select id from public.rooms limit 1), 'b-blank', 'x', '12:00', 100, '   ') $$,
   '23514', null, 'a blank advertised headline is refused rather than rendered as empty');
+
+-- ═════════════════════════════════════════════════════════════════════
+-- LEVEL LENGTH THAT IS NOT ONE NUMBER — MIGRATION 016
+-- ═════════════════════════════════════════════════════════════════════
+-- A null level_minutes rendered the not-checked dash, on an event whose room
+-- publishes the figure perfectly clearly — it just is not an integer. Same
+-- class as 015's fee share: our storage limit published as a gap in our
+-- checking.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       published_buy_in, level_length_note)
+     values ((select id from public.rooms where slug = 'orleans'), 'l-note', 'x', '12:00',
+             150, '20/30 minutes per level') $$,
+  'a level length the integer cannot hold is storable as the room''s own words');
+
+-- ⚠️ NEVER BOTH. The surface renders the numeric when there is one, so a row
+-- holding both would carry a claim no reader can see — and an invisible claim
+-- is one nobody can catch being wrong.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       published_buy_in, level_minutes, level_length_note)
+     values ((select id from public.rooms limit 1), 'l-both', 'x', '12:00',
+             150, 20, '20/30 minutes per level') $$,
+  '23514', null, 'a numeric AND a note is refused — the note would be stored and never rendered');
+
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       published_buy_in, level_length_note)
+     values ((select id from public.rooms limit 1), 'l-blank', 'x', '12:00', 150, '   ') $$,
+  '23514', null, 'and a blank note is refused, like every other verbatim field');
+
+-- Neither is still fine: plenty of rooms publish no level length at all, and a
+-- constraint demanding completeness is not this database's job.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, published_buy_in)
+     values ((select id from public.rooms limit 1), 'l-neither', 'x', '12:00', 150) $$,
+  'and an event that publishes no level length at all is still a legal row');
 
 select * from finish();
 rollback;

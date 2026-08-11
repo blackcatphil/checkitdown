@@ -114,6 +114,13 @@ def parse(text):
             stack=N(m.group(9)),
             minutes=None if '/' in m.group(11) else int(m.group(11)),
             minutes_raw=m.group(11),
+            # ⚠️ ONLY WHERE THE NUMBER CANNOT HOLD IT — migration 016 forbids
+            # carrying both. The schedule's column is headed "Levels" and every
+            # other cell in it is a plain 20 or 30, so the unit is the column's
+            # and this composes cell + unit ONCE, here, rather than leaving the
+            # surface to guess what "20/30" measures.
+            level_note=(f'{m.group(11)} minutes per level'
+                        if '/' in m.group(11) else None),
             reg_close=clock(m.group(12), m.group(13), m.group(14)),
         ))
     return rows
@@ -148,6 +155,7 @@ def stored(db):
                coalesce(t.guarantee_amount::text,'') || chr(9) ||
                coalesce(t.starting_stack::text,'') || chr(9) ||
                coalesce(t.level_minutes::text,'') || chr(9) ||
+               coalesce(t.level_length_note,'') || chr(9) ||
                coalesce(t.late_reg_close::text,'') || chr(9) ||
                coalesce(t.addon_amount::text,'') || chr(9) ||
                coalesce(t.addon_chips::text,'') || chr(9) ||
@@ -176,6 +184,7 @@ def wanted(e, slug, addon_amount, addon_chips, eff):
         f"{e['guarantee']}.00",
         str(e['stack']),
         '' if e['minutes'] is None else str(e['minutes']),
+        e['level_note'] or '',
         f"{e['reg_close']}:00",
         f'{addon_amount}.00' if star else '',
         str(addon_chips) if star else '',
@@ -234,11 +243,12 @@ def build(db):
         stmts.append(f"""insert into tournament_templates (
               room_id, slug, name, game, start_time, days_of_week,
               published_buy_in, guarantee_amount, starting_stack, level_minutes,
-              late_reg_close, addon_amount, addon_chips, addon_max,
+              level_length_note, late_reg_close, addon_amount, addon_chips, addon_max,
               document_effective_on, document_date_source, source_url, fetched_at)
             select r.id, {Q(slug)}, {Q(e['name'])}, {Q(GAME(e['name']))}::game_kind,
                    time '{e['time']}', {days},
                    {e['buy_in']}, {e['guarantee']}, {e['stack']}, {NUM(e['minutes'])},
+                   {Q(e['level_note']) if e['level_note'] else 'null'},
                    time '{e['reg_close']}',
                    {NUM(addon_amount if e['starred'] else None)},
                    {NUM(addon_chips if e['starred'] else None)},
@@ -254,6 +264,7 @@ def build(db):
                    guarantee_amount  = excluded.guarantee_amount,
                    starting_stack    = excluded.starting_stack,
                    level_minutes     = excluded.level_minutes,
+                   level_length_note = excluded.level_length_note,
                    late_reg_close    = excluded.late_reg_close,
                    addon_amount      = excluded.addon_amount,
                    addon_chips       = excluded.addon_chips,
@@ -270,6 +281,7 @@ def build(db):
                  or tournament_templates.guarantee_amount is distinct from excluded.guarantee_amount
                  or tournament_templates.starting_stack   is distinct from excluded.starting_stack
                  or tournament_templates.level_minutes    is distinct from excluded.level_minutes
+                 or tournament_templates.level_length_note is distinct from excluded.level_length_note
                  or tournament_templates.late_reg_close   is distinct from excluded.late_reg_close
                  or tournament_templates.addon_amount     is distinct from excluded.addon_amount
                  or tournament_templates.document_effective_on is distinct from excluded.document_effective_on);""")
@@ -321,4 +333,20 @@ CHECKS = [
     ('orleans events with no registration close', "select count(*) from tournament_templates t "
         "join rooms r on r.id = t.room_id where r.slug = 'orleans' "
         "and t.late_reg_close is null", 0),
+    # ⚠️ EXACTLY ONE EVENT CHANGES LEVEL LENGTH PART-WAY, and it is the reason
+    # migration 016 exists. If this reads 0 the note stopped being written and
+    # the Friday Night Special is back to publishing a dash — our storage limit
+    # dressed as a gap in our checking.
+    ('orleans events carrying a level-length note', "select count(*) from tournament_templates t "
+        "join rooms r on r.id = t.room_id where r.slug = 'orleans' "
+        "and t.level_length_note is not null", 1),
+    # And NO event may hold both — the note would be stored and never rendered.
+    ('orleans events holding a number AND a note', "select count(*) from tournament_templates t "
+        "join rooms r on r.id = t.room_id where r.slug = 'orleans' "
+        "and t.level_minutes is not null and t.level_length_note is not null", 0),
+    # The rest must still hold a number: a note on every row would mean the
+    # numeric parse quietly stopped working.
+    ('orleans events with neither a number nor a note', "select count(*) from tournament_templates t "
+        "join rooms r on r.id = t.room_id where r.slug = 'orleans' "
+        "and t.level_minutes is null and t.level_length_note is null", 0),
 ]

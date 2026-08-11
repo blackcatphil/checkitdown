@@ -6,9 +6,11 @@ The name is the promise: a check in the poker sense, and a claim that every fact
 
 ## The two rules that override everything
 
-**1. No gold, no bronze, anywhere.** Gold is what makes a brand read as a casino, and we are the independent tool that audits them. The palette is aubergine on ink.
+**1. No data state is carried by colour.** Gold is decorative and carries **no data meaning** — mark rings, the header hairline, section rules, a card's top edge, the map's cage. Gold never fills a surface and is never the sole carrier of anything a reader must not miss. **Verified is a mark and a date.** The true #1 is weight, size and full-strength ink. Caution is rank position, weight and size — never ochre, amber or red, all three of which collide with the brand's own gold.
 
-**2. Every number carries provenance.** Verified with a date, or tilde'd and marked unverified. There is no third option, and nothing is ever stated as fact without a real source behind it. An unverified figure is *shown* — never hidden, never quietly rounded — but it cannot win a ranking.
+*This rule replaced "no gold anywhere" on 2026-08-09.* The original ban was about not reading as a casino; the palette that answered it (aubergine on ink) was retired for steel blue and a disciplined decorative gold. What survives intact is the reason behind the ban — a colour must never be the thing a reader has to notice — and it is now stated as the rule rather than as a banned hue.
+
+**2. Every number carries provenance.** Verified with a date, or tilde'd and marked unverified in `#8FA2B8` with a dotted rule. There is no third option, and nothing is ever stated as fact without a real source behind it. An unverified figure is *shown* — never hidden, never quietly rounded — but it cannot win a ranking.
 
 ## Index
 
@@ -16,7 +18,7 @@ The name is the promise: a check in the poker sense, and a claim that every fact
 |---|---|
 | `styles.css` | The one file consumers link. `@import`s everything below. |
 | `tokens/fonts.css` | Instrument Serif, Archivo, IBM Plex Mono. |
-| `tokens/colors.css` | Ink, aubergine, semantics, light mode. |
+| `tokens/colors.css` | ⚠️ **Stale — still the retired aubergine palette.** The canonical colour source is [`app/styles/tokens/colors.css`](../../app/styles/tokens/colors.css) in the app, which the manifest, the map style and the palette gate all read from. |
 | `tokens/typography.css` | Three families, desktop scale, tracking, tabular numerals. |
 | `tokens/layout.css` | Spacing, page frame, targets, the table grid contract. |
 | `tokens/motion.css` | The knock keyframes and easings. |
@@ -46,9 +48,13 @@ Ten mobile screens from the earlier phone-first phase are parked in the project 
 
 ## Visual direction
 
-**Aubergine on ink.** Accent surface `#5E3A93` with a 1px `#A98CE8` lit top edge, accent type `#A98CE8`, the mark in `#8A66C9`, value in teal `#4FBFAE`, page `#0C0E11`, raised `#14171B`, paper `#F2F4F6`. Unverified is neutral grey — never ochre, which reads as the gold we banned.
+**Steel blue on ink, with decorative gold.** Ruled 2026-08-09; see [`palette-steel-blue-gold.md`](palette-steel-blue-gold.md) for the full law and the measured ratios.
 
-Purple needs a pair of values: a saturated surface for fills and a lighter tint for type, because dark aubergine set as text on ink fails contrast. Value is teal rather than blue or green because deutan and protan vision pull purple toward blue, which would collapse a blue "good" marker against the accent in a dense table.
+Blue is brand, base and surface, and carries the one filled action per screen: `#1E4E86`, hover `#245C9C`, with a 1px `#7FB0E8` lit top edge. Accent type and that edge are `#7FB0E8`; the map pin and the mark solid are `#5B8FD1`. Page `#0B0F14`, surface `#121820`, head `#171F29`, paper `#EEF2F7`.
+
+Blue needs a pair of values for the same reason the old purple did — a saturated surface for fills and a lighter tint for type, because a dark accent set as text on ink fails contrast. What changed is that **value no longer has a colour at all**: `--cid-value` resolves to full-strength ink and renders as emphasis, because a teal "good" marker was a data state carried by hue and rule 1 now forbids that outright.
+
+**The gold ramp, canonical from the app.** `#8A6D1F` · `#C9A227` (`--cid-gold`) · `#E3C567` · `#F0DC9C`, wash `rgba(201,162,39,.14)`, hairline `rgba(227,197,103,.34)`. Gold appears on rules, hairlines, eyebrows and mark rings — and on nothing that carries a claim. Unverified stays neutral at `#8FA2B8`: an ochre "not yet confirmed" would sit one step from the decorative gold and one step from a warning, which is the worst place for a state to live.
 
 **Type.** Instrument Serif for page titles and room names (it has no bold — do not fake one). Archivo for interface copy and prose at a 760px measure. IBM Plex Mono for every number and label, always tabular. One statement-size line per page, maximum.
 

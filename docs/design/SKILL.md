@@ -11,10 +11,17 @@ wrong and expensive to get wrong. Then explore `tokens/`, `components/` and
 CHECK IT DOWN is desktop-first (mobile deferred but coming), dark by default,
 and independent of the casinos it covers. Two constraints override everything:
 
-1. **No gold, no bronze, anywhere.** Gold is what makes a brand read as a casino,
-   and this product audits them.
+1. **No data state is carried by colour.** Gold is decorative and carries no data
+   meaning — rules, hairlines, eyebrows, mark rings — and never fills a surface.
+   Verified is a mark and a date; the true #1 is weight, size and full-strength
+   ink; unverified is `#8FA2B8` with a tilde and a dotted rule. No ochre, amber
+   or red as caution: all three collide with the brand's own gold. (This
+   replaced "no gold anywhere" when the aubergine palette was retired on
+   2026-08-09 — the reason survived, the banned hue did not.)
 2. **Every number carries provenance** — verified with a date, or tilde'd and
-   marked unverified. Nothing is stated as fact without a real source.
+   marked unverified. Nothing is stated as fact without a real source. The
+   canonical colour source is `app/styles/tokens/colors.css`, not the design-side
+   copy.
 
 Designs are authored with inline styles; the token files are the handoff contract
 for the build, not a stylesheet the designs import. When producing production code,

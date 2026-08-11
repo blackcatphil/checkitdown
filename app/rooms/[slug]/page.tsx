@@ -149,7 +149,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
          section simply does not render for them — the same empty-safe shape
          descriptions ship with. */
       + ',tournament_templates(slug,name,start_time,days_of_week,total_buy_in,fee_percent,'
-      + 'guarantee_amount,starting_stack,level_minutes,late_reg_level,reentry_note,'
+      + 'guarantee_amount,starting_stack,level_minutes,level_length_note,late_reg_level,reentry_note,'
       + 'rebuy_amount,rebuy_chips,rebuy_max,rebuy_unlimited,rebuy_max_stack,advertised_as,'
       + 'addon_amount,addon_chips,addon_max,'
       + 'structure_pdf_url,document_effective_on,document_date_source,source_url,verified_at,is_active,series_id)',
@@ -209,7 +209,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       series_id: string | null
       total_buy_in: number | null; fee_percent: number | null
       guarantee_amount: number | null; starting_stack: number | null
-      level_minutes: number | null; late_reg_level: number | null
+      level_minutes: number | null; level_length_note: string | null; late_reg_level: number | null
       reentry_note: string | null
       rebuy_amount: number | null; rebuy_chips: number | null; rebuy_max: number | null
       rebuy_unlimited: boolean; rebuy_max_stack: number | null; advertised_as: string | null
@@ -819,8 +819,22 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                     <Figure value={t.guarantee_amount != null ? `$${Number(t.guarantee_amount).toLocaleString('en-US')}` : null} verifiedAt={t.verified_at} /></span>
                   <span><span className="cid-label">STACK</span>{' '}
                     <Figure value={t.starting_stack != null ? Number(t.starting_stack).toLocaleString('en-US') : null} verifiedAt={t.verified_at} /></span>
+                  {/* ⚠️ THE DASH WOULD BE A LIE HERE TOO — migration 016. A
+                      null level_minutes used to render the not-checked dash on
+                      The Orleans' Friday Night Special, which runs 20-minute
+                      levels and then 30-minute ones. The room publishes that;
+                      we simply could not store it in an integer, and publishing
+                      our own storage limit as a gap in our checking is the
+                      class 015 fixed for the fee share.
+                      The note is rendered with NOTHING APPENDED — the unit is
+                      already inside it, composed once by the ingest that read
+                      the column header. The `min` suffix belongs to the numeric
+                      branch alone. */}
                   <span><span className="cid-label">LEVELS</span>{' '}
-                    <Figure value={t.level_minutes != null ? `${t.level_minutes} min` : null} verifiedAt={t.verified_at} /></span>
+                    <Figure
+                      value={t.level_minutes != null ? `${t.level_minutes} min` : t.level_length_note}
+                      verifiedAt={t.verified_at}
+                    /></span>
                 </div>
                 {/* ⚠️ NO TOTAL, AND THE PAGE SAYS SO RATHER THAN LEAVING IT TO
                     BE INFERRED. A reader who sees ENTRY $240, REBUY $200 and
