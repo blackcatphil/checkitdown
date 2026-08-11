@@ -21,7 +21,9 @@
     "test:palette": "node scripts/palette-probe.mjs",
     "test:auth": "node scripts/auth-probe.mjs",
     "differ": "node scripts/differ.mjs",
-    "test:differ": "node --test lib/differ.test.mjs lib/floor-sheet.test.mjs"
+    "test:differ": "node --test lib/differ.test.mjs lib/floor-sheet.test.mjs",
+    "ingest:tournaments": "python3 scripts/tournaments/wynn.py",
+    "census:prod": "node scripts/prod-census.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
