@@ -48,6 +48,19 @@ export type Daily = {
   lateRegLevel: number
   reentryAllowed: boolean
   reentryNote: string
+  /* Migration 014. Nullable, and the nulls are load-bearing: `rebuyChips` is
+     null because Wynn never publishes what a rebuy buys, and `rebuyMax` is null
+     because "unlimited" is a separate claim rather than an absent count. */
+  rebuyAmount: number | null
+  rebuyChips: number | null
+  rebuyMax: number | null
+  rebuyUnlimited: boolean
+  rebuyMaxStack: number | null
+  rebuyWindow: string | null
+  addonAmount: number | null
+  addonChips: number | null
+  addonMax: number | null
+  addonWindow: string | null
   structurePdfUrl: string
   documentEffectiveOn: string
   documentDateSource: string
@@ -80,6 +93,16 @@ const COLUMN_TO_FIELD: Record<string, keyof Daily> = {
   late_reg_level: 'lateRegLevel',
   reentry_allowed: 'reentryAllowed',
   reentry_note: 'reentryNote',
+  rebuy_amount: 'rebuyAmount',
+  rebuy_chips: 'rebuyChips',
+  rebuy_max: 'rebuyMax',
+  rebuy_unlimited: 'rebuyUnlimited',
+  rebuy_max_stack: 'rebuyMaxStack',
+  rebuy_window: 'rebuyWindow',
+  addon_amount: 'addonAmount',
+  addon_chips: 'addonChips',
+  addon_max: 'addonMax',
+  addon_window: 'addonWindow',
   structure_pdf_url: 'structurePdfUrl',
   document_effective_on: 'documentEffectiveOn',
   document_date_source: 'documentDateSource',
@@ -89,6 +112,49 @@ const COLUMN_TO_FIELD: Record<string, keyof Daily> = {
 /* ── Shared lexing ────────────────────────────────────────────────────────
    Both copies are comma-separated lists containing quoted strings that hold
    commas and brackets of their own. Splitting on /,/ works on neither. */
+
+/**
+ * ⚠️ COMMENTS ARE STRIPPED BEFORE ANYTHING IS SPLIT, and this is not tidiness.
+ *
+ * Migration 014 added a `--` comment INSIDE a VALUES tuple in the seed, saying
+ * that 15,000 is an eligibility threshold rather than chips received. That
+ * comment contains "15,000" — a comma — and a double quote. Both are invisible
+ * to a reader and both are structure to a splitter: the comma added a phantom
+ * tuple member and the quote flipped the lexer into string mode for the rest of
+ * the file. The result was a refusal, which is the right failure, but the cause
+ * is a trap anybody documenting a column would step in again.
+ *
+ * Quote-aware, because `--` and `#` appear inside real string literals: a URL
+ * fragment, an em-dash sentence. Stripping them textually would corrupt the
+ * values this file exists to compare.
+ */
+export function stripLineComments(src: string, marker: string): string {
+  let out = ''
+  let quote: string | null = null
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i]
+    if (quote) {
+      out += c
+      if (c === '\\') { out += src[i + 1] ?? ''; i++; continue }
+      if (c === quote) {
+        if (c === "'" && src[i + 1] === "'") { out += src[i + 1]; i++; continue }
+        quote = null
+      }
+      continue
+    }
+    if (c === "'" || c === '"') { quote = c; out += c; continue }
+    if (src.startsWith(marker, i)) {
+      const nl = src.indexOf('\n', i)
+      if (nl < 0) break
+      /* The newline is kept so line-anchored patterns still work. */
+      out += '\n'
+      i = nl
+      continue
+    }
+    out += c
+  }
+  return out
+}
 
 /** Split at commas that are not inside a string, bracket, brace or paren. */
 export function splitTop(src: string): string[] {
@@ -125,13 +191,20 @@ export function splitTop(src: string): string[] {
  * juxtaposition and so does Python — and a reader that took only the first half
  * would compare two truncated sentences and find them equal.
  */
-export function readValue(raw: string, where: string): string | number | boolean | number[] {
+export function readValue(raw: string, where: string): string | number | boolean | number[] | null {
   let s = raw.trim()
 
   /* Type decorations that carry no value: ::game_kind, ::smallint[], and the
      `time` / `date` / `timestamptz` literal prefixes. */
   s = s.replace(/::\s*[a-z_]+(\s*\[\s*\])?/gi, '').trim()
   s = s.replace(/^(?:time|date|timestamptz|timestamp)\s+(?=')/i, '').trim()
+
+  /* ABSENCE IS A VALUE HERE and must survive the comparison. SQL spells it
+     `null` (often as `null::numeric`, stripped above) and Python spells it
+     `None`; both mean "the room does not publish this", and migration 014
+     turned that into a fact worth diffing — `rebuy_chips` is null on all four
+     Wynn dailies precisely BECAUSE the poster never says what $200 buys. */
+  if (/^(null|none)$/i.test(s)) return null
 
   if (/^true$/i.test(s)) return true
   if (/^false$/i.test(s)) return false
@@ -210,7 +283,8 @@ function balanced(src: string, from: number, open: string, close: string, where:
  * its column list — the series block is the other one, has 61 rows, and would
  * otherwise be matched by any looser anchor.
  */
-export function dailiesFromSeed(sqlText: string): { rows: Daily[]; columns: string[] } {
+export function dailiesFromSeed(raw: string): { rows: Daily[]; columns: string[] } {
+  const sqlText = stripLineComments(raw, '--')
   const starts: number[] = []
   const re = /insert\s+into\s+tournament_templates\s*\(/gi
   for (let m = re.exec(sqlText); m; m = re.exec(sqlText)) starts.push(m.index + m[0].length - 1)
@@ -301,7 +375,8 @@ function pyConstant(py: string, name: string): string {
  * and `20000` on the other, agreeing perfectly on the twelve fields it looked
  * at.
  */
-export function dailiesFromIngest(py: string): { rows: Daily[]; columns: string[] } {
+export function dailiesFromIngest(raw: string): { rows: Daily[]; columns: string[] } {
+  const py = stripLineComments(raw, '#')
   const at = py.search(/^DAILIES\s*=\s*\[/m)
   if (at < 0) throw new Error('ingest: DAILIES not found')
   const listBody = balanced(py, py.indexOf('[', at), '[', ']', 'ingest DAILIES')
@@ -356,6 +431,12 @@ export function dailiesFromIngest(py: string): { rows: Daily[]; columns: string[
     m = s.match(/^time\s+'\{d\['([a-z_]+)'\]\}'$/)
     if (m) return d[m[1]]
     m = s.match(/^\{str\(d\['([a-z_]+)'\]\)\.lower\(\)\}$/)
+    if (m) return d[m[1]]
+    /* The two null-aware helpers migration 014 added. They exist because a
+       Python `None` has to become the SQL keyword `null` rather than the string
+       "None", and they are matched here by name so the ten new columns stay
+       individually visible to this comparison. */
+    m = s.match(/^\{(?:NUM|WIN)\(d\['([a-z_]+)'\]\)\}$/)
     if (m) return d[m[1]]
     m = s.match(/^\{Q\(([A-Z_]+)\)\}$/)
     if (m) {

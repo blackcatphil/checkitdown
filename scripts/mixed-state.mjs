@@ -359,14 +359,23 @@ const expectedTildes = () => new Map(sql(`
         join amenity_types at on at.id = ra.amenity_id
         where ra.room_id = r.id and at.slug in ('freeself', 'tableside', 'cocktail')
           and ra.available and ra.verified_at is null), 0)
-    /* THE TOURNAMENTS SECTION — Wynn only today. Five figures per active
-       event, each riding the TEMPLATE's own stamp: a room-published PDF is
-       web-tier and nobody has stood in the room, so every one of them is
-       tilde'd until a floor visit says otherwise. */
+    /* THE TOURNAMENTS SECTION — Wynn only today. Each figure rides the
+       TEMPLATE's own stamp: a room-published PDF is web-tier and nobody has
+       stood in the room, so every one of them is tilde'd until a floor visit
+       says otherwise.
+       FIVE FIGURES BECAME UP TO EIGHT with migration 014. The rebuy price, the
+       add-on price and the eligibility threshold are figures like any other and
+       earn their tildes the same way — this expectation reported 33 against 38
+       rendered the moment they landed, which is the gate doing its job: it
+       describes the page from the database, so a new figure has to be declared
+       here or the count stops matching. */
     + coalesce((select sum(
         case when t.verified_at is null then
           (t.total_buy_in is not null)::int
         + (t.fee_percent is not null)::int
+        + (t.rebuy_amount is not null)::int
+        + (t.addon_amount is not null)::int
+        + (t.rebuy_max_stack is not null)::int
         + (t.guarantee_amount is not null)::int
         + (t.starting_stack is not null)::int
         + (t.level_minutes is not null)::int

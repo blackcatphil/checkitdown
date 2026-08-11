@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { costShape } from '@/lib/tournament-terms'
 import { timeLabel, vegasParts } from '@/lib/tournaments'
 
 import { supabase } from '@/lib/supabase'
@@ -31,6 +32,7 @@ export default async function Tournaments({
     .from('tournament_templates')
     .select('slug,name,start_time,total_buy_in,fee_percent,guarantee_amount,reliability,'
       + 'verified_at,days_of_week,level_minutes,structure_pdf_url,'
+      + 'rebuy_amount,rebuy_max,rebuy_unlimited,addon_amount,addon_max,'
       + 'rooms(name,slug),tournament_instances(starts_at,entry_kind,takes_entry)')
     .eq('is_active', true)
     .order('start_time')
@@ -99,6 +101,8 @@ export default async function Tournaments({
     total: number | null; fee: number | null; guarantee: number | null
     minutes: number | null; verifiedAt: string | null
     takesEntry: boolean; entryKind: string | null; pdf: string | null
+    /* Migration 014: what the entry does NOT cover. */
+    extras: ReturnType<typeof costShape>['extras']; bounded: boolean
   }
   const rows: Row[] = []
   for (const e of events as unknown as Array<Record<string, never>>) {
@@ -106,13 +110,17 @@ export default async function Tournaments({
       slug: string; name: string; start_time: string; total_buy_in: number | null
       fee_percent: number | null; guarantee_amount: number | null; level_minutes: number | null
       verified_at: string | null; days_of_week: number[] | null; structure_pdf_url: string | null
+      rebuy_amount: number | null; rebuy_max: number | null; rebuy_unlimited: boolean
+      addon_amount: number | null; addon_max: number | null
       rooms: { name: string; slug: string } | null
       tournament_instances: Array<{ starts_at: string; entry_kind: string; takes_entry: boolean }>
     }
+    const cost = costShape(t)
     const base = {
       name: t.name, room: t.rooms?.name ?? '—', roomSlug: t.rooms?.slug ?? '',
       total: t.total_buy_in, fee: t.fee_percent, guarantee: t.guarantee_amount,
       minutes: t.level_minutes, verifiedAt: t.verified_at, pdf: t.structure_pdf_url,
+      extras: cost.extras, bounded: cost.bounded,
     }
     if (t.tournament_instances?.length) {
       for (const i of t.tournament_instances) {
@@ -128,7 +136,7 @@ export default async function Tournaments({
     }
   }
 
-  const SORTS = { time: 'TIME', buyin: 'BUY-IN', fee: 'FEE %' } as const
+  const SORTS = { time: 'TIME', buyin: 'ENTRY', fee: 'FEE %' } as const
   const active = (sort === 'buyin' || sort === 'fee') ? sort : 'time'
   const grouped = active === 'time'
 
@@ -156,19 +164,49 @@ export default async function Tournaments({
       <span className="cid-label">EVENT</span>
       <span className="cid-label">ROOM</span>
       <span className="cid-label">TIME</span>
-      <span className="cid-label">BUY-IN</span>
-      <span className="cid-label">FEE %</span>
+      {/* ⚠️ "ENTRY", NOT "BUY-IN". `total_buy_in` is what it costs to sit down
+          and nothing more; three of the four Wynn dailies carry a $100 add-on
+          and one has unlimited $200 rebuys, so a column headed BUY-IN was
+          telling a reader a price that is not the price. The head is the
+          cheapest place to fix that, and the extras get their own column rather
+          than being folded in — see migration 014 for why no total exists. */}
+      <span className="cid-label">ENTRY</span>
+      <span className="cid-label">PLUS</span>
+      <span className="cid-label">FEE OF ENTRY</span>
       <span className="cid-label">GUARANTEE</span>
     </div>
   )
+  /* How many events on this page cost more than their entry, and how many of
+     those have no published ceiling at all. Counted once, stated once. */
+  const withExtras = rows.filter((r) => r.extras.length > 0).length
+  const openEnded = rows.filter((r) => !r.bounded).length
 
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)' }}>
       <h1 style={{ font: 'var(--cid-statement)', margin: '0 0 var(--cid-space-4)' }}>Tournaments</h1>
       <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-3)', margin: '0 0 var(--cid-space-5)', maxWidth: '60ch' }}>
-        {rows.length} events. Fee % is the house&rsquo;s cut as a share of the total buy-in;
-        the rest is prize pool and the poker staff&rsquo;s service charge.
+        {rows.length} events. <strong>Entry</strong> is what it costs to sit down and{' '}
+        <strong>fee</strong> is the house&rsquo;s share of it; the rest is prize pool and
+        the poker staff&rsquo;s service charge.
       </p>
+      {/* ⚠️ WHAT THE ENTRY DOES NOT COVER, SAID BEFORE THE TABLE RATHER THAN
+          INFERRED FROM IT. Neither room publishes how a rebuy or an add-on is
+          split between prize pool and house, and one event's rebuys have no
+          ceiling — so a total cost is not a figure we hold. Showing the
+          components and declining the sum is the same ruling Just the Facts
+          carries for every modelled number. */}
+      {withExtras > 0 && (
+        <p className="cid-tt-banner" style={{ margin: '0 0 var(--cid-space-5)' }}>
+          {withExtras} of these {rows.length} events cost more than their entry — rebuys and
+          add-ons are listed under <span className="num">PLUS</span>.
+          {openEnded > 0 && (
+            <> {openEnded === 1 ? 'One of them has' : `${openEnded} of them have`} no published
+              ceiling, so no total is shown for {openEnded === 1 ? 'it' : 'them'}.</>
+          )}{' '}
+          We do not add these up: neither room publishes how a rebuy is split between prize
+          pool and house, and how many a player takes is not a fact anybody published.
+        </p>
+      )}
 
       <div className="cid-tt-sorts">
         {(Object.keys(SORTS) as Array<keyof typeof SORTS>).map((k) => (
@@ -186,7 +224,19 @@ export default async function Tournaments({
       {!grouped && (
         <p className="cid-tt-banner">
           Sorted by {SORTS[active]} — the date grouping is off, so events from
-          different days sit next to each other.{' '}
+          different days sit next to each other.
+          {/* ⚠️ THE SORT RANKS THE ENTRY, WHICH IS NOT THE COST. A $200 event
+              with unlimited rebuys sorting above a $240 one without them is
+              true about the entry and misleading about the money, and the
+              brief's own standard is that a ranking which says otherwise is
+              worse than one that declines. So the sort stays — entry is a real,
+              published, comparable figure — and it says out loud what it is
+              ordering. */}
+          {active === 'buyin' && openEnded > 0 && (
+            <> This orders the ENTRY only. {openEnded === 1 ? 'One event' : `${openEnded} events`}{' '}
+              here can cost more than the position suggests, and{' '}
+              {openEnded === 1 ? 'its' : 'their'} rebuys have no published ceiling.</>
+          )}{' '}
           <Link href="/tournaments">Back to the date view</Link>.
         </p>
       )}
@@ -213,6 +263,17 @@ export default async function Tournaments({
                 <span><Link href={`/rooms/${r.roomSlug}`}>{r.room}</Link></span>
                 <span className="num">{r.time}</span>
                 <span className="num">{r.takesEntry === false ? '—' : r.total != null ? `$${Number(r.total).toFixed(0)}` : '—'}</span>
+                {/* THE EXTRAS, LISTED IN THEIR OWN CELL AND NEVER ADDED TO THE
+                    ONE BESIDE THEM. "$200 REBUY · UNLIMITED" is what the room
+                    published; "$440" would be a number we invented. */}
+                <span className="num cid-tt-plus">
+                  {r.takesEntry === false || r.extras.length === 0 ? '—' : r.extras.map((x) => (
+                    <span key={x.label} className="cid-tt-extra">
+                      ${x.amount.toFixed(0)} {x.label}
+                      {x.qualifier && <span className="cid-tt-qual"> · {x.qualifier}</span>}
+                    </span>
+                  ))}
+                </span>
                 <span className="num">{r.takesEntry === false ? '—' : r.fee != null ? `${Number(r.fee)}%` : '—'}</span>
                 <span className="num">{r.guarantee != null ? `$${Number(r.guarantee).toLocaleString('en-US')}` : '—'}</span>
               </div>

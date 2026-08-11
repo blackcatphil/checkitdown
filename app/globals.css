@@ -761,7 +761,12 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
 .cid-tt { border: 1px solid var(--cid-line-1); }
 .cid-tt-row {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) 5rem 5rem 4.5rem 7rem;
+  /* SEVEN COLUMNS since migration 014 — PLUS sits between ENTRY and FEE, and
+     it is deliberately the widest of the money columns. Rebuys and add-ons are
+     the reason the entry is not the price, so a cell too narrow to hold
+     "$200 REBUY · UNLIMITED" would be hiding exactly what it was added to
+     show. The event name gives up the width. */
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr) 5rem 4.5rem minmax(0, 9rem) 5.5rem 7rem;
   gap: var(--cid-space-4);
   align-items: baseline;
   padding: var(--cid-space-4) var(--cid-space-5);
@@ -970,3 +975,32 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     height: round(down, min(74vw, calc(var(--cid-qr-modules) * 8px)), calc(var(--cid-qr-modules) * 1px));
   }
 }
+
+/* NO CEILING, SAID IN WORDS. An event with unlimited rebuys has a published
+   entry and an unpublished cost, and a reader who sees three dollar figures
+   will add them unless something says not to. Treated like the confirmed-absence
+   blocks rather than like a warning: this is an ordinary fact about how the
+   room prices the event, not a caution. No colour, a left rule, and the same
+   caption type the verbatim note beneath it uses. */
+.cid-tourney-open {
+  font: var(--cid-caption);
+  color: var(--cid-text-2);
+  border-left: 2px solid var(--cid-line-2);
+  padding-left: var(--cid-space-4);
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* THE EXTRAS CELL. Each offer on its own line — two stacked figures read as two
+   separate costs, which is what they are; run together on one line they read as
+   a sum. */
+.cid-tt-plus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cid-space-1);
+  font: var(--cid-caption);
+}
+.cid-tt-extra { white-space: nowrap; }
+/* "unlimited" / "one" is a qualifier ON the figure, not a second figure. Quieter
+   ink, same line. */
+.cid-tt-qual { color: var(--cid-text-3); }

@@ -9,6 +9,7 @@ import {
   provenanceState, unverifiedSources,
 } from '@/lib/provenance'
 import { resolveDescription } from '@/lib/description'
+import { costShape } from '@/lib/tournament-terms'
 import { dayLabel, timeLabel } from '@/lib/tournaments'
 import { formatRake } from '@/lib/figures'
 import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
@@ -149,6 +150,8 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
          descriptions ship with. */
       + ',tournament_templates(slug,name,start_time,days_of_week,total_buy_in,fee_percent,'
       + 'guarantee_amount,starting_stack,level_minutes,late_reg_level,reentry_note,'
+      + 'rebuy_amount,rebuy_chips,rebuy_max,rebuy_unlimited,rebuy_max_stack,'
+      + 'addon_amount,addon_chips,addon_max,'
       + 'structure_pdf_url,document_effective_on,document_date_source,source_url,verified_at,is_active,series_id)',
     )
     .eq('slug', slug)
@@ -207,7 +210,11 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       total_buy_in: number | null; fee_percent: number | null
       guarantee_amount: number | null; starting_stack: number | null
       level_minutes: number | null; late_reg_level: number | null
-      reentry_note: string | null; structure_pdf_url: string | null
+      reentry_note: string | null
+      rebuy_amount: number | null; rebuy_chips: number | null; rebuy_max: number | null
+      rebuy_unlimited: boolean; rebuy_max_stack: number | null
+      addon_amount: number | null; addon_chips: number | null; addon_max: number | null
+      structure_pdf_url: string | null
       document_effective_on: string | null; document_date_source: string | null
       source_url: string | null; verified_at: string | null; is_active: boolean
     }>
@@ -752,11 +759,33 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                 <div className="cid-tourney-facts">
                   {/* THE BUY-IN SPLIT IS THE POINT. A room advertises "$200";
                       what a player pays the house is the fee, and showing the
-                      percentage is the whole reason the columns are separate. */}
-                  <span><span className="cid-label">BUY-IN</span>{' '}
+                      percentage is the whole reason the columns are separate.
+                      ⚠️ "ENTRY", NOT "BUY-IN", SINCE MIGRATION 014. Three of
+                      these four events have a $100 add-on and one has unlimited
+                      $200 rebuys, so the single number a reader used to see as
+                      the price is the price of sitting down and nothing more.
+                      Renaming the label is the cheapest honest fix; the extras
+                      sit beside it and are never summed into it. */}
+                  <span><span className="cid-label">ENTRY</span>{' '}
                     <Figure value={t.total_buy_in != null ? `$${Number(t.total_buy_in).toFixed(0)}` : null} verifiedAt={t.verified_at} /></span>
-                  <span><span className="cid-label">FEE</span>{' '}
+                  <span><span className="cid-label">FEE OF ENTRY</span>{' '}
                     <Figure value={t.fee_percent != null ? `${Number(t.fee_percent)}%` : null} verifiedAt={t.verified_at} /></span>
+                  {/* PUBLISHED EXTRAS, LISTED, NEVER TOTALLED. `costShape` is
+                      the one place that decides what may be shown; both this
+                      page and /tournaments read it so they cannot grow two
+                      different ideas of what an event costs. */}
+                  {costShape(t).extras.map((x) => (
+                    <span key={x.label}><span className="cid-label">{x.label}</span>{' '}
+                      <Figure value={`$${x.amount.toFixed(0)}${x.qualifier ? ` · ${x.qualifier}` : ''}`} verifiedAt={t.verified_at} /></span>
+                  ))}
+                  {t.rebuy_max_stack != null && (
+                    /* THE THRESHOLD, IN ITS OWN SLOT AND IN WORDS. "15,000" beside
+                       a rebuy price reads as what the money buys; it is the stack
+                       at or below which the rebuy may be taken, and the two
+                       readings differ by the whole value of the transaction. */
+                    <span><span className="cid-label">REBUY ONLY AT</span>{' '}
+                      <Figure value={`${Number(t.rebuy_max_stack).toLocaleString('en-US')} or less`} verifiedAt={t.verified_at} /></span>
+                  )}
                   <span><span className="cid-label">GUARANTEE</span>{' '}
                     <Figure value={t.guarantee_amount != null ? `$${Number(t.guarantee_amount).toLocaleString('en-US')}` : null} verifiedAt={t.verified_at} /></span>
                   <span><span className="cid-label">STACK</span>{' '}
@@ -764,6 +793,23 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                   <span><span className="cid-label">LEVELS</span>{' '}
                     <Figure value={t.level_minutes != null ? `${t.level_minutes} min` : null} verifiedAt={t.verified_at} /></span>
                 </div>
+                {/* ⚠️ NO TOTAL, AND THE PAGE SAYS SO RATHER THAN LEAVING IT TO
+                    BE INFERRED. A reader who sees ENTRY $240, REBUY $200 and
+                    ADD-ON $100 will add them if nothing stops them, and the sum
+                    would be wrong in both directions: the rebuys are unlimited,
+                    so there is no ceiling, and nobody has to take any of it.
+                    Same ruling as Just the Facts — where a figure would have to
+                    be modelled, show the components and decline the total. */}
+                {!costShape(t).bounded && (
+                  <p className="cid-tourney-open">
+                    The entry is what it costs to sit down. What this event costs
+                    to play has no published ceiling, so we do not state one.
+                  </p>
+                )}
+                {/* THE ROOM'S OWN SENTENCE, kept verbatim underneath the
+                    figures it was transcribed into. The columns are checked
+                    against it by lib/wynn-dailies.test.mjs, so the two cannot
+                    contradict each other on the same card. */}
                 {t.reentry_note && (
                   <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-text-3)', margin: 0, maxWidth: '60ch' }}>{t.reentry_note}</p>
                 )}

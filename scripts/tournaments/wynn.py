@@ -278,23 +278,51 @@ def build(struct_pages, sched_pages):
 # seed never reaches production. So they are kept and made to prove they agree.
 # ⚠️ EDIT ONE, EDIT THE OTHER — the test names the field and the daily that
 # drifted, and it is the cheapest gate in CI.
+#
+# ═══ THE REBUY AND ADD-ON TERMS, 2026-08-11 (migration 014) ═══
+#
+# Same hand-transcription rule as everything else here, and the same reason: the
+# terms are prose conditions on a marketing poster and re-deriving them every
+# morning risks a silent mistranscription of a rule about money.
+#
+# ⚠️ rebuy_stack IS NOT rebuy_chips. Wynn's poster says "unlimited $200 rebuys
+# AT 15,000 CHIPS OR LESS" — 15,000 is the stack at or below which a rebuy may
+# be taken, not what $200 buys. What it buys is not published anywhere, so
+# rebuy_chips is absent for all four. Caesars' "$50 add-on FOR 15,000 chips"
+# uses the same number to mean the opposite, which is why they are two columns.
+#
+# `unlimited` is a claim with its own field rather than a null count — a room
+# that publishes rebuys and no number has NOT said unlimited, and null must keep
+# meaning "not published" here as it does everywhere else in this schema.
 DAILIES = [
     dict(slug='wynn-daily-200-nlh-10k', name='Daily $200 NLH — $10,000 Guarantee',
          start='12:00', days=[1, 2, 3, 4], entry=162.00, fee=26.00, staff=12.00,
          guarantee=10000.00, mins=30, late=9, reentry=True,
+         rebuy=None, rebuy_chips=None, rebuy_max=None, rebuy_unlimited=False,
+         rebuy_stack=None, rebuy_window=None,
+         addon=None, addon_chips=None, addon_max=None, addon_window=None,
          note='Re-entry allowed until the start of level 9 (approximately 4:30 p.m.).'),
     dict(slug='wynn-daily-240-nlh-rebuy-40k', name='Friday $240 NLH Rebuy — $40,000 Guarantee',
          start='12:00', days=[5], entry=190.00, fee=35.00, staff=15.00,
          guarantee=40000.00, mins=30, late=9, reentry=False,
+         rebuy=200.00, rebuy_chips=None, rebuy_max=None, rebuy_unlimited=True,
+         rebuy_stack=15000, rebuy_window='through_late_reg',
+         addon=100.00, addon_chips=None, addon_max=1, addon_window='through_late_reg',
          note='Re-entry is NOT allowed. Unlimited $200 rebuys at 15,000 chips or less, '
               'and one $100 add-on, until the start of level 9 (approximately 4:30 p.m.).'),
     dict(slug='wynn-daily-200-nlh-25k', name='Weekend $200 NLH — $25,000 Guarantee',
          start='12:00', days=[6, 0], entry=162.00, fee=26.00, staff=12.00,
          guarantee=25000.00, mins=30, late=11, reentry=True,
+         rebuy=None, rebuy_chips=None, rebuy_max=None, rebuy_unlimited=False,
+         rebuy_stack=None, rebuy_window=None,
+         addon=100.00, addon_chips=None, addon_max=1, addon_window='through_late_reg',
          note='Re-entry and one $100 add-on until the start of level 11 (approximately 5:30 p.m.).'),
     dict(slug='wynn-nightly-160-nlh-10k', name='Nightly $160 NLH — $10,000 Guarantee',
          start='18:00', days=[0, 1, 2, 3, 4, 5, 6], entry=130.00, fee=20.00, staff=10.00,
          guarantee=10000.00, mins=20, late=9, reentry=True,
+         rebuy=None, rebuy_chips=None, rebuy_max=None, rebuy_unlimited=False,
+         rebuy_stack=None, rebuy_window=None,
+         addon=100.00, addon_chips=None, addon_max=1, addon_window='through_late_reg',
          note='Re-entry and one $100 add-on until the start of level 9 (approximately 9:00 p.m.).'),
 ]
 # The poster prints no date; migration 011 explains why the URL's Cloudinary
@@ -355,7 +383,8 @@ def preflight(db):
 
 def apply(db, sheets, instances, dry):
     stats = dict(sources=0, series=0, dailies=0, templates=0, sheets_replaced=0,
-                 sheets_unchanged=0, levels=0, instances=0, refused=[])
+                 sheets_unchanged=0, levels=0, instances=0, refused=[],
+                 terms_updated=0, terms_unchanged=0)
     preflight(db)
     stmts = []
 
@@ -373,21 +402,111 @@ def apply(db, sheets, instances, dry):
     #    point: they were in seed.sql and seed.sql does not reach production.
     for d in DAILIES:
         days = 'array[' + ','.join(str(x) for x in d['days']) + ']::smallint[]'
+        NUM = lambda v: 'null' if v is None else str(v)
+        WIN = lambda v: 'null' if v is None else f"{Q(v)}::tournament_offer_window"
+        # ⚠️ EACH TERM IS INTERPOLATED SEPARATELY BELOW rather than as one
+        # pre-built `{terms}` blob. The blob was written first and worked — and
+        # it collapsed ten columns into a single select expression, which is
+        # exactly what `lib/wynn-dailies.test.mjs` cannot see through: that gate
+        # zips the column list against the select list to diff this copy against
+        # the seed's, and one placeholder covering ten columns hides all ten.
+        # The gate said so by refusing to parse, which is the behaviour it was
+        # built for.
+        # ── THE TERMS BACKFILL ONTO A ROW THAT ALREADY EXISTS.
+        #
+        # `do nothing` was right while the whole row was the unit: a daily was
+        # either there or it was not. Migration 014 added columns to rows that
+        # are already in production, so `do nothing` would have made this
+        # ingest structurally incapable of delivering them — the run would say
+        # "dailies 4" and write nothing, which is the quiet-zero shape this repo
+        # keeps finding.
+        #
+        # THREE THINGS MAKE THE UPSERT SAFE, and all three are in the WHERE:
+        #
+        #   IT TOUCHES ONLY THE TERM COLUMNS. Not the name, not the buy-in
+        #   split, not the schedule. This run is delivering the rebuy and add-on
+        #   terms and says so in the diff; correcting a buy-in is a different
+        #   decision with different evidence.
+        #
+        #   IT IS A NO-OP WHEN NOTHING MOVED. The `where` on `do update` means
+        #   an unchanged row is not written at all — no updated_at bump, no
+        #   trigger, nothing in the log. `is distinct from` rather than `<>`
+        #   because every one of these columns is nullable and `null <> null` is
+        #   null, which would make every re-run rewrite every row forever.
+        #
+        #   IT YIELDS TO THE FLOOR. A template somebody stood in the room and
+        #   verified is not overwritten by a web-tier poster read — the same
+        #   precedence guard the level sheets already carry, applied to the one
+        #   other thing this script writes.
         stmts.append(f"""insert into tournament_templates (
                   room_id, slug, name, game, start_time, days_of_week,
                   entry_amount, fee_amount, staff_amount, guarantee_amount,
                   starting_stack, level_minutes, late_reg_level, reentry_allowed, reentry_note,
+                  rebuy_amount, rebuy_chips, rebuy_max, rebuy_unlimited, rebuy_max_stack,
+                  rebuy_window, addon_amount, addon_chips, addon_max, addon_window,
                   structure_pdf_url, structure_fetched_at,
                   document_effective_on, document_date_source, source_url, fetched_at)
                 select r.id, {Q(d['slug'])}, {Q(d['name'])}, 'nlh'::game_kind,
                        time '{d['start']}', {days},
                        {d['entry']}, {d['fee']}, {d['staff']}, {d['guarantee']},
                        25000, {d['mins']}, {d['late']}, {str(d['reentry']).lower()}, {Q(d['note'])},
+                       {NUM(d['rebuy'])}, {NUM(d['rebuy_chips'])}, {NUM(d['rebuy_max'])},
+                       {str(d['rebuy_unlimited']).lower()}, {NUM(d['rebuy_stack'])},
+                       {WIN(d['rebuy_window'])},
+                       {NUM(d['addon'])}, {NUM(d['addon_chips'])}, {NUM(d['addon_max'])},
+                       {WIN(d['addon_window'])},
                        {Q(DAILY_STRUCT)}, {FETCHED},
                        date '{DAILY_DOC_DATE}', 'pdf_created', {Q(POSTER)}, {FETCHED}
                   from rooms r where r.slug = 'wynn-encore'
-                on conflict (slug) do nothing;""")
+                on conflict (slug) do update set
+                       rebuy_amount    = excluded.rebuy_amount,
+                       rebuy_chips     = excluded.rebuy_chips,
+                       rebuy_max       = excluded.rebuy_max,
+                       rebuy_unlimited = excluded.rebuy_unlimited,
+                       rebuy_max_stack = excluded.rebuy_max_stack,
+                       rebuy_window    = excluded.rebuy_window,
+                       addon_amount    = excluded.addon_amount,
+                       addon_chips     = excluded.addon_chips,
+                       addon_max       = excluded.addon_max,
+                       addon_window    = excluded.addon_window,
+                       updated_at      = now()
+                 where tournament_templates.verified_at is null
+                   and (tournament_templates.rebuy_amount    is distinct from excluded.rebuy_amount
+                     or tournament_templates.rebuy_chips     is distinct from excluded.rebuy_chips
+                     or tournament_templates.rebuy_max       is distinct from excluded.rebuy_max
+                     or tournament_templates.rebuy_unlimited is distinct from excluded.rebuy_unlimited
+                     or tournament_templates.rebuy_max_stack is distinct from excluded.rebuy_max_stack
+                     or tournament_templates.rebuy_window    is distinct from excluded.rebuy_window
+                     or tournament_templates.addon_amount    is distinct from excluded.addon_amount
+                     or tournament_templates.addon_chips     is distinct from excluded.addon_chips
+                     or tournament_templates.addon_max       is distinct from excluded.addon_max
+                     or tournament_templates.addon_window    is distinct from excluded.addon_window);""")
         stats['dailies'] += 1
+
+        # ONE LOG ROW PER DAILY WHOSE TERMS MOVED, written under the same
+        # condition as the update above so the audit trail cannot claim a change
+        # that did not happen. Read BEFORE the transaction is built, like the
+        # level-sheet precedence check, because a statement cannot report on
+        # its own row count from inside a batch.
+        moved = sql(db, f"""select count(*) from tournament_templates t
+                             where t.slug = {Q(d['slug'])} and t.verified_at is null
+                               and (t.rebuy_amount    is distinct from {NUM(d['rebuy'])}::numeric
+                                 or t.rebuy_unlimited is distinct from {str(d['rebuy_unlimited']).lower()}
+                                 or t.rebuy_max_stack is distinct from {NUM(d['rebuy_stack'])}::integer
+                                 or t.addon_amount    is distinct from {NUM(d['addon'])}::numeric
+                                 or t.addon_max       is distinct from {NUM(d['addon_max'])}::integer)""")
+        if moved and int(moved) > 0:
+            stats['terms_updated'] += 1
+            stmts.append(f"""insert into change_log (target_table, target_id, room_id, operation,
+                                        field, new_value, source_url, agent, applied_by)
+                select 'tournament_templates', t.id, t.room_id, 'update', 'rebuy_and_addon_terms',
+                       jsonb_build_object('rebuy', {NUM(d['rebuy'])}, 'unlimited',
+                                          {str(d['rebuy_unlimited']).lower()},
+                                          'addon', {NUM(d['addon'])}),
+                       {Q(POSTER)}, 'ingest-tournaments', 'ingest-tournaments'
+                  from tournament_templates t where t.slug = {Q(d['slug'])};""")
+        else:
+            stats['terms_unchanged'] += 1
 
     stmts.append(f"""insert into tournament_series (room_id, slug, name, starts_on, ends_on,
               document_effective_on, document_date_source, source_url, fetched_at)
@@ -532,6 +651,31 @@ CHECKS = [
         "where game_type in ('limit','stud') and (small_bet is null or big_bet is null)", 0),
     ('main levels claiming bets', "select count(*) from tournament_levels "
         "where game_type='main' and small_bet is not null", 0),
+
+    # ── REBUY AND ADD-ON TERMS (migration 014) ───────────────────────
+    # These gate the COMMIT, so a run that fails to deliver the terms — or
+    # delivers them into the wrong column — rolls back rather than leaving
+    # production half-priced.
+    ('dailies carrying the $100 add-on', "select count(*) from tournament_templates "
+        "where series_id is null and addon_amount = 100.00 and addon_max = 1", 3),
+    ('unlimited-rebuy events', "select count(*) from tournament_templates "
+        "where rebuy_unlimited", 1),
+    # NO APOSTROPHES IN A CHECK LABEL. These labels are interpolated into a
+    # single-quoted SQL string inside the DO block, so "event's" terminates the
+    # literal and the whole transaction fails to parse — which is exactly what
+    # happened on the first prod apply of this round. The gate refused correctly
+    # and nothing was written, but the error pointed at syntax rather than at the
+    # apostrophe. Keep labels plain.
+    ("the Friday eligibility threshold", "select coalesce(rebuy_max_stack, 0) "
+        "from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'", 15000),
+    # ⚠️ THE ASSERTION THAT CATCHES THE ONE MISTAKE THIS SCHEMA WAS SHAPED TO
+    # PREVENT. Wynn publishes no chip figure for a rebuy — "15,000 chips or
+    # less" is when you MAY rebuy, not what you get. Anything in rebuy_chips
+    # here is that number in the wrong column, which would tell a reader $200
+    # buys 15,000 chips. Nothing else in the pipeline can see that, because the
+    # row would be perfectly well-formed.
+    ('invented rebuy chip figures', "select count(*) from tournament_templates "
+        "where rebuy_chips is not null", 0),
 ]
 
 def gate_sql():
@@ -577,6 +721,11 @@ def main():
     st = apply(db, sheets, instances, dry)
     print(f"  sources {st['sources']} · series {st['series']} · "
           f"sheets replaced {st['sheets_replaced']}, unchanged {st['sheets_unchanged']}")
+    # The terms backfill reports the same way the sheets do: what MOVED and what
+    # was already right. A run that says "4 dailies" and nothing else cannot be
+    # told from one that wrote nothing.
+    print(f"  daily rebuy/add-on terms: {st['terms_updated']} updated, "
+          f"{st['terms_unchanged']} already current")
     # ⚠️ "in the database", not "written". These are read back from the target
     # after commit. The previous wording reported the parse's own counts and so
     # said 659 levels about a database holding none.

@@ -78,9 +78,15 @@ jobs:
           # live PDFs (db reset must work with no network) and the ingest is
           # the only path that reaches production. So the pair is diffed on all
           # 18 stored columns instead, off disk, in the cheapest gate there is.
+          # 222 on 2026-08-11: +13 for lib/tournament-terms — the rebuy and
+          # add-on parse, which reads a room's own sentence back out and is the
+          # cross-check that stops `reentry_note` and the new columns drifting
+          # into contradicting each other on the same card. +3 in
+          # lib/wynn-dailies for the ten new columns: the pair gate now diffs 28
+          # columns per daily instead of 18, and parses the note on both copies.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 206 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 206) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 222 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 222) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -129,8 +135,16 @@ jobs:
           # 107 on 2026-08-10: +12 for the series — 659 transcribed levels, the
           # mixed-game primary key, and the six Day 2 rows that take no entry.
           # and 41 of those could have vanished under the old number.
-          [ "${n:-0}" -ge 107 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 107) — a shrinking suite is a silent regression"; exit 1; }
+          # 125 on 2026-08-11: +18 for the rebuy and add-on constraints
+          # (migration 014). Half are refusals — a threshold with no price,
+          # "unlimited" with nothing to buy, two answers to "how many" — and
+          # half are the positives that stop those refusals being a wall: the
+          # Wynn shape, the Caesars shape, no-re-entry-with-rebuys, and a bare
+          # price with nothing else. Plus the backfill itself, asserted BEFORE
+          # the constraints so a migration that applied against zero matching
+          # rows cannot pass this section on an empty table.
+          [ "${n:-0}" -ge 125 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 125) — a shrinking suite is a silent regression"; exit 1; }
 
       # --- GATE 2b: THE PROSE WRITE PATH, which writes to prod every morning. ---
       #

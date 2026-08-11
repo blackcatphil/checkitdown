@@ -1514,16 +1514,26 @@ on conflict (url, data_type) do nothing;
 -- falls to the PDF's own CreationDate and says so in document_date_source. See
 -- migration 011 for why the URL's Cloudinary version stamp is not used: it
 -- reads eleven months earlier than the file it serves.
+-- REBUY AND ADD-ON TERMS travel with the row from 2026-08-11 (migration 014).
+-- They are a second transcription of the same sentence `reentry_note` holds
+-- verbatim, and `lib/wynn-dailies.test.mjs` proves the two agree by parsing the
+-- note. NULL means the poster does not publish it — notably rebuy_chips, since
+-- Wynn never says what $200 buys, and rebuy_max, since "unlimited" is a claim
+-- with its own column rather than an absence.
 insert into tournament_templates (
   room_id, slug, name, game, start_time, days_of_week,
   entry_amount, fee_amount, staff_amount, guarantee_amount,
   starting_stack, level_minutes, late_reg_level, reentry_allowed, reentry_note,
+  rebuy_amount, rebuy_chips, rebuy_max, rebuy_unlimited, rebuy_max_stack, rebuy_window,
+  addon_amount, addon_chips, addon_max, addon_window,
   structure_pdf_url, structure_fetched_at,
   document_effective_on, document_date_source,
   source_url, fetched_at)
 select r.id, v.slug, v.name, 'nlh'::game_kind, v.start_time, v.days,
        v.entry, v.fee, v.staff, v.guarantee,
        25000, v.mins, v.late_level, v.reentry, v.note,
+       v.rebuy, v.rebuy_chips, v.rebuy_max, v.rebuy_unlimited, v.rebuy_stack, v.rebuy_window,
+       v.addon, v.addon_chips, v.addon_max, v.addon_window,
        'https://cdn.wynnresorts.com/image/upload/v1752011191/visitwynn_pdfs_files/Poker/Daily%20Tournaments/Poker-All_Daily_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
        v.doc_date, 'pdf_created',
        'https://cdn.wynnresorts.com/image/upload/v1752011166/visitwynn_pdfs_files/Poker/Daily%20Tournaments/poker-daily-tournament-poster.pdf', timestamptz '2026-08-10 12:00:00-07'
@@ -1532,25 +1542,43 @@ select r.id, v.slug, v.name, 'nlh'::game_kind, v.start_time, v.days,
      time '12:00', array[1,2,3,4]::smallint[],
      162.00, 26.00, 12.00, 10000.00, 30, 9, true,
      'Re-entry allowed until the start of level 9 (approximately 4:30 p.m.).',
+     null::numeric, null::integer, null::integer, false, null::integer,
+     null::tournament_offer_window,
+     null::numeric, null::integer, null::integer, null::tournament_offer_window,
      date '2026-06-19'),
     ('wynn-daily-240-nlh-rebuy-40k', 'Friday $240 NLH Rebuy — $40,000 Guarantee',
      time '12:00', array[5]::smallint[],
      190.00, 35.00, 15.00, 40000.00, 30, 9, false,
      'Re-entry is NOT allowed. Unlimited $200 rebuys at 15,000 chips or less, '
      'and one $100 add-on, until the start of level 9 (approximately 4:30 p.m.).',
+     -- ⚠️ 15,000 IS THE ELIGIBILITY THRESHOLD, NOT CHIPS RECEIVED. "at 15,000
+     -- chips or less" is when you MAY rebuy; what $200 buys is not published,
+     -- so rebuy_chips stays null. See migration 014.
+     200.00, null::integer, null::integer, true, 15000,
+     'through_late_reg'::tournament_offer_window,
+     100.00, null::integer, 1, 'through_late_reg'::tournament_offer_window,
      date '2026-06-19'),
     ('wynn-daily-200-nlh-25k',  'Weekend $200 NLH — $25,000 Guarantee',
      time '12:00', array[6,0]::smallint[],
      162.00, 26.00, 12.00, 25000.00, 30, 11, true,
      'Re-entry and one $100 add-on until the start of level 11 (approximately 5:30 p.m.).',
+     null::numeric, null::integer, null::integer, false, null::integer,
+     null::tournament_offer_window,
+     100.00, null::integer, 1, 'through_late_reg'::tournament_offer_window,
      date '2026-06-19'),
     ('wynn-nightly-160-nlh-10k', 'Nightly $160 NLH — $10,000 Guarantee',
      time '18:00', array[0,1,2,3,4,5,6]::smallint[],
      130.00, 20.00, 10.00, 10000.00, 20, 9, true,
      'Re-entry and one $100 add-on until the start of level 9 (approximately 9:00 p.m.).',
+     null::numeric, null::integer, null::integer, false, null::integer,
+     null::tournament_offer_window,
+     100.00, null::integer, 1, 'through_late_reg'::tournament_offer_window,
      date '2026-06-19')
   ) as v(slug, name, start_time, days, entry, fee, staff, guarantee,
-         mins, late_level, reentry, note, doc_date)
+         mins, late_level, reentry, note,
+         rebuy, rebuy_chips, rebuy_max, rebuy_unlimited, rebuy_stack, rebuy_window,
+         addon, addon_chips, addon_max, addon_window,
+         doc_date)
  where r.slug = 'wynn-encore'
 on conflict (slug) do nothing;
 
@@ -1569,6 +1597,21 @@ begin
 
   select total_buy_in into t from tournament_templates where slug = 'wynn-nightly-160-nlh-10k';
   if t <> 160.00 then raise exception 'the nightly totals %, not 160', t; end if;
+
+  -- ⚠️ total_buy_in IS STILL THE ENTRY after migration 014, and the Friday
+  -- event is the row that makes that visible: $240 to sit down, plus unlimited
+  -- $200 rebuys, plus a $100 add-on. Asserted here so a future "helpful" change
+  -- that folds the extras into the generated column fails at seed time rather
+  -- than quietly re-pricing every event on the site.
+  select total_buy_in into t from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k';
+  if t <> 240.00 then raise exception 'the Friday event totals %, not the 240 entry', t; end if;
+
+  select count(*) into n from tournament_templates
+   where series_id is null and addon_amount = 100.00 and addon_max = 1;
+  if n <> 3 then raise exception 'expected 3 dailies with the $100 add-on, got %', n; end if;
+
+  select count(*) into n from tournament_templates where rebuy_unlimited;
+  if n <> 1 then raise exception 'expected exactly 1 unlimited-rebuy event, got %', n; end if;
 end $$;
 
 -- =====================================================================

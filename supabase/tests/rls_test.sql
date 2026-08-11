@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(107);
+select plan(125);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -1408,6 +1408,122 @@ select is(
     where z.small_blind < z.psb or z.big_blind < z.pbb or z.ante < z.pa), 0,
   'and blinds and antes never go backwards inside their own game_type'
 );
+
+-- ═════════════════════════════════════════════════════════════════════
+-- REBUY AND ADD-ON ECONOMICS — MIGRATION 014
+-- ═════════════════════════════════════════════════════════════════════
+-- The constraints here refuse an INCOHERENT row and never an INCOMPLETE one,
+-- which is the standing rule. Every negative below is a row that says two
+-- contradictory things; every positive is a row a real room could publish.
+
+-- ⚠️ THE BACKFILL LANDED, and it is asserted before the constraints are, so a
+-- migration that applied cleanly against zero matching rows cannot pass this
+-- section on an empty table.
+select is(
+  (select count(*)::int from tournament_templates where series_id is null and addon_amount is not null),
+  3, 'three of the four Wynn dailies carry the published $100 add-on'
+);
+select is(
+  (select rebuy_amount from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  200.00, 'the Friday event carries its $200 rebuy'
+);
+select ok(
+  (select rebuy_unlimited from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  'and it is marked unlimited as a positive claim, not as an absent count'
+);
+select is(
+  (select rebuy_max from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  null, 'so rebuy_max stays NULL — null keeps meaning "not published" on this column too'
+);
+
+-- ⚠️ THE DISTINCTION THE WHOLE MIGRATION EXISTS FOR. Wynn's 15,000 is the stack
+-- at or below which a rebuy may be taken; Caesars' 15,000 is chips received for
+-- an add-on. Two columns, and this pins which one Wynn's number went into.
+select is(
+  (select rebuy_max_stack from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  15000, 'the 15,000 is stored as the ELIGIBILITY THRESHOLD'
+);
+select is(
+  (select rebuy_chips from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  null, 'and NOT as chips received — Wynn never publishes what $200 buys'
+);
+
+-- THE GENERATED COLUMNS DID NOT MOVE. total_buy_in is the ENTRY; a "helpful"
+-- change that folded rebuys into it would silently re-price every event.
+select is(
+  (select total_buy_in from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  240.00, 'total_buy_in is still the entry — the rebuys are NOT summed into it'
+);
+select is(
+  (select fee_percent from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  14.58, 'and fee_percent is still the house share OF THE ENTRY'
+);
+
+-- A detail with no price is a term nobody can act on.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, rebuy_max_stack)
+     values ((select id from public.rooms limit 1), 'stack-no-price', 'x', '12:00', 1, 1, 15000) $$,
+  '23514', null, 'an eligibility threshold with no rebuy price is refused');
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, rebuy_unlimited)
+     values ((select id from public.rooms limit 1), 'unlimited-nothing', 'x', '12:00', 1, 1, true) $$,
+  '23514', null, '"unlimited" with nothing to buy is refused');
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, addon_chips)
+     values ((select id from public.rooms limit 1), 'chips-no-price', 'x', '12:00', 1, 1, 15000) $$,
+  '23514', null, 'add-on chips with no add-on price is refused');
+
+-- Two answers to "how many" is a contradiction, not extra information.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount,
+       rebuy_amount, rebuy_unlimited, rebuy_max)
+     values ((select id from public.rooms limit 1), 'both-counts', 'x', '12:00', 1, 1, 100, true, 3) $$,
+  '23514', null, 'unlimited AND a count of 3 cannot both be true');
+
+-- Zero is not a free rebuy; it is a half-filled row.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, rebuy_amount)
+     values ((select id from public.rooms limit 1), 'zero-rebuy', 'x', '12:00', 1, 1, 0) $$,
+  '23514', null, 'a $0 rebuy is refused');
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount,
+       addon_amount, addon_max)
+     values ((select id from public.rooms limit 1), 'zero-addons', 'x', '12:00', 1, 1, 50, 0) $$,
+  '23514', null, 'and an add-on you may take zero times is refused');
+
+-- THE POSITIVES. Constraints that refuse everything are walls, not gates, and
+-- both real shapes have to fit — including Caesars', which is not seeded yet
+-- and is the reason the columns are split the way they are.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount,
+       rebuy_amount, rebuy_unlimited, rebuy_max_stack, rebuy_window,
+       addon_amount, addon_max, addon_window)
+     values ((select id from public.rooms limit 1), 'wynn-shaped', 'x', '12:00', 190, 35,
+             200, true, 15000, 'through_late_reg', 100, 1, 'through_late_reg') $$,
+  'the Wynn shape is accepted: unlimited rebuys, a stack threshold, one add-on');
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount,
+       addon_amount, addon_chips, addon_max, addon_window, late_reg_level)
+     values ((select id from public.rooms limit 1), 'caesars-shaped', 'x', '12:00', 100, 25,
+             50, 15000, 1, 'first_break', 7) $$,
+  'and the Caesars shape is accepted: a $50 add-on FOR 15,000 chips, at the first break');
+
+-- ⚠️ A REBUY IS NOT A RE-ENTRY. The Friday event allows no re-entry AND has
+-- unlimited rebuys, so any constraint tying the two would refuse a row already
+-- in this database. Asserted so nobody adds one.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount,
+       reentry_allowed, rebuy_amount, rebuy_unlimited)
+     values ((select id from public.rooms limit 1), 'no-reentry-yes-rebuy', 'x', '12:00', 100, 25,
+             false, 200, true) $$,
+  'no re-entry with unlimited rebuys is a real event, not a contradiction');
+
+-- A room may publish a price and nothing else. Constraints prevent
+-- incoherence; they do not demand completeness.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, rebuy_amount)
+     values ((select id from public.rooms limit 1), 'price-only', 'x', '12:00', 100, 25, 50) $$,
+  'a bare rebuy price with no count, chips or window is accepted');
 
 select * from finish();
 rollback;
