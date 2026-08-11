@@ -61,9 +61,11 @@ jobs:
           # rake notation, and the room-name resolution that refuses to guess.
           # 163 on 2026-08-09: +4 for first-seen dating and the partner-prose scope.
           # 169 on 2026-08-10: +6 for lib/tournaments — how a schedule reads.
+          # 172 on 2026-08-10: +3 for the room-timezone parse — an evening event
+          # belongs to the day it runs, not the UTC day.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 169 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 169) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 172 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 172) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -109,9 +111,11 @@ jobs:
           # 95 on 2026-08-10: +9 for the tournament tables, which had held ZERO rows
           # since they were created. Every constraint on them was a hypothesis; one
           # of them turned out to enforce nothing.
+          # 107 on 2026-08-10: +12 for the series — 659 transcribed levels, the
+          # mixed-game primary key, and the six Day 2 rows that take no entry.
           # and 41 of those could have vanished under the old number.
-          [ "${n:-0}" -ge 95 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 95) — a shrinking suite is a silent regression"; exit 1; }
+          [ "${n:-0}" -ge 107 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 107) — a shrinking suite is a silent regression"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
@@ -195,6 +199,8 @@ jobs:
           # ranking rule and skip when the case has no instance, so the count moved.
           # 146 on 2026-08-10: +2 for partner prose — paragraphs rendered, and the
           # text compared to what the database holds, character for character.
+          # 146 on 2026-08-10: the tilde expectation now describes a room page that
+          # lists dailies and summarises the series.
           # and the only floor that had been kept roughly current).
           [ "$n" -ge 146 ] || { echo "::error::only $n assertions ran (expected >= 146) — the suite shrank, which is a silent regression"; exit 1; }
 
@@ -368,6 +374,7 @@ jobs:
           # shipped with the filters capped at the 92px peek.
           # 65 on 2026-08-10: +6 for the tournaments section at 390px, including
           # empty-safe on a room that has none.
+          # 65 on 2026-08-10: the tournaments page at 390px.
           # Raise this when assertions are added; never lower it to pass a run.
           [ "$n" -ge 65 ] \
             || { echo "::error::only $n mobile assertions ran (expected >= 65) — the suite shrank"; exit 1; }
@@ -437,6 +444,7 @@ jobs:
           # the reading measure inside 45-75, and the first-seen date still shown.
           # 51 on 2026-08-10: +13 for the Wynn room screen — the tournament text
           # nodes composited like every other.
+          # 51 on 2026-08-10: the tournaments page text nodes, composited.
           # 25 — the full local count; nothing here is flag-gated.
           [ "$n" -ge 51 ] \
             || { echo "::error::only $n palette assertions ran (expected >= 51) — the suite shrank"; exit 1; }

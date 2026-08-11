@@ -38,3 +38,31 @@ export function timeLabel(t: string): string {
   return `${hh} ${suffix}`
 }
 
+
+/**
+ * ⚠️ A SCHEDULE IS IN THE ROOM'S OWN TIME, AND THE ROOM IS IN LAS VEGAS.
+ *
+ * Instances are stored as `timestamptz`, so a 6 P.M. Pacific event on 17 August
+ * is `2026-08-18T01:00:00Z`. Reading the date off the ISO string — `slice(0,10)`
+ * — files it under the 18th, and reading the time off it shows "1 A.M.".
+ *
+ * That is silent and total: every evening event in the series moved to the next
+ * day and the page grew a phantom date group past the end of the series. It was
+ * caught by the group count being 23 against 22 dates in the database, which is
+ * the only reason anybody would have noticed.
+ *
+ * `en-CA` because it formats as YYYY-MM-DD, which sorts.
+ */
+const VEGAS = 'America/Los_Angeles'
+const DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: VEGAS, year: 'numeric', month: '2-digit', day: '2-digit',
+})
+const TIME_FMT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: VEGAS, hour: '2-digit', minute: '2-digit', hour12: false,
+})
+
+/** The local date and time a timestamp falls on, in the room's own zone. */
+export function vegasParts(iso: string): { date: string; time: string } {
+  const d = new Date(iso)
+  return { date: DATE_FMT.format(d), time: `${TIME_FMT.format(d)}:00` }
+}

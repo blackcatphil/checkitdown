@@ -371,7 +371,13 @@ const expectedTildes = () => new Map(sql(`
         + (t.starting_stack is not null)::int
         + (t.level_minutes is not null)::int
         else 0 end)
-        from tournament_templates t where t.room_id = r.id and t.is_active), 0)
+        /* DAILIES ONLY. The room page lists the four that run every week and
+           SUMMARISES the series in one block — 22 more rows there would bury
+           them. Counting every template expected 109 tildes against 33
+           rendered, which is the expectation describing a page that does not
+           exist. */
+        from tournament_templates t
+       where t.room_id = r.id and t.is_active and t.series_id is null), 0)
     + coalesce((select sum(
         (case when g.verified_at is null then
            (g.min_buy_in is not null)::int + ((g.is_uncapped or g.max_buy_in is not null))::int

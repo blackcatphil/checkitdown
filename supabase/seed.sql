@@ -1572,6 +1572,1147 @@ begin
 end $$;
 
 -- =====================================================================
+-- THE WYNN SIGNATURE SERIES — 61 events, 22 structures, 659 levels.
+-- Transcribed 2026-08-10 from the LIVE documents. Runs Aug 17 - Sep 7.
+-- =====================================================================
+-- ALL OR NONE, by the standing rule. Six of the 22 structure sheets are mixed
+-- or limit games that the old schema could not represent — HORSE and TORSE
+-- publish TWO rows per level and the primary key forbade the second — so this
+-- waited for migration 012 rather than shipping 55 of 61 and looking finished.
+-- The six missing would have been exactly the mixed games, which is what a
+-- serious player scans a series for.
+--
+-- CITED TO THE LIVE URLs, re-fetched 2026-08-10 and byte-identical to the local
+-- copies (sha256; 1438747 and 882764 bytes). data_type 'tournaments' = WEB
+-- tier: nobody stood in the room, so a floor visit can correct this without an
+-- override.
+--
+-- document_effective_on is the PRINTED range, not an inference: both documents
+-- carry "August 17-September 7, 2026" on their face.
+--
+-- ⚠️ THE LEVELS-COLUMN TRAP. The schedule's "LEVELS" column is MINUTES PER
+-- LEVEL, not a level count: the  NLH row says 40 and its structure sheet
+-- lists 28 levels, with terms reading "Day 1: 40 minutes per level". Mapping it
+-- to a count would have produced 40-level tournaments that have 28, and nothing
+-- about the result would look wrong. It is stored as level_minutes and the
+-- count comes from the transcribed rows.
+--
+-- STUD ROWS: a stud game has no blinds. Its bring-in is stored in small_blind
+-- and its completion in big_blind, because those are the columns that exist and
+-- the bet sizes — which are the actual structure — are in small_bet/big_bet.
+insert into sources (data_type, url, label, cadence_hours, status, last_fetched_at, last_ok_at)
+values
+  ('tournaments', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf',
+   'Wynn Signature Series — schedule (PDF)', 168, 'ok', '2026-08-10', '2026-08-10'),
+  ('tournaments', 'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf',
+   'Wynn Signature Series — structures (PDF)', 168, 'ok', '2026-08-10', '2026-08-10')
+on conflict (url, data_type) do nothing;
+
+insert into tournament_series (room_id, slug, name, starts_on, ends_on,
+                               document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, 'wynn-signature-series-2026', 'Wynn Signature Series',
+       date '2026-08-17', date '2026-09-07', date '2026-08-17', 'printed',
+       'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r where r.slug = 'wynn-encore'
+on conflict (slug) do nothing;
+
+-- generated from the live PDFs; see the seed block header for provenance
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-400-p4', 'No Limit Hold’em $400', 'nlh'::game_kind,
+       time '11:00', null,
+       333, 45, 22, 100000,
+       null, 40, 10, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 800, 1600, 1600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 2500, 2500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 1500, 3000, 3000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 2000, 4000, 4000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 5000, 5000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 3000, 6000, 6000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 4000, 8000, 8000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 5000, 10000, 10000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 6000, 12000, 12000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 15000, 15000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 10000, 20000, 20000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 15000, 25000, 25000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 15000, 30000, 30000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 20000, 40000, 40000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 25000, 50000, 50000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 30000, 60000, 60000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 40000, 80000, 80000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 50000, 100000, 100000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 75000, 125000, 125000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-17 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-18 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-19 12:00:00-07', 'continuation' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p4' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-nlh-turbo-200-p6', 'NLH Turbo $200', 'nlh'::game_kind,
+       time '18:00', null,
+       162, 26, 12, 10000,
+       null, 20, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 600, 600, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 400, 800, 800, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 500, 1000, 1000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 600, 1200, 1200, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 800, 1600, 1600, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 2000, 2000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1500, 3000, 3000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 2000, 4000, 4000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 3000, 6000, 6000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 4000, 8000, 8000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 5000, 10000, 10000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 6000, 12000, 12000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 8000, 16000, 16000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 10000, 20000, 20000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 15000, 30000, 30000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 20000, 40000, 40000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 30000, 60000, 60000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 40000, 80000, 80000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 50000, 100000, 100000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 75000, 125000, 125000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 75000, 150000, 150000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 100000, 200000, 200000, 20, null, null from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-17 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-18 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-19 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-20 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-21 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-23 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-24 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-25 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-26 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-27 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-30 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-31 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-01 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-02 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-05 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-06 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-07 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-nlh-turbo-200-p6' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-300-p8', 'No Limit Hold’em $300', 'nlh'::game_kind,
+       time '12:00', null,
+       250, 34, 16, 25000,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-19 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-26 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-02 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-300-p8' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-600-p10', 'No Limit Hold’em $600', 'nlh'::game_kind,
+       time '11:00', null,
+       510, 65, 25, 250000,
+       null, 40, 10, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 800, 1600, 1600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 2500, 2500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 1500, 3000, 3000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 2000, 4000, 4000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 5000, 5000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 3000, 6000, 6000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 4000, 8000, 8000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 5000, 10000, 10000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 6000, 12000, 12000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 15000, 15000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 10000, 20000, 20000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 15000, 25000, 25000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 15000, 30000, 30000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 20000, 40000, 40000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 25000, 50000, 50000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 30000, 60000, 60000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 40000, 80000, 80000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 50000, 100000, 100000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 75000, 125000, 125000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-20 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-21 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-22 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-22 18:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-23 13:00:00-07', 'continuation' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-p10' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-limit-omaha-8-400-p12', 'Limit Omaha 8 $400', 'other'::game_kind,
+       time '12:00', null,
+       333, 45, 22, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'limit', 200, 400, 0, 30, 400, 800 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'limit', 300, 500, 0, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'limit', 300, 600, 0, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'limit', 400, 800, 0, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'limit', 500, 1000, 0, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'limit', 600, 1200, 0, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'limit', 1000, 2000, 0, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'limit', 1500, 2500, 0, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'limit', 1500, 3000, 0, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'limit', 2000, 4000, 0, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'limit', 3000, 5000, 0, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'limit', 3000, 6000, 0, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'limit', 4000, 8000, 0, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'limit', 5000, 10000, 0, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'limit', 6000, 12000, 0, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'limit', 8000, 15000, 0, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'limit', 10000, 20000, 0, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'limit', 15000, 25000, 0, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'limit', 15000, 30000, 0, 30, 30000, 60000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'limit', 20000, 40000, 0, 30, 40000, 80000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'limit', 25000, 50000, 0, 30, 50000, 100000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'limit', 30000, 60000, 0, 30, 60000, 120000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'limit', 40000, 80000, 0, 30, 80000, 160000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'limit', 50000, 100000, 0, 30, 100000, 200000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'limit', 75000, 125000, 0, 30, 125000, 250000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'limit', 75000, 150000, 0, 30, 150000, 300000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 29, 'limit', 100000, 200000, 0, 30, 200000, 400000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 30, 'limit', 150000, 250000, 0, 30, 250000, 500000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-20 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-limit-omaha-8-400-p12' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-horse-400-p14', 'HORSE $400', 'mixed'::game_kind,
+       time '12:00', null,
+       333, 45, 22, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'limit', 200, 400, 0, 30, 400, 800 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'limit', 300, 500, 0, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'limit', 300, 600, 0, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'limit', 400, 800, 0, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'limit', 500, 1000, 0, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'limit', 600, 1200, 0, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'limit', 1000, 2000, 0, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'limit', 1500, 2500, 0, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'limit', 1500, 3000, 0, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'limit', 2000, 4000, 0, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'limit', 3000, 5000, 0, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'limit', 3000, 6000, 0, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'limit', 4000, 8000, 0, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'limit', 5000, 10000, 0, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'limit', 6000, 12000, 0, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'limit', 8000, 15000, 0, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'limit', 10000, 20000, 0, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'limit', 15000, 25000, 0, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'stud', 100, 400, 100, 30, 400, 800 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'stud', 200, 500, 100, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'stud', 200, 600, 100, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'stud', 200, 800, 200, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'stud', 300, 1000, 200, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'stud', 300, 1200, 300, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'stud', 500, 2000, 500, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'stud', 1000, 2500, 500, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'stud', 1000, 3000, 1000, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'stud', 1000, 4000, 1000, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'stud', 2000, 5000, 1000, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'stud', 2000, 6000, 1000, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'stud', 2000, 8000, 2000, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'stud', 3000, 10000, 2000, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'stud', 3000, 12000, 3000, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'stud', 5000, 15000, 3000, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'stud', 5000, 20000, 5000, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'stud', 10000, 25000, 5000, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-21 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-horse-400-p14' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-torse-400-p16', 'TORSE $400', 'mixed'::game_kind,
+       time '12:00', null,
+       333, 45, 22, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'limit', 200, 400, 0, 30, 400, 800 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'limit', 300, 500, 0, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'limit', 300, 600, 0, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'limit', 400, 800, 0, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'limit', 500, 1000, 0, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'limit', 600, 1200, 0, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'limit', 1000, 2000, 0, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'limit', 1500, 2500, 0, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'limit', 1500, 3000, 0, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'limit', 2000, 4000, 0, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'limit', 3000, 5000, 0, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'limit', 3000, 6000, 0, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'limit', 4000, 8000, 0, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'limit', 5000, 10000, 0, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'limit', 6000, 12000, 0, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'limit', 8000, 15000, 0, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'limit', 10000, 20000, 0, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'limit', 15000, 25000, 0, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'stud', 100, 400, 100, 30, 400, 800 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'stud', 200, 500, 100, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'stud', 200, 600, 100, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'stud', 200, 800, 200, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'stud', 300, 1000, 200, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'stud', 300, 1200, 300, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'stud', 500, 2000, 500, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'stud', 1000, 2500, 500, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'stud', 1000, 3000, 1000, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'stud', 1000, 4000, 1000, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'stud', 2000, 5000, 1000, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'stud', 2000, 6000, 1000, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'stud', 2000, 8000, 2000, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'stud', 3000, 10000, 2000, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'stud', 3000, 12000, 3000, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'stud', 5000, 15000, 3000, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'stud', 5000, 20000, 5000, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'stud', 10000, 25000, 5000, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-22 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-torse-400-p16' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-seniors-nlh-50-400-p18', 'Seniors NLH 50+ $400', 'nlh'::game_kind,
+       time '12:00', null,
+       337, 45, 18, 30000,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-23 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-30 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-seniors-nlh-50-400-p18' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-big-o-400-p20', 'Big O $400', 'other'::game_kind,
+       time '12:00', null,
+       337, 45, 18, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-23 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-big-o-400-p20' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-400-p22', 'No Limit Hold’em $400', 'nlh'::game_kind,
+       time '11:00', null,
+       333, 45, 22, 100000,
+       null, 40, 10, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 800, 1600, 1600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 2500, 2500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 1500, 3000, 3000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 2000, 4000, 4000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 5000, 5000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 3000, 6000, 6000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 4000, 8000, 8000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 5000, 10000, 10000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 6000, 12000, 12000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 15000, 15000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 10000, 20000, 20000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 15000, 25000, 25000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 15000, 30000, 30000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 20000, 40000, 40000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 25000, 50000, 50000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 30000, 60000, 60000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 40000, 80000, 80000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 50000, 100000, 100000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 75000, 125000, 125000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-24 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-25 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-26 12:00:00-07', 'continuation' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p22' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24', 'No Limit Hold’em $600 Entry Fe $600', 'nlh'::game_kind,
+       time '11:00', null,
+       510, 65, 25, 300000,
+       null, 40, 10, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 800, 1600, 1600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 2500, 2500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 1500, 3000, 3000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 2000, 4000, 4000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 5000, 5000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 3000, 6000, 6000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 4000, 8000, 8000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 5000, 10000, 10000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 6000, 12000, 12000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 15000, 15000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 10000, 20000, 20000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 15000, 25000, 25000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 15000, 30000, 30000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 20000, 40000, 40000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 25000, 50000, 50000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 30000, 60000, 60000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 40000, 80000, 80000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 50000, 100000, 100000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 75000, 125000, 125000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-27 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-28 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-28 18:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-29 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-29 18:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-30 13:00:00-07', 'continuation' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-600-entry-fe-600-p24' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-plo-400-p26', 'PLO $400', 'plo'::game_kind,
+       time '13:00', null,
+       337, 45, 18, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-28 13:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-plo-400-p26' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-5-card-plo-600-p28', '5-Card PLO $600', 'plo5'::game_kind,
+       time '13:00', null,
+       510, 65, 25, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-30 13:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-5-card-plo-600-p28' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-400-p30', 'No Limit Hold’em $400', 'nlh'::game_kind,
+       time '11:00', null,
+       333, 45, 22, 100000,
+       null, 40, 10, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 800, 1600, 1600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 2500, 2500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 1500, 3000, 3000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 2000, 4000, 4000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 5000, 5000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 3000, 6000, 6000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 4000, 8000, 8000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 5000, 10000, 10000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 6000, 12000, 12000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 15000, 15000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 10000, 20000, 20000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 15000, 25000, 25000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 15000, 30000, 30000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 20000, 40000, 40000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 25000, 50000, 50000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 30000, 60000, 60000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 40000, 80000, 80000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 50000, 100000, 100000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 75000, 125000, 125000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-08-31 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-01 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-02 12:00:00-07', 'continuation' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p30' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-limit-omaha-8-600-p32', 'Limit Omaha 8 $600', 'other'::game_kind,
+       time '12:00', null,
+       510, 65, 25, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'limit', 200, 400, 0, 30, 400, 800 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'limit', 300, 500, 0, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'limit', 300, 600, 0, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'limit', 400, 800, 0, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'limit', 500, 1000, 0, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'limit', 600, 1200, 0, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'limit', 1000, 2000, 0, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'limit', 1500, 2500, 0, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'limit', 1500, 3000, 0, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'limit', 2000, 4000, 0, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'limit', 3000, 5000, 0, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'limit', 3000, 6000, 0, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'limit', 4000, 8000, 0, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'limit', 5000, 10000, 0, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'limit', 6000, 12000, 0, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'limit', 8000, 15000, 0, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'limit', 10000, 20000, 0, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'limit', 15000, 25000, 0, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'limit', 15000, 30000, 0, 30, 30000, 60000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'limit', 20000, 40000, 0, 30, 40000, 80000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'limit', 25000, 50000, 0, 30, 50000, 100000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'limit', 30000, 60000, 0, 30, 60000, 120000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'limit', 40000, 80000, 0, 30, 80000, 160000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'limit', 50000, 100000, 0, 30, 100000, 200000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'limit', 75000, 125000, 0, 30, 125000, 250000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'limit', 75000, 150000, 0, 30, 150000, 300000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 29, 'limit', 100000, 200000, 0, 30, 200000, 400000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 30, 'limit', 150000, 250000, 0, 30, 250000, 500000 from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-01 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-limit-omaha-8-600-p32' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-horse-600-p34', 'HORSE $600', 'mixed'::game_kind,
+       time '12:00', null,
+       510, 65, 25, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'limit', 200, 400, 0, 30, 400, 800 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'limit', 300, 500, 0, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'limit', 300, 600, 0, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'limit', 400, 800, 0, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'limit', 500, 1000, 0, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'limit', 600, 1200, 0, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'limit', 1000, 2000, 0, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'limit', 1500, 2500, 0, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'limit', 1500, 3000, 0, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'limit', 2000, 4000, 0, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'limit', 3000, 5000, 0, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'limit', 3000, 6000, 0, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'limit', 4000, 8000, 0, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'limit', 5000, 10000, 0, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'limit', 6000, 12000, 0, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'limit', 8000, 15000, 0, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'limit', 10000, 20000, 0, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'limit', 15000, 25000, 0, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'stud', 100, 400, 100, 30, 400, 800 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'stud', 200, 500, 100, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'stud', 200, 600, 100, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'stud', 200, 800, 200, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'stud', 300, 1000, 200, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'stud', 300, 1200, 300, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'stud', 500, 2000, 500, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'stud', 1000, 2500, 500, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'stud', 1000, 3000, 1000, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'stud', 1000, 4000, 1000, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'stud', 2000, 5000, 1000, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'stud', 2000, 6000, 1000, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'stud', 2000, 8000, 2000, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'stud', 3000, 10000, 2000, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'stud', 3000, 12000, 3000, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'stud', 5000, 15000, 3000, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'stud', 5000, 20000, 5000, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'stud', 10000, 25000, 5000, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-02 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-horse-600-p34' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-1100-p36', 'No Limit Hold’em $1100', 'nlh'::game_kind,
+       time '11:00', null,
+       965, 90, 45, 400000,
+       null, 40, 10, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 800, 1600, 1600, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 2500, 2500, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 1500, 3000, 3000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 2000, 4000, 4000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 5000, 5000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 3000, 6000, 6000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 4000, 8000, 8000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 5000, 10000, 10000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 6000, 12000, 12000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 15000, 15000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 10000, 20000, 20000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 15000, 25000, 25000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 15000, 30000, 30000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 20000, 40000, 40000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 25000, 50000, 50000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 30000, 60000, 60000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 40000, 80000, 80000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 50000, 100000, 100000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 75000, 125000, 125000, 40, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-03 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-04 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-05 11:00:00-07', 'flight' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-06 12:00:00-07', 'continuation' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-1100-p36' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-torse-600-p38', 'TORSE $600', 'mixed'::game_kind,
+       time '12:00', null,
+       510, 65, 25, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'limit', 200, 400, 0, 30, 400, 800 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'limit', 300, 500, 0, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'limit', 300, 600, 0, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'limit', 400, 800, 0, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'limit', 500, 1000, 0, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'limit', 600, 1200, 0, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'limit', 800, 1500, 0, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'limit', 1000, 2000, 0, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'limit', 1500, 2500, 0, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'limit', 1500, 3000, 0, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'limit', 2000, 4000, 0, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'limit', 3000, 5000, 0, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'limit', 3000, 6000, 0, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'limit', 4000, 8000, 0, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'limit', 5000, 10000, 0, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'limit', 6000, 12000, 0, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'limit', 8000, 15000, 0, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'limit', 10000, 20000, 0, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'limit', 15000, 25000, 0, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'stud', 100, 400, 100, 30, 400, 800 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'stud', 200, 500, 100, 30, 500, 1000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'stud', 200, 600, 100, 30, 600, 1200 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'stud', 200, 800, 200, 30, 800, 1600 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'stud', 300, 1000, 200, 30, 1000, 2000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'stud', 300, 1200, 300, 30, 1200, 2400 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'stud', 500, 1500, 300, 30, 1500, 3000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'stud', 500, 2000, 500, 30, 2000, 4000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'stud', 1000, 2500, 500, 30, 2500, 5000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'stud', 1000, 3000, 1000, 30, 3000, 6000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'stud', 1000, 4000, 1000, 30, 4000, 8000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'stud', 2000, 5000, 1000, 30, 5000, 10000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'stud', 2000, 6000, 1000, 30, 6000, 12000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'stud', 2000, 8000, 2000, 30, 8000, 16000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'stud', 3000, 10000, 2000, 30, 10000, 20000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'stud', 3000, 12000, 3000, 30, 12000, 24000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'stud', 5000, 15000, 3000, 30, 15000, 30000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'stud', 5000, 20000, 5000, 30, 20000, 40000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'stud', 10000, 25000, 5000, 30, 25000, 50000 from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-03 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-torse-600-p38' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-big-o-600-p40', 'Big O $600', 'other'::game_kind,
+       time '12:00', null,
+       510, 65, 25, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-04 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-big-o-600-p40' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-no-limit-hold-em-400-p42', 'No Limit Hold’em $400', 'nlh'::game_kind,
+       time '12:00', null,
+       337, 45, 18, 30000,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-06 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-07 12:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-no-limit-hold-em-400-p42' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-plo-600-p44', 'PLO $600', 'plo'::game_kind,
+       time '13:00', null,
+       510, 65, 25, null,
+       null, 30, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 200, 200, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 200, 300, 300, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 400, 400, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 300, 500, 500, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 5000, 5000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 3000, 6000, 6000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 4000, 8000, 8000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 5000, 10000, 10000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 6000, 12000, 12000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 15000, 15000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 10000, 20000, 20000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 15000, 30000, 30000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 20000, 40000, 40000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 25000, 50000, 50000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 23, 'main', 30000, 60000, 60000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 24, 'main', 40000, 80000, 80000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 25, 'main', 50000, 100000, 100000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 26, 'main', 75000, 125000, 125000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 27, 'main', 75000, 150000, 150000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 28, 'main', 100000, 200000, 200000, 30, null, null from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-06 13:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-plo-600-p44' on conflict do nothing;
+insert into tournament_templates (
+  room_id, series_id, slug, name, game, start_time, days_of_week,
+  entry_amount, fee_amount, staff_amount, guarantee_amount,
+  starting_stack, level_minutes, late_reg_level, reentry_allowed,
+  structure_pdf_url, structure_fetched_at,
+  document_effective_on, document_date_source, source_url, fetched_at)
+select r.id, s.id, 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46', 'Milestone Satellite to $1,100 No Limit Hold’em $200', 'nlh'::game_kind,
+       time '18:00', null,
+       165, 20, 15, null,
+       null, 20, 9, true,
+       'https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Structures.pdf', timestamptz '2026-08-10 12:00:00-07',
+       date '2026-08-17', 'printed', 'https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf', timestamptz '2026-08-10 12:00:00-07'
+  from rooms r, tournament_series s
+ where r.slug = 'wynn-encore' and s.slug = 'wynn-signature-series-2026'
+on conflict (slug) do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 1, 'main', 100, 100, 100, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 2, 'main', 100, 200, 200, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 3, 'main', 200, 300, 300, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 4, 'main', 200, 400, 400, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 5, 'main', 300, 600, 600, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 6, 'main', 400, 800, 800, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 7, 'main', 500, 1000, 1000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 8, 'main', 600, 1200, 1200, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 9, 'main', 1000, 1500, 1500, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 10, 'main', 1000, 2000, 2000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 11, 'main', 1500, 3000, 3000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 12, 'main', 2000, 4000, 4000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 13, 'main', 3000, 6000, 6000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 14, 'main', 4000, 8000, 8000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 15, 'main', 5000, 10000, 10000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 16, 'main', 6000, 12000, 12000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 17, 'main', 10000, 15000, 15000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 18, 'main', 10000, 20000, 20000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 19, 'main', 15000, 30000, 30000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 20, 'main', 20000, 40000, 40000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 21, 'main', 25000, 50000, 50000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes, small_bet, big_bet) select id, 22, 'main', 30000, 60000, 60000, 20, null, null from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-03 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+insert into tournament_instances (template_id, starts_at, entry_kind) select id, timestamptz '2026-09-04 18:00:00-07', 'entry' from tournament_templates where slug = 'wynn-series-milestone-satellite-to-1-100-no-limit-hold-em-200-p46' on conflict do nothing;
+
+-- FIDELITY, ASSERTED AT SEED TIME. A wrong blind level is silent: nothing about
+-- it looks broken, so the shape of the transcription is checked rather than
+-- eyeballed.
+do $$
+declare n int; bad int;
+begin
+  select count(*) into n from tournament_templates t
+    join tournament_series s on s.id = t.series_id where s.slug = 'wynn-signature-series-2026';
+  if n <> 22 then raise exception 'series: expected 22 templates, got %', n; end if;
+
+  select count(*) into n from tournament_instances i
+    join tournament_templates t on t.id = i.template_id
+    join tournament_series s on s.id = t.series_id where s.slug = 'wynn-signature-series-2026';
+  if n <> 61 then raise exception 'series: expected 61 scheduled events, got %', n; end if;
+
+  select count(*) into n from tournament_levels l
+    join tournament_templates t on t.id = l.template_id
+    join tournament_series s on s.id = t.series_id where s.slug = 'wynn-signature-series-2026';
+  if n <> 659 then raise exception 'series: expected 659 levels, got %', n; end if;
+
+  -- Contiguous from 1 within each (event, game_type).
+  select count(*) into bad from (
+    select l.template_id, l.game_type, count(*) c, min(l.level_number) lo, max(l.level_number) hi
+      from tournament_levels l group by 1,2) z
+   where z.lo <> 1 or z.hi <> z.c;
+  if bad <> 0 then raise exception '% level series are not contiguous from 1', bad; end if;
+
+  -- Blinds and bets never go backwards inside their own game_type.
+  select count(*) into bad from (
+    select l.*, lag(small_blind) over w psb, lag(big_blind) over w pbb,
+           lag(ante) over w pa, lag(small_bet) over w psbet
+      from tournament_levels l
+      window w as (partition by template_id, game_type order by level_number)) z
+   where z.small_blind < z.psb or z.big_blind < z.pbb or z.ante < z.pa
+      or (z.small_bet is not null and z.psbet is not null and z.small_bet < z.psbet);
+  if bad <> 0 then raise exception '% levels go backwards', bad; end if;
+
+  -- Six Day 2 rows take no entry, and nothing else claims to be a continuation.
+  select count(*) into n from tournament_instances where entry_kind = 'continuation';
+  if n <> 6 then raise exception 'expected 6 continuation days, got %', n; end if;
+  select count(*) into n from tournament_instances where entry_kind = 'continuation' and takes_entry;
+  if n <> 0 then raise exception 'a continuation is advertising entry'; end if;
+end $$;
+
+-- =====================================================================
 -- THE SEED CHECKS ITSELF.
 --
 -- The seed and production have diverged twice: once silently, once
@@ -1594,10 +2735,10 @@ begin
   select count(*) into n_fmt   from room_formats;
 
   if (n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt)
-     is distinct from (17, 78, 5, 58, 46, 15, 2) then
+     is distinct from (17, 78, 5, 58, 48, 15, 2) then
     raise exception
-      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources / % waitlist / % formats (expected 17 / 78 / 5 / 58 / 46 / 15 / 2)',
+      'seed does not match production: % rooms / % games / % game-verified / % rake-verified / % sources / % waitlist / % formats (expected 17 / 78 / 5 / 58 / 48 / 15 / 2)',
       n_rooms, n_games, n_gv, n_rv, n_src, n_wl, n_fmt;
   end if;
-  raise notice 'seed matches production: 17 rooms / 78 games / 5 game-verified / 58 rake-verified / 46 sources / 15 waitlist / 2 formats';
+  raise notice 'seed matches production: 17 rooms / 78 games / 5 game-verified / 58 rake-verified / 48 sources / 15 waitlist / 2 formats';
 end $$;

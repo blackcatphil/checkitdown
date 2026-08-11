@@ -935,7 +935,11 @@ ok(consoleErrors.length === 0, `no console errors${consoleErrors.length ? ` — 
       widest: Math.max(...rows.map((r) => Math.round(r.getBoundingClientRect().width))),
       wraps: rows.every((r) => r.getBoundingClientRect().width <= window.innerWidth),
       dated: meta.filter((m) => /SCHEDULE DATED|PUBLISHES NO DATE/.test(m.textContent)).length,
-      structureLinks: document.querySelectorAll('.cid-tourney-meta a').length,
+      /* SCOPED TO THE EVENT ROWS. The SERIES block carries a
+         .cid-tourney-meta link of its own ("see every event by date"), so an
+         unscoped count reported 5 against 4 events. */
+      structureLinks: [...document.querySelectorAll('.cid-tourney-meta a')]
+        .filter((a) => /STRUCTURE/i.test(a.textContent)).length,
     }
   })
   if (t == null) {

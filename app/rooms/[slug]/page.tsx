@@ -142,13 +142,14 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       /* PROSE, fetched with everything else. `author_kind` is deliberately
          NOT selected: it is stored for content management and never rendered,
          and a column the renderer cannot see is a byline it cannot grow. */
+      + ',tournament_series(slug,name,starts_on,ends_on,source_url)'
       + ',room_descriptions(body,written_at,source_url,verified_at)'
       /* TOURNAMENTS. Empty for sixteen of seventeen rooms today, and the
          section simply does not render for them — the same empty-safe shape
          descriptions ship with. */
       + ',tournament_templates(slug,name,start_time,days_of_week,total_buy_in,fee_percent,'
       + 'guarantee_amount,starting_stack,level_minutes,late_reg_level,reentry_note,'
-      + 'structure_pdf_url,document_effective_on,document_date_source,source_url,verified_at,is_active)',
+      + 'structure_pdf_url,document_effective_on,document_date_source,source_url,verified_at,is_active,series_id)',
     )
     .eq('slug', slug)
     .maybeSingle()
@@ -196,8 +197,13 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       source_url: string | null; verified_at: string | null
     }>
 
+    tournament_series: Array<{
+      slug: string; name: string; starts_on: string | null; ends_on: string | null
+      source_url: string | null
+    }>
     tournament_templates: Array<{
       slug: string; name: string; start_time: string; days_of_week: number[] | null
+      series_id: string | null
       total_buy_in: number | null; fee_percent: number | null
       guarantee_amount: number | null; starting_stack: number | null
       level_minutes: number | null; late_reg_level: number | null
@@ -334,9 +340,16 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
   /* Active only, earliest first. `is_active` is the room's own flag for a
      tournament it has stopped running — kept rather than deleted, so the row
      retains its provenance. */
+  /* DAILIES ARE LISTED; A SERIES IS SUMMARISED.
+     Wynn now holds 26 templates — four dailies and twenty-two Signature Series
+     events. Listing all of them here would bury the four things that run every
+     week under a three-week series, and a room page is where somebody asks
+     "what is on normally". So the series gets one block with its dates and a
+     count, and /tournaments is where its 61 dated events live. */
   const tourneys = [...(room.tournament_templates ?? [])]
-    .filter((t) => t.is_active)
+    .filter((t) => t.is_active && t.series_id == null)
     .sort((a, b) => a.start_time.localeCompare(b.start_time) || a.name.localeCompare(b.name))
+  const seriesEvents = (room.tournament_templates ?? []).filter((t) => t.is_active && t.series_id != null)
 
   const games = [...room.cash_games].sort(
     (a, b) => (Number(a.big_blind ?? a.big_bet ?? 0)) - (Number(b.big_blind ?? b.big_bet ?? 0)),
@@ -708,6 +721,25 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
 
           THE STRUCTURE IS A LINK, by the standing rule: a daily points at the
           room's own PDF rather than a transcription that can drift from it. */}
+      {/* THE SERIES, AS ONE BLOCK. Its 61 dated events belong on /tournaments,
+          where the date axis is; here it answers "is anything special on". */}
+      {(room.tournament_series ?? []).map((sr) => (
+        <Block key={sr.slug} label="SERIES">
+          <div style={{ background: 'var(--cid-ink-700)', border: '1px solid var(--cid-line-1)', padding: 'var(--cid-space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-3)' }}>
+            <span style={{ font: 'var(--cid-body-strong)', color: 'var(--cid-text)' }}>{sr.name}</span>
+            <span className="num cid-tourney-when">
+              {sr.starts_on && sr.ends_on
+                ? `${new Date(sr.starts_on).toISOString().slice(0, 10)} — ${new Date(sr.ends_on).toISOString().slice(0, 10)}`
+                : 'DATES NOT PUBLISHED'}
+              {seriesEvents.length > 0 && ` · ${seriesEvents.length} events`}
+            </span>
+            <p className="num cid-tourney-meta">
+              <Link href="/tournaments">SEE EVERY EVENT BY DATE</Link>
+            </p>
+          </div>
+        </Block>
+      ))}
+
       {tourneys.length > 0 && (
         <Block label={`TOURNAMENTS · ${tourneys.length}`}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>

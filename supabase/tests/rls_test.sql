@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(95);
+select plan(107);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -1327,6 +1327,86 @@ select is(
     (select structure_pdf_url from public.tournament_templates where slug = 'wynn-daily-200-nlh-10k'), null),
   'web',
   'a room-published schedule PDF ranks WEB, so a later floor visit corrects it without an override'
+);
+
+-- ─── THE SERIES: MIGRATION 012 AND TRANSCRIPTION FIDELITY ────────────
+-- A wrong blind level is SILENT — nothing about it looks broken — so the shape
+-- of 659 transcribed rows is asserted rather than eyeballed.
+select is(
+  (select count(*)::int from tournament_levels), 659,
+  'all 659 levels transcribed — 22 structure sheets, none skipped'
+);
+select is(
+  (select count(*)::int from tournament_instances), 61,
+  'all 61 scheduled events present — the schedule''s own count'
+);
+
+-- THE PK CHANGE IS THE POINT OF 012: a mixed game genuinely has two rows for
+-- one level, and the old key made the second unwritable.
+select is(
+  (select count(*)::int from tournament_levels l
+    join tournament_templates t on t.id = l.template_id
+   /* ONE template, not every HORSE — `like '%horse%'` matched the $400 and the
+      $600 and reported 4, which is the assertion being loose rather than the
+      data being wrong. */
+   where t.slug = 'wynn-series-horse-400-p14' and l.level_number = 1), 2,
+  'a HORSE level 1 holds BOTH its limit and stud rows — impossible under the old primary key'
+);
+select throws_ok(
+  $$ insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes)
+     /* A ROW THAT DEMONSTRABLY EXISTS. `limit 1` drew an arbitrary template,
+        and a HORSE template has no 'main' levels at all — so the insert
+        succeeded and the assertion failed against a working key. */
+     select id, 1, 'main', 1, 2, 0, 30 from tournament_templates
+      where slug = 'wynn-series-no-limit-hold-em-400-p4' $$,
+  '23505', null, 'and the key still refuses a duplicate (template, level, game)');
+
+-- A limit level that drops its bets describes a different game.
+select throws_ok(
+  $$ insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes)
+     select id, 99, 'limit', 100, 200, 0, 30 from tournament_templates limit 1 $$,
+  '23514', null, 'a limit level with no bet sizes is refused — the bets ARE the structure');
+select ok(
+  (select bool_and(small_bet is not null and big_bet is not null)
+     from tournament_levels where game_type in ('limit', 'stud')),
+  'and every transcribed limit/stud level carries both bets'
+);
+select is(
+  (select count(*)::int from tournament_levels where game_type = 'main' and small_bet is not null), 0,
+  'while a no-limit level claims no fixed bet it does not have'
+);
+
+-- ⚠️ THE LIVE FALSEHOOD 012 PREVENTS. Six Day 2 rows take no buy-in; without
+-- entry_kind they are indistinguishable from the flights that started the event
+-- and a reader turns up with cash on the wrong day.
+select is(
+  (select count(*)::int from tournament_instances where entry_kind = 'continuation'), 6,
+  'the six Day 2 rows are marked as continuations'
+);
+select is(
+  (select count(*)::int from tournament_instances where entry_kind = 'continuation' and takes_entry), 0,
+  'and not one of them advertises an entry'
+);
+select is(
+  (select count(*)::int from tournament_instances where entry_kind = 'flight'), 18,
+  'the eighteen starting flights DO take entries'
+);
+
+-- Contiguous from 1 within each (event, game_type), and never going backwards.
+select is(
+  (select count(*)::int from (
+     select template_id, game_type, count(*) c, min(level_number) lo, max(level_number) hi
+       from tournament_levels group by 1,2) z
+    where z.lo <> 1 or z.hi <> z.c), 0,
+  'every event''s levels run 1..n with no gaps, per game_type'
+);
+select is(
+  (select count(*)::int from (
+     select l.*, lag(small_blind) over w psb, lag(big_blind) over w pbb, lag(ante) over w pa
+       from tournament_levels l
+       window w as (partition by template_id, game_type order by level_number)) z
+    where z.small_blind < z.psb or z.big_blind < z.pbb or z.ante < z.pa), 0,
+  'and blinds and antes never go backwards inside their own game_type'
 );
 
 select * from finish();

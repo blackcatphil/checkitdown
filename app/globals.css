@@ -736,3 +736,76 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   color: var(--cid-text-3);
   margin: 0;
 }
+
+/* ═══ THE TOURNAMENTS TABLE ═══
+   Six columns on desktop; on a phone the row becomes a stack, because six
+   columns at 390px is a horizontal scrollbar and this table's whole value is
+   scanning down a day. */
+.cid-tt { border: 1px solid var(--cid-line-1); }
+.cid-tt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) 5rem 5rem 4.5rem 7rem;
+  gap: var(--cid-space-4);
+  align-items: baseline;
+  padding: var(--cid-space-4) var(--cid-space-5);
+  border-bottom: 1px solid var(--cid-line-1);
+  font: var(--cid-body);
+}
+.cid-tt-row:last-child { border-bottom: none; }
+.cid-tt-head { background: var(--cid-fill-1); border-bottom: 1px solid var(--cid-line-2); }
+.cid-tt-row > * { min-width: 0; }
+/* The date heading. Gold, because it is a section eyebrow — the one place the
+   palette law spends it. */
+.cid-tt-day {
+  font: var(--cid-label);
+  letter-spacing: var(--cid-track-label);
+  color: var(--cid-gold-300);
+  text-transform: uppercase;
+  margin: 0 0 var(--cid-space-3);
+}
+.cid-tt-day-count { color: var(--cid-dim); }
+.cid-tt-sorts { display: flex; gap: var(--cid-space-4); flex-wrap: wrap; }
+.cid-tt-sort {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-text-3);
+  border-bottom: 1px solid transparent;
+  min-height: var(--cid-target);
+  display: inline-flex;
+  align-items: center;
+}
+/* The active sort is WEIGHT and full ink, never a fill — one filled action per
+   screen, and it is not a sort control. */
+.cid-tt-sort-on { color: var(--cid-text); font-weight: 700; border-bottom-color: var(--cid-gold-line); }
+.cid-tt-banner {
+  font: var(--cid-body);
+  color: var(--cid-text-2);
+  background: var(--cid-fill-1);
+  border-left: 2px solid var(--cid-gold-line);
+  padding: var(--cid-space-4) var(--cid-space-5);
+  margin: var(--cid-space-5) 0 0;
+  max-width: 60ch;
+}
+/* A Day 2 takes no buy-in. Said in words next to the name, because the dashes
+   in the money columns alone would read as "we do not know". */
+.cid-tt-noentry { color: var(--cid-text-3); font: var(--cid-caption); }
+
+@media (max-width: 860px) {
+  .cid-tt-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--cid-space-2);
+  }
+  /* The head is furniture for a grid that no longer exists at this width. */
+  .cid-tt-head { display: none; }
+  .cid-tt-row > *:nth-child(1) { grid-column: 1 / -1; font: var(--cid-body-strong); }
+  .cid-tt-row > *:nth-child(n+2) { font: var(--cid-caption); color: var(--cid-text-3); }
+  /* A ROOM LINK IN A TABLE ROW IS A STANDALONE TARGET, so it carries the 44px
+     the standing ruling requires — the caption type that makes the row scan
+     well shrinks the hit area below it otherwise. Caught by the mobile probe on
+     the tournaments page's first real render. */
+  .cid-tt-row a {
+    min-height: var(--cid-target);
+    display: inline-flex;
+    align-items: center;
+  }
+}
