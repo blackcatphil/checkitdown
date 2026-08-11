@@ -22,7 +22,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(125);
+select plan(141);
 
 -- ---------------------------------------------------------------------
 -- The classification. Every relation in public must appear exactly once.
@@ -1524,6 +1524,113 @@ select lives_ok(
   $$ insert into public.tournament_templates (room_id, slug, name, start_time, entry_amount, fee_amount, rebuy_amount)
      values ((select id from public.rooms limit 1), 'price-only', 'x', '12:00', 100, 25, 50) $$,
   'a bare rebuy price with no count, chips or window is accepted');
+
+-- ═════════════════════════════════════════════════════════════════════
+-- AN UNPUBLISHED SPLIT, AND THE AT-REGISTRATION GRATUITY — MIGRATION 015
+-- ═════════════════════════════════════════════════════════════════════
+
+-- The rows that already existed must compute exactly as before. Both generated
+-- columns were DROPPED and RE-ADDED to change their expressions, so this is the
+-- assertion that the rebuild recomputed rather than blanked them.
+select is(
+  (select total_buy_in from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  240.00, 'a row with a published split still totals from the split'
+);
+select is(
+  (select fee_percent from tournament_templates where slug = 'wynn-daily-240-nlh-rebuy-40k'),
+  14.58, 'and still computes its fee share'
+);
+
+-- ⚠️ THE WHOLE POINT OF 015. A room that publishes a price and no breakdown
+-- gets a total and a NULL fee share — not 0.00, which would sort it to the top
+-- of a fee ranking claiming the house takes nothing.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, published_buy_in)
+     values ((select id from public.rooms where slug = 'orleans'), 'o-unknown', 'x', '12:00', 150) $$,
+  'a room may publish a buy-in and no split');
+select is(
+  (select total_buy_in from tournament_templates where slug = 'o-unknown'), 150.00,
+  'the total comes from the published figure'
+);
+select is(
+  (select fee_percent from tournament_templates where slug = 'o-unknown'), null,
+  'and the fee share is NULL — unknown, not zero'
+);
+
+-- NEVER NEITHER. Without this, dropping NOT NULL would allow a row with no
+-- price at all, whose total_buy_in is NULL and which drops silently out of
+-- every buy-in sort.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time)
+     values ((select id from public.rooms limit 1), 'o-priceless', 'x', '12:00') $$,
+  '23514', null, 'an event with neither a split nor a published total is refused');
+
+-- HALF A SPLIT IS NOT A SPLIT: it cannot produce a fee share, and it would
+-- satisfy the rule above only by carrying a third figure nothing checks.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       entry_amount, published_buy_in)
+     values ((select id from public.rooms limit 1), 'o-halfsplit', 'x', '12:00', 70, 100) $$,
+  '23514', null, 'entry without fee is refused, even with a published total');
+
+-- WHERE BOTH EXIST THEY AGREE. Caesars is exactly this shape — "$100" on the
+-- poster and "$70 + $30" in the rules — so the arithmetic is checked rather
+-- than assumed.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       entry_amount, fee_amount, published_buy_in)
+     values ((select id from public.rooms limit 1), 'o-agrees', 'x', '12:00', 70, 30, 100) $$,
+  'a headline that agrees with its split is accepted');
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       entry_amount, fee_amount, published_buy_in)
+     values ((select id from public.rooms limit 1), 'o-disagrees', 'x', '12:00', 70, 30, 120) $$,
+  '23514', null, 'and one that contradicts its split is refused');
+
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time, published_buy_in)
+     values ((select id from public.rooms limit 1), 'o-free', 'x', '12:00', 0) $$,
+  '23514', null, 'a published buy-in of zero is refused');
+
+-- ─── THE BELLAGIO SHAPE: A MANDATORY ENTRY AND A VOLUNTARY GRATUITY ───
+-- RULED 2026-08-11: the buy-in is the MANDATORY amount. Bellagio's poster says
+-- "$150"; $115 goes to the prize pool, $18 is admin, and $17 is a VOLUNTARY
+-- staff gratuity taken at registration that grants 10,000 chips. So the entry
+-- is $133, the gratuity is an at-registration add-on, and the headline is
+-- quoted beside our figure rather than replacing it.
+select lives_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       entry_amount, fee_amount, addon_amount, addon_chips, addon_max, addon_window,
+       advertised_as)
+     values ((select id from public.rooms where slug = 'bellagio'), 'b-shaped', 'x', '12:00',
+             115, 18, 17, 10000, 1, 'at_registration', '$150') $$,
+  'the Bellagio shape is accepted: a $133 mandatory entry and a voluntary $17 gratuity');
+select is(
+  (select total_buy_in from tournament_templates where slug = 'b-shaped'), 133.00,
+  'the buy-in is the MANDATORY amount, not the advertised headline'
+);
+select is(
+  (select advertised_as from tournament_templates where slug = 'b-shaped'), '$150',
+  'and the room''s own headline is kept verbatim beside it'
+);
+select is(
+  (select fee_percent from tournament_templates where slug = 'b-shaped'), 13.53,
+  'the fee share is of the mandatory entry — $18 of $133, not of $150'
+);
+
+-- The third window exists and is distinct from the two migration 014 shipped.
+select is(
+  (select count(*)::int from pg_enum e join pg_type t on t.oid = e.enumtypid
+    where t.typname = 'tournament_offer_window'), 3,
+  'tournament_offer_window has exactly three shapes'
+);
+
+-- A quotation that is blank is not a quotation.
+select throws_ok(
+  $$ insert into public.tournament_templates (room_id, slug, name, start_time,
+       published_buy_in, advertised_as)
+     values ((select id from public.rooms limit 1), 'b-blank', 'x', '12:00', 100, '   ') $$,
+  '23514', null, 'a blank advertised headline is refused rather than rendered as empty');
 
 select * from finish();
 rollback;

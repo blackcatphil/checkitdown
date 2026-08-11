@@ -150,7 +150,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
          descriptions ship with. */
       + ',tournament_templates(slug,name,start_time,days_of_week,total_buy_in,fee_percent,'
       + 'guarantee_amount,starting_stack,level_minutes,late_reg_level,reentry_note,'
-      + 'rebuy_amount,rebuy_chips,rebuy_max,rebuy_unlimited,rebuy_max_stack,'
+      + 'rebuy_amount,rebuy_chips,rebuy_max,rebuy_unlimited,rebuy_max_stack,advertised_as,'
       + 'addon_amount,addon_chips,addon_max,'
       + 'structure_pdf_url,document_effective_on,document_date_source,source_url,verified_at,is_active,series_id)',
     )
@@ -212,7 +212,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       level_minutes: number | null; late_reg_level: number | null
       reentry_note: string | null
       rebuy_amount: number | null; rebuy_chips: number | null; rebuy_max: number | null
-      rebuy_unlimited: boolean; rebuy_max_stack: number | null
+      rebuy_unlimited: boolean; rebuy_max_stack: number | null; advertised_as: string | null
       addon_amount: number | null; addon_chips: number | null; addon_max: number | null
       structure_pdf_url: string | null
       document_effective_on: string | null; document_date_source: string | null
@@ -755,6 +755,18 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--cid-space-4)', alignItems: 'baseline' }}>
                   <span style={{ font: 'var(--cid-body-strong)', color: 'var(--cid-text)' }}>{t.name}</span>
                   <span className="num cid-tourney-when">{dayLabel(t.days_of_week)} · {timeLabel(t.start_time)}</span>
+                  {/* THE ROOM'S OWN HEADLINE, beside our figure and never
+                      instead of it. Ruled 2026-08-11: the buy-in we publish is
+                      the MANDATORY amount, so Bellagio's $133 is the entry and
+                      "$150" is what the sign on the wall says. A reader who
+                      cannot reconcile the two would reasonably assume we are
+                      wrong; quoting the room closes that gap without moving our
+                      figure. Verbatim, unparsed, unsummed. */}
+                  {t.advertised_as && (
+                    <span className="cid-tourney-advertised">
+                      the room advertises this as {t.advertised_as}
+                    </span>
+                  )}
                 </div>
                 <div className="cid-tourney-facts">
                   {/* THE BUY-IN SPLIT IS THE POINT. A room advertises "$200";
@@ -768,8 +780,25 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                       sit beside it and are never summed into it. */}
                   <span><span className="cid-label">ENTRY</span>{' '}
                     <Figure value={t.total_buy_in != null ? `$${Number(t.total_buy_in).toFixed(0)}` : null} verifiedAt={t.verified_at} /></span>
+                  {/* ⚠️ THE DASH WOULD BE THE WRONG ABSENCE HERE. On this page a
+                      dash means "nobody has checked" — the not-yet-verified
+                      state. A null fee_percent after migration 015 means the
+                      opposite: we HAVE read the room's document and the room
+                      publishes no split. Same distinction the facts grid draws
+                      between a confirmed absence and an unchecked slot, and the
+                      same reason it renders words instead of the em-dash.
+                      Not 0%, which would say the room takes nothing. */}
                   <span><span className="cid-label">FEE OF ENTRY</span>{' '}
-                    <Figure value={t.fee_percent != null ? `${Number(t.fee_percent)}%` : null} verifiedAt={t.verified_at} /></span>
+                    {t.fee_percent != null
+                      ? <Figure value={`${Number(t.fee_percent)}%`} verifiedAt={t.verified_at} />
+                      : (
+                        <span
+                          className="cid-unknown"
+                          title="This room publishes a buy-in and no breakdown, so the house's share is not something we can state."
+                        >
+                          UNKNOWN
+                        </span>
+                      )}</span>
                   {/* PUBLISHED EXTRAS, LISTED, NEVER TOTALLED. `costShape` is
                       the one place that decides what may be shown; both this
                       page and /tournaments read it so they cannot grow two

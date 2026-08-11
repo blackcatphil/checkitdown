@@ -1004,3 +1004,106 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
 /* "unlimited" / "one" is a qualifier ON the figure, not a second figure. Quieter
    ink, same line. */
 .cid-tt-qual { color: var(--cid-text-3); }
+
+/* ═══ /tournaments FILTERS ═══
+   Chips, not a select: every option and its count is visible at rest, which is
+   the whole lesson of the map's collapsed-filter trap — a filter a reader
+   cannot see is a filter that hides rows for no stated reason. Each chip is a
+   LINK, so the state lives in the URL and a filtered view can be shared, and
+   the page needs no client JavaScript to filter at all. */
+.cid-tt-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cid-space-4);
+  margin: 0 0 var(--cid-space-6);
+  padding: var(--cid-space-5);
+  border: 1px solid var(--cid-line-1);
+  background: var(--cid-fill-1);
+}
+.cid-tt-fgroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cid-space-3);
+}
+/* The group label is a section eyebrow, so it takes the gold every other
+   eyebrow in the app takes. It is fixed-width so the chip rows line up. */
+.cid-tt-fgroup > .cid-label { flex: 0 0 4.5rem; }
+
+.cid-tt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cid-space-2);
+  min-height: var(--cid-target);
+  padding: 0 var(--cid-space-4);
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-text-2);
+  background: var(--cid-ink-700);
+  border: 1px solid var(--cid-line-2);
+  border-bottom: 1px solid var(--cid-line-2);   /* beats the global link rule */
+  border-radius: var(--cid-r-sm);
+}
+.cid-tt-chip:hover { color: var(--cid-text); border-color: var(--cid-line-3); }
+/* ⚠️ SELECTED IS WEIGHT AND FULL INK, NEVER A FILL. The one-filled-action
+   ceiling is per screen and a filter chip is not the screen's action — a row of
+   filled chips would spend the commitment colour on furniture and break the
+   ceiling as many times as the reader has selections. Same ruling the bottom
+   nav's active item carries. */
+.cid-tt-chip[data-on] {
+  color: var(--cid-text);
+  font-weight: 700;
+  border-color: var(--cid-gold-line);
+}
+.cid-tt-chip-n {
+  font: var(--cid-label);
+  color: var(--cid-dim);
+}
+.cid-tt-chip[data-on] .cid-tt-chip-n { color: var(--cid-text-3); }
+
+/* Filters that match nothing. Deliberately shaped like the room page's
+   confirmed-absence block rather than like an error: the reader narrowed past
+   the schedule, which is an answer. */
+.cid-tt-nomatch {
+  border: 1px solid var(--cid-line-2);
+  background: var(--cid-ink-700);
+  padding: var(--cid-space-7);
+  max-width: var(--cid-measure);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cid-space-4);
+  margin-top: var(--cid-space-6);
+}
+
+@media (max-width: 860px) {
+  /* The label stops holding a column and becomes its own line — four chips of
+     "NO-LIMIT HOLD'EM" beside a 4.5rem label does not fit 390px. */
+  .cid-tt-fgroup > .cid-label { flex: 1 0 100%; }
+  .cid-tt-filters { padding: var(--cid-space-4); }
+}
+
+/* ═══ UNKNOWN — A THIRD ABSENCE, DISTINCT FROM THE OTHER TWO ═══
+   This app already draws two absences and keeps them apart on purpose:
+     the em-dash        nobody has checked yet
+     "None" + a date    somebody checked and there is none
+   Migration 015 adds a third, and it is neither: the room PUBLISHES a price and
+   no breakdown, so the figure does not exist to be checked. It reads as a word
+   because a dash here would claim we had not looked, and as anything but 0%
+   because zero would say the house takes nothing.
+   Styled like the unverified treatment — neutral, dotted, never a colour — for
+   the same reason that one is: a missing figure is an ordinary state of the
+   data, not a warning. */
+.cid-unknown {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-unverified);
+  border-bottom: 1px dotted var(--cid-unverified-rule);
+  white-space: nowrap;
+}
+
+/* The room's own headline beside our figure. Quiet, and set in the UI face
+   rather than the mono one so it cannot be mistaken for a figure of ours. */
+.cid-tourney-advertised {
+  font: var(--cid-caption);
+  color: var(--cid-text-3);
+}

@@ -84,9 +84,17 @@ jobs:
           # into contradicting each other on the same card. +3 in
           # lib/wynn-dailies for the ten new columns: the pair gate now diffs 28
           # columns per daily instead of 18, and parses the note on both copies.
+          # 236 on 2026-08-11: +14 for lib/tournament-filters — /tournaments
+          # goes from 65 rows to several hundred with three rooms in, and a
+          # filtered table does not LOOK filtered, it looks like a shorter
+          # schedule. The assertions that matter are the two that keep a filter
+          # honest: an unknown value is DROPPED so a stale bookmark shows
+          # everything rather than nothing, and a row that cannot answer a
+          # dimension is KEPT so a gap in our data is never published as a fact
+          # about a room's schedule.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 222 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 222) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 236 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 236) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -135,6 +143,15 @@ jobs:
           # 107 on 2026-08-10: +12 for the series — 659 transcribed levels, the
           # mixed-game primary key, and the six Day 2 rows that take no entry.
           # and 41 of those could have vanished under the old number.
+          # 141 on 2026-08-11: +16 for migration 015 — an unpublished split.
+          # Both generated columns were DROPPED and RE-ADDED to change their
+          # expressions, so the first two assertions are that the rebuild
+          # RECOMPUTED rather than blanked the rows that already existed. The
+          # one that matters most is `fee_percent is NULL, not 0.00`: zero would
+          # sort The Orleans to the top of a fee ranking claiming the house
+          # takes nothing, about a room that has published no claim at all.
+          # Plus the Bellagio shape — a $133 mandatory entry, a voluntary $17
+          # at-registration gratuity, and the room's "$150" quoted beside it.
           # 125 on 2026-08-11: +18 for the rebuy and add-on constraints
           # (migration 014). Half are refusals — a threshold with no price,
           # "unlimited" with nothing to buy, two answers to "how many" — and
@@ -143,8 +160,8 @@ jobs:
           # price with nothing else. Plus the backfill itself, asserted BEFORE
           # the constraints so a migration that applied against zero matching
           # rows cannot pass this section on an empty table.
-          [ "${n:-0}" -ge 125 ] \
-            || { echo "::error::pgTAP ran $n tests (expected >= 125) — a shrinking suite is a silent regression"; exit 1; }
+          [ "${n:-0}" -ge 141 ] \
+            || { echo "::error::pgTAP ran $n tests (expected >= 141) — a shrinking suite is a silent regression"; exit 1; }
 
       # --- GATE 2b: THE PROSE WRITE PATH, which writes to prod every morning. ---
       #

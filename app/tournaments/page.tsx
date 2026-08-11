@@ -1,12 +1,36 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import {
+  DAY_LABELS, ENTRY_BANDS, FILTER_KEYS, GAME_LABELS, type FilterKey,
+  bandOf, describe as describeFilters, filterQuery, isFiltered, matches, parseFilters, toggle,
+} from '@/lib/tournament-filters'
 import { costShape } from '@/lib/tournament-terms'
 import { timeLabel, vegasParts } from '@/lib/tournaments'
 
 import { supabase } from '@/lib/supabase'
 
-export const metadata = { title: 'Tournaments — Check It Down' }
 export const revalidate = 300
+
+/**
+ * A FILTERED VIEW IS NOINDEX, the same ruling `/facts?compare=` and
+ * `/install?platform=` already carry. Four dimensions of comma lists is a
+ * combinatorial number of URLs that all show subsets of one page; letting a
+ * crawler index them splits whatever authority the real page earned across
+ * hundreds of near-duplicates and hands a searcher a pre-filtered table they
+ * did not ask for.
+ */
+export async function generateMetadata(
+  { searchParams }: { searchParams: Promise<Record<string, string | undefined>> },
+): Promise<Metadata> {
+  const q = await searchParams
+  const filtered = FILTER_KEYS.some((k) => (q[k] ?? '') !== '')
+  return {
+    title: 'Tournaments — Check It Down',
+    alternates: { canonical: '/tournaments' },
+    ...(filtered || q.sort ? { robots: { index: false, follow: true } } : {}),
+  }
+}
 
 /**
  * Zero state is the PRIMARY state here — no tournament has been seeded yet, so
@@ -25,12 +49,13 @@ function dayHeading(iso: string): string {
 export default async function Tournaments({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string }>
+  searchParams: Promise<Record<string, string | undefined>>
 }) {
-  const { sort } = await searchParams
+  const query = await searchParams
+  const sort = query.sort
   const { data } = await supabase
     .from('tournament_templates')
-    .select('slug,name,start_time,total_buy_in,fee_percent,guarantee_amount,reliability,'
+    .select('slug,name,game,start_time,total_buy_in,fee_percent,guarantee_amount,reliability,'
       + 'verified_at,days_of_week,level_minutes,structure_pdf_url,'
       + 'rebuy_amount,rebuy_max,rebuy_unlimited,addon_amount,addon_max,'
       + 'rooms(name,slug),tournament_instances(starts_at,entry_kind,takes_entry)')
@@ -98,16 +123,24 @@ export default async function Tournaments({
   type Row = {
     key: string; name: string; room: string; roomSlug: string
     at: string | null; time: string
-    total: number | null; fee: number | null; guarantee: number | null
+    /* NAMED `entry`, NOT `total`, since migration 014: the column it comes
+       from is the ENTRY and the extras are deliberately not summed into it.
+       The old name is what a reader of this file would have added a rebuy
+       to. */
+    entry: number | null; fee: number | null; guarantee: number | null
     minutes: number | null; verifiedAt: string | null
     takesEntry: boolean; entryKind: string | null; pdf: string | null
     /* Migration 014: what the entry does NOT cover. */
     extras: ReturnType<typeof costShape>['extras']; bounded: boolean
+    /* What the filters read. `days` is one weekday for a dated instance and
+       several for a recurring daily, which is why filtering happens on the
+       EXPANDED rows rather than in SQL: a template has no single weekday. */
+    game: string | null; days: number[]
   }
-  const rows: Row[] = []
+  let rows: Row[] = []
   for (const e of events as unknown as Array<Record<string, never>>) {
     const t = e as unknown as {
-      slug: string; name: string; start_time: string; total_buy_in: number | null
+      slug: string; name: string; game: string | null; start_time: string; total_buy_in: number | null
       fee_percent: number | null; guarantee_amount: number | null; level_minutes: number | null
       verified_at: string | null; days_of_week: number[] | null; structure_pdf_url: string | null
       rebuy_amount: number | null; rebuy_max: number | null; rebuy_unlimited: boolean
@@ -118,9 +151,9 @@ export default async function Tournaments({
     const cost = costShape(t)
     const base = {
       name: t.name, room: t.rooms?.name ?? '—', roomSlug: t.rooms?.slug ?? '',
-      total: t.total_buy_in, fee: t.fee_percent, guarantee: t.guarantee_amount,
+      entry: t.total_buy_in, fee: t.fee_percent, guarantee: t.guarantee_amount,
       minutes: t.level_minutes, verifiedAt: t.verified_at, pdf: t.structure_pdf_url,
-      extras: cost.extras, bounded: cost.bounded,
+      extras: cost.extras, bounded: cost.bounded, game: t.game,
     }
     if (t.tournament_instances?.length) {
       for (const i of t.tournament_instances) {
@@ -128,19 +161,41 @@ export default async function Tournaments({
         const v = vegasParts(i.starts_at)
         rows.push({ ...base, key: `${t.slug}@${i.starts_at}`, at: v.date,
           time: timeLabel(v.time),
+          /* THE WEEKDAY IS READ FROM THE VEGAS DATE, not from the timestamp.
+             `starts_at` for a 6 P.M. Pacific event is the next UTC day, and a
+             day filter built on the ISO string would file every evening event
+             under tomorrow — the same trap `vegasParts` exists for. */
+          days: [new Date(`${v.date}T12:00:00Z`).getUTCDay()],
           takesEntry: i.takes_entry, entryKind: i.entry_kind })
       }
     } else {
       rows.push({ ...base, key: t.slug, at: null, time: timeLabel(t.start_time),
+        days: t.days_of_week ?? [],
         takesEntry: true, entryKind: null })
     }
   }
+
+  /* ═══ FILTERS ═══
+     Parsed against what the data ACTUALLY holds, so an unknown value is dropped
+     rather than matched — see lib/tournament-filters.ts. */
+  const roomsPresent = [...new Map(rows.map((r) => [r.roomSlug, r.room])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]))
+  const gamesPresent = [...new Set(rows.map((r) => r.game).filter((g): g is string => g != null))]
+    .sort((a, b) => (GAME_LABELS[a] ?? a).localeCompare(GAME_LABELS[b] ?? b))
+  const filters = parseFilters(query, {
+    rooms: roomsPresent.map(([s]) => s),
+    games: gamesPresent,
+  })
+  const allRows = rows
+  const shown = allRows.filter((r) => matches(r, filters))
+  const hidden = allRows.length - shown.length
+  rows = shown
 
   const SORTS = { time: 'TIME', buyin: 'ENTRY', fee: 'FEE %' } as const
   const active = (sort === 'buyin' || sort === 'fee') ? sort : 'time'
   const grouped = active === 'time'
 
-  if (active === 'buyin') rows.sort((a, b) => (b.total ?? 0) - (a.total ?? 0))
+  if (active === 'buyin') rows.sort((a, b) => (b.entry ?? 0) - (a.entry ?? 0))
   else if (active === 'fee') rows.sort((a, b) => (a.fee ?? 99) - (b.fee ?? 99))
   else rows.sort((a, b) => (a.at ?? '9').localeCompare(b.at ?? '9') || a.time.localeCompare(b.time))
 
@@ -181,6 +236,81 @@ export default async function Tournaments({
   const withExtras = rows.filter((r) => r.extras.length > 0).length
   const openEnded = rows.filter((r) => !r.bounded).length
 
+  /* A chip's link is the CURRENT filters with this one value toggled, carrying
+     the sort along — a reader who has sorted by fee and then narrows to mixed
+     games has not asked to go back to the date view. */
+  const chipHref = (key: FilterKey, value: string) =>
+    `/tournaments${filterQuery(toggle(filters, key, value), { sort: sort ?? '' })}`
+  const roomName = (slug: string) => roomsPresent.find(([s]) => s === slug)?.[1] ?? slug
+
+  /* PLAIN HELPERS, NOT COMPONENTS. Defined inside the page they would be
+     components re-created on every render, which `react-hooks/static-components`
+     correctly refuses; hoisting them to module scope would mean threading eight
+     props through for markup used once. They are markup factories, so they are
+     spelled like functions and called like functions. */
+  const chip = ({ k, v, label, count }: { k: FilterKey; v: string; label: string; count: number }) => {
+    const on = filters[k].includes(v)
+    return (
+      <Link key={`${k}:${v}`} href={chipHref(k, v)} className="cid-tt-chip"
+        data-on={on ? '' : undefined} aria-pressed={on}
+      >
+        {label}
+        {/* THE COUNT IS OF WHAT THIS CHIP WOULD SHOW, from the unfiltered set.
+            A count of what is currently visible would read 0 on every chip a
+            reader has not selected, which makes the whole row look broken. */}
+        <span className="cid-tt-chip-n">{count}</span>
+      </Link>
+    )
+  }
+  /* WHAT CLICKING WOULD ACTUALLY PRODUCE — the count is taken against the
+     TOGGLED filter set, not against a set where this value replaces the
+     dimension. The first version replaced it, which is right only while a
+     dimension is empty: with SAT already selected, the FRI chip read "1" and
+     clicking it showed 2, because the values within a dimension are an OR. A
+     count that disagrees with the result of clicking it is worse than no count.
+     A selected chip therefore reads the count for REMOVING it, which is the
+     same promise kept in the other direction. */
+  const countIf = (k: FilterKey, v: string) =>
+    allRows.filter((r) => matches(r, toggle(filters, k, v))).length
+
+  const filterBar = () => (
+    <div className="cid-tt-filters">
+      {/* ⚠️ THE ROOM GROUP APPEARS ONLY WHEN THERE IS SOMETHING TO CHOOSE.
+          One room means one chip that cannot change the result — a control
+          which is furniture, and furniture that looks like a control. It
+          appears on its own the moment a second room's events land. */}
+      {roomsPresent.length > 1 && (
+        <div className="cid-tt-fgroup">
+          <span className="cid-label">ROOM</span>
+          {roomsPresent.map(([slug, name]) => (
+            chip({ k: 'room', v: slug, label: name.toUpperCase(), count: countIf('room', slug) })
+          ))}
+        </div>
+      )}
+      <div className="cid-tt-fgroup">
+        <span className="cid-label">GAME</span>
+        {gamesPresent.map((g) => (
+          chip({ k: 'game', v: g, label: GAME_LABELS[g] ?? g.toUpperCase(), count: countIf('game', g) })
+        ))}
+      </div>
+      <div className="cid-tt-fgroup">
+        {/* THE LABEL SAYS ENTRY, NOT BUY-IN — migration 014. A reader filtering
+            on price is the reader most likely to read a band as the total cost,
+            and three of these events cost more than their entry. */}
+        <span className="cid-label">ENTRY</span>
+        {ENTRY_BANDS.filter((b) => allRows.some((r) => bandOf(r.entry) === b.id)).map((b) => (
+          chip({ k: 'entry', v: b.id, label: b.label, count: countIf('entry', b.id) })
+        ))}
+      </div>
+      <div className="cid-tt-fgroup">
+        <span className="cid-label">DAY</span>
+        {DAY_LABELS.map((d, i) => (
+          chip({ k: 'day', v: String(i), label: d, count: countIf('day', String(i)) })
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-8) 0 var(--cid-space-9)' }}>
       <h1 style={{ font: 'var(--cid-statement)', margin: '0 0 var(--cid-space-4)' }}>Tournaments</h1>
@@ -203,14 +333,31 @@ export default async function Tournaments({
             <> {openEnded === 1 ? 'One of them has' : `${openEnded} of them have`} no published
               ceiling, so no total is shown for {openEnded === 1 ? 'it' : 'them'}.</>
           )}{' '}
-          We do not add these up: neither room publishes how a rebuy is split between prize
-          pool and house, and how many a player takes is not a fact anybody published.
+          We do not add these up: a room that publishes a rebuy price rarely publishes how
+          it splits between prize pool and house, and how many a player takes is not a fact
+          anybody publishes at all.
+        </p>
+      )}
+
+      {filterBar()}
+
+      {/* ⚠️ AN ACTIVE FILTER IS NEVER SILENT. This is the map's collapsed-filter
+          trap in another surface: a filtered table does not LOOK filtered, it
+          looks like a shorter schedule, and a reader who lands on a shared link
+          has no way to know rows were removed. So the page names what is being
+          filtered, counts what that hides, and offers one link back. */}
+      {isFiltered(filters) && (
+        <p className="cid-tt-banner" style={{ margin: '0 0 var(--cid-space-5)' }}>
+          Showing {rows.length} of {allRows.length} events — {describeFilters(filters, roomName)}.
+          {hidden > 0 && ` ${hidden} ${hidden === 1 ? 'event is' : 'events are'} hidden by that.`}{' '}
+          <Link href={`/tournaments${sort ? `?sort=${sort}` : ''}`}>Clear the filters</Link>.
         </p>
       )}
 
       <div className="cid-tt-sorts">
         {(Object.keys(SORTS) as Array<keyof typeof SORTS>).map((k) => (
-          <Link key={k} href={k === 'time' ? '/tournaments' : `/tournaments?sort=${k}`}
+          <Link key={k}
+            href={`/tournaments${filterQuery(filters, { sort: k === 'time' ? '' : k })}`}
             className={k === active ? 'cid-tt-sort cid-tt-sort-on' : 'cid-tt-sort'}>
             {SORTS[k]}
           </Link>
@@ -241,6 +388,26 @@ export default async function Tournaments({
         </p>
       )}
 
+      {/* ⚠️ "YOUR FILTERS MATCH NOTHING" IS NOT "THERE ARE NO TOURNAMENTS".
+          The zero state at the top of this file describes an unloaded database
+          and would be a flat lie here — the events exist, the reader has just
+          narrowed past them. Two different absences, two different sentences,
+          the same rule the room page applies to a confirmed absence versus an
+          unchecked one. */}
+      {rows.length === 0 && (
+        <div className="cid-tt-nomatch">
+          <span className="cid-label">NOTHING MATCHES</span>
+          <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-2)', margin: 0 }}>
+            {allRows.length} events are loaded; none of them is{' '}
+            {describeFilters(filters, roomName)}. That is a fact about the
+            schedule, not a gap in what we hold.
+          </p>
+          <p style={{ font: 'var(--cid-body)', margin: 0 }}>
+            <Link href={`/tournaments${sort ? `?sort=${sort}` : ''}`}>Clear the filters</Link>
+          </p>
+        </div>
+      )}
+
       {groups.map(([label, rs]) => (
         <section key={label || 'all'} style={{ marginTop: 'var(--cid-space-6)' }}>
           {label && (
@@ -262,7 +429,7 @@ export default async function Tournaments({
                 </span>
                 <span><Link href={`/rooms/${r.roomSlug}`}>{r.room}</Link></span>
                 <span className="num">{r.time}</span>
-                <span className="num">{r.takesEntry === false ? '—' : r.total != null ? `$${Number(r.total).toFixed(0)}` : '—'}</span>
+                <span className="num">{r.takesEntry === false ? '—' : r.entry != null ? `$${Number(r.entry).toFixed(0)}` : '—'}</span>
                 {/* THE EXTRAS, LISTED IN THEIR OWN CELL AND NEVER ADDED TO THE
                     ONE BESIDE THEM. "$200 REBUY · UNLIMITED" is what the room
                     published; "$440" would be a number we invented. */}
@@ -274,7 +441,18 @@ export default async function Tournaments({
                     </span>
                   ))}
                 </span>
-                <span className="num">{r.takesEntry === false ? '—' : r.fee != null ? `${Number(r.fee)}%` : '—'}</span>
+                {/* ⚠️ THREE STATES, NOT TWO. A Day-2 continuation takes no
+                    entry and keeps the dash; a room that publishes a buy-in and
+                    no breakdown reads UNKNOWN; anything else is a figure.
+                    Collapsing the middle case into the dash — or into 0% —
+                    would put The Orleans at the top of a FEE % sort claiming it
+                    takes nothing, which is the most favourable possible claim
+                    about a room that has made no claim at all. */}
+                <span className="num">
+                  {r.takesEntry === false ? '—'
+                    : r.fee != null ? `${Number(r.fee)}%`
+                      : <span className="cid-unknown" title="This room publishes a buy-in and no breakdown, so the house's share is not something we can state.">UNKNOWN</span>}
+                </span>
                 <span className="num">{r.guarantee != null ? `$${Number(r.guarantee).toLocaleString('en-US')}` : '—'}</span>
               </div>
             ))}
