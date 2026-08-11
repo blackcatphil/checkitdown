@@ -259,16 +259,25 @@ def build(struct_pages, sched_pages):
 # every morning would risk a silent mistranscription of a rebuy rule, which is
 # the kind of falsehood this product exists not to publish.
 #
-# ⚠️ THIS IS A SECOND COPY OF THE SEED'S TRANSCRIPTION, AND NOTHING YET GATES
-# THE PAIR. They were verified equal on all 18 columns — slug, name, time, days,
-# the three amounts, guarantee, stack, minutes, late level, re-entry, the two
-# derived totals, the note, the document date and both URLs — by diffing a
-# database written from here against a database written from the seed, on
-# 2026-08-11. That was a check somebody ran, not a check that runs.
+# ⚠️ THIS IS A SECOND COPY OF THE SEED'S TRANSCRIPTION, AND THE PAIR IS GATED.
+# `lib/wynn-dailies.test.mjs` parses this list and the matching block in
+# supabase/seed.sql and diffs them on all 18 stored columns — slug, name, game,
+# time, days, the three amounts, guarantee, stack, minutes, late level,
+# re-entry, the note, the document date, its source, and both URLs. It runs
+# under `test:unit`, reads two files off disk, and touches neither the network
+# nor a database.
 #
-# Two copies of a hand transcription is one more than is safe. The standing fix
-# is one of: the seed's daily block goes and the seed loads from here, or a test
-# compares the two. That is a ruling for Phil, and it is open.
+# ONLY TWO COLUMNS ARE EXEMPT, by name: structure_fetched_at and fetched_at.
+# The seed pins a timestamp because a seed must be reproducible; this stamps the
+# moment it runs, because that is the truth about a live fetch. They are
+# supposed to differ.
+#
+# BOTH COPIES STAY, ruled 2026-08-11. Deleting either does not work: the seed
+# cannot source from here because this fetches live PDFs and `supabase db reset`
+# has to run with no network, and this cannot source from the seed because the
+# seed never reaches production. So they are kept and made to prove they agree.
+# ⚠️ EDIT ONE, EDIT THE OTHER — the test names the field and the daily that
+# drifted, and it is the cheapest gate in CI.
 DAILIES = [
     dict(slug='wynn-daily-200-nlh-10k', name='Daily $200 NLH — $10,000 Guarantee',
          start='12:00', days=[1, 2, 3, 4], entry=162.00, fee=26.00, staff=12.00,

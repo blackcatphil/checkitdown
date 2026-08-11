@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:mixed": "node scripts/mixed-state.mjs",
+    "test:prose": "node scripts/prose-probe.mjs",
     "test:rls": "supabase test db",
     "test:unit": "node --test lib/*.test.mjs",
     "sync:worker": "node scripts/sync-map-worker.mjs",

@@ -772,6 +772,53 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
     skipped.push('THE COUNTER-EXAMPLE: ARIA must not match $1/2 NLH — needs NEXT_PUBLIC_MAP_DEBUG=1 (asserted unconditionally in lib/stakes-filter.test.mjs)')
     skipped.push('THE CONTROL: Bellagio matches $2/5 PLO — same flag, same unit-level cover')
   } else {
+    /**
+     * ⚠️ THE PANEL IS RESET FIRST, AND THAT RESET IS ASSERTED — 2026-08-11.
+     *
+     * These two ran for the first time on 2026-08-11, when the debug-build CI
+     * job was added. Both were RED, and neither for a reason about the product.
+     *
+     * The collapsed-filter trap immediately above checks two boxes inside the
+     * NO-LIMIT group and then COLLAPSES it — which is the whole point of that
+     * test, because a collapsed group unmounts its boxes while MapShell keeps
+     * their checked state. So by the time these ran, the map was filtered by two
+     * stakes that no longer existed in the DOM, and `$1/2` could not be found
+     * to click at all.
+     *
+     * The counter-example then returned `{ err: 'no $1/2 checkbox' }`, the
+     * assertion read `verdict.aria` off that object, got `undefined`, and failed
+     * with a message about ARIA. THE err PATH WAS NEVER READ. Had ARIA happened
+     * to be absent for any other reason the same line would have passed on an
+     * object that said, in a field nobody checked, that the test never ran.
+     *
+     * Two fixes, and the second is the one that matters: reset the panel to a
+     * known state, and ASSERT the reset worked before trusting anything after
+     * it. A fixture that fails to apply must never look like a clean result.
+     */
+    const reset = await page2.evaluate(async () => {
+      const root = document.querySelector('.cid-stakes')
+      /* Open every sub-head, so a collapsed group's boxes are mounted and
+         reachable — including any the trap left checked and hidden. */
+      for (const btn of root.querySelectorAll('.cid-disclose')) {
+        if (btn.getAttribute('aria-expanded') === 'false') { btn.click(); await new Promise((r) => setTimeout(r, 250)) }
+      }
+      for (const b of root.querySelectorAll('.cid-check')) {
+        if (b.getAttribute('data-on') === 'true') { b.click(); await new Promise((r) => setTimeout(r, 250)) }
+      }
+      await new Promise((r) => setTimeout(r, 700))
+      const boxes = [...root.querySelectorAll('.cid-check')]
+      return {
+        stillChecked: boxes.filter((b) => b.getAttribute('data-on') === 'true').length,
+        total: boxes.length,
+        has12: boxes.some((b) => b.children[1]?.textContent.trim() === '$1/2'),
+        has25plo: boxes.some((b) => b.children[1]?.textContent.trim() === '$2/5 PLO'),
+      }
+    })
+    pre(reset.stillChecked === 0 && reset.total === 26 && reset.has12 && reset.has25plo,
+      `the filter panel is reset to a known state before the two feature-state assertions `
+      + `(${reset.stillChecked} still checked of ${reset.total}; $1/2 ${reset.has12 ? 'present' : 'MISSING'}, `
+      + `$2/5 PLO ${reset.has25plo ? 'present' : 'MISSING'})`)
+
     const verdict = await page2.evaluate(async () => {
       const root = document.querySelector('.cid-stakes')
       const box = [...root.querySelectorAll('.cid-check')].find((b) => b.children[1]?.textContent.trim() === '$1/2')
@@ -785,8 +832,11 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
       }
       return seen
     })
-    pre(verdict.aria === 0,
-      `THE COUNTER-EXAMPLE: ARIA spreads $1/2 PLO, so $1/2 NLH must NOT match it (hit=${verdict.aria})`)
+    /* `err` IS READ NOW. "The checkbox was not there" and "ARIA matched when it
+       should not have" are different findings and must not share a message. */
+    pre(verdict.err == null && verdict.aria === 0,
+      `THE COUNTER-EXAMPLE: ARIA spreads $1/2 PLO, so $1/2 NLH must NOT match it `
+      + `(${verdict.err ? `THE TEST DID NOT RUN — ${verdict.err}` : `hit=${verdict.aria}`})`)
 
     /* THE CONTROL IS BELLAGIO, not Golden Nugget: a control has to be VISIBLE
        at the camera the probe is at. Golden Nugget is downtown, outside the
@@ -796,16 +846,21 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
     const control = await page2.evaluate(async () => {
       const root = document.querySelector('.cid-stakes')
       const boxes = [...root.querySelectorAll('.cid-check')]
-      boxes.find((b) => b.children[1]?.textContent.trim() === '$1/2')?.click()
+      const half = boxes.find((b) => b.children[1]?.textContent.trim() === '$1/2')
+      const plo = boxes.find((b) => b.children[1]?.textContent.trim() === '$2/5 PLO')
+      if (!half || !plo) return { err: `missing checkbox: ${!half ? '$1/2 ' : ''}${!plo ? '$2/5 PLO' : ''}` }
+      half.click()                                   /* clear the counter-example's */
       await new Promise((r) => setTimeout(r, 400))
-      boxes.find((b) => b.children[1]?.textContent.trim() === '$2/5 PLO')?.click()
+      plo.click()
       await new Promise((r) => setTimeout(r, 900))
       for (const f of window.__cid_map.querySourceFeatures('rooms')) {
-        if (f.properties.slug === 'bellagio') return f.properties.hit
+        if (f.properties.slug === 'bellagio') return { hit: f.properties.hit }
       }
-      return undefined
+      return { err: 'bellagio was not in the source at this camera — an absent control proves nothing' }
     })
-    pre(control === 1, `THE CONTROL: Bellagio does spread $2/5 PLO and matches (hit=${control})`)
+    pre(control.err == null && control.hit === 1,
+      `THE CONTROL: Bellagio does spread $2/5 PLO and matches `
+      + `(${control.err ? `THE TEST DID NOT RUN — ${control.err}` : `hit=${control.hit}`})`)
   }
   await page2.close()
 }
@@ -815,6 +870,14 @@ await browser.close()
 
 let failed = 0
 const ok = (cond, msg) => { console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${msg}`); if (!cond) failed++ }
+/**
+ * AN OBSERVATION THAT IS NOT A VERDICT — printed, counted by nothing.
+ *
+ * Distinct from SKIP, and the difference matters. A SKIP says "this assertion
+ * could not run here"; a NOTE says "this was measured, and it is not ours to
+ * pass or fail". Neither is a PASS, so neither can pad a floor.
+ */
+const note = (msg) => console.log(`  NOTE  ${msg}`)
 for (const [c, m] of preFindings) ok(c, m)
 for (const m of skipped) console.log(`  SKIP  ${m}`)
 
@@ -830,9 +893,35 @@ for (const [i, r] of results.entries()) {
 
   ok(r.geom.canvas && r.geom.canvas.w > 0 && r.geom.canvas.h > 0, 'the map has a viewport (canvas is not 0x0)')
   ok(r.styleStatus === 200, 'the style loaded')
+  /* ═══ TWO DIFFERENT QUESTIONS, SEPARATED — 2026-08-11 ═══
+     These three lines used to be one verdict, and one of them was red for
+     somebody else's reason.
+
+       DID THE MAP ASK?  Ours, absolutely. Zero tile requests is the dead-worker
+                         regression this entire file was written for: clean
+                         console, correct markup, canvas the right size,
+                         drawing nothing for weeks. It stays red, always.
+       DID ANYTHING COME BACK?  Ours enough to keep. Zero loaded means the run
+                         measured nothing, so every assertion below it about
+                         painted pixels is being made against a blank canvas.
+       DID SOME FETCHES FAIL?  NOT OURS. A handful of dropped tiles on a CI
+                         runner's network says nothing about this codebase. It
+                         is reported, with its share, and it does not fail.
+
+     ⚠️ AND DELIBERATELY NO RETRY. Re-requesting a failed tile is the obvious
+     fix and it is the wrong one: a retry makes "the map asked and the network
+     dropped it" indistinguishable from "the map stopped asking", because both
+     end with a tile in hand. That distinction is the entire reason the first
+     assertion exists, so nothing may be added that blurs it. */
   ok(r.tiles.requested > 0, 'THE MAP REQUESTED TILES — the observable that was zero')
   ok(r.tiles.loaded > 0, 'tiles came back')
-  ok(r.tiles.errored === 0, 'no tile request failed')
+  if (r.tiles.errored === 0) {
+    note(`no tile fetch failed (${r.tiles.loaded} loaded) — reported, not asserted: a remote fetch is the network's to fail`)
+  } else {
+    const share = ((r.tiles.errored / Math.max(1, r.tiles.requested)) * 100).toFixed(0)
+    note(`${r.tiles.errored} of ${r.tiles.requested} tile fetches failed (${share}%) — the network's, not ours.`
+      + ' The map asked and kept asking, which is the part this suite guards.')
+  }
   /* THRESHOLD FROM BOTH OBSERVED STATES, not from a guess. At `> 8` this
      assertion PASSED during the dead-worker regression it was written to catch:
      an undrawn canvas still samples ~18 distinct values from the background and

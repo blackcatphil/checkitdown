@@ -42,7 +42,7 @@ jobs:
       # work and lets the two runs disagree. It also captured output into a
       # variable and never printed it, so when the assertion failed the log
       # showed the complaint and not the evidence. Both fixed here.
-      - name: "test:unit (6 assertions)"
+      - name: "test:unit (pure logic — the floor is asserted below, not named here)"
         run: |
           set -euo pipefail
           npm run --silent test:unit 2>&1 | tee /tmp/unit.log
@@ -71,9 +71,16 @@ jobs:
           # does not scan, which nothing else in this repo could see.
           # +6 for lib/install — platform detection against real user-agent
           # strings, including the iPad that reads as a laptop.
+          # 206 on 2026-08-11: +11 for lib/wynn-dailies — the four Wynn dailies
+          # are transcribed by hand in BOTH supabase/seed.sql and
+          # scripts/tournaments/wynn.py, and were verified equal exactly once,
+          # by a person. Chat ruled both copies stay: the seed cannot fetch
+          # live PDFs (db reset must work with no network) and the ingest is
+          # the only path that reaches production. So the pair is diffed on all
+          # 18 stored columns instead, off disk, in the cheapest gate there is.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 195 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 172) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 206 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 206) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -96,7 +103,7 @@ jobs:
           [ "$games" = "78" ] || { echo "::error::expected 78 seeded cash games, got '$games'"; exit 1; }
 
       # --- GATE 2: RLS + grants, against the real roles. ---
-      - name: "test:rls (10 pgTAP assertions)"
+      - name: "test:rls (RLS + grants — the floor is asserted below)"
         run: |
           set -euo pipefail
           supabase test db 2>&1 | tee /tmp/rls.log
@@ -124,6 +131,51 @@ jobs:
           # and 41 of those could have vanished under the old number.
           [ "${n:-0}" -ge 107 ] \
             || { echo "::error::pgTAP ran $n tests (expected >= 107) — a shrinking suite is a silent regression"; exit 1; }
+
+      # --- GATE 2b: THE PROSE WRITE PATH, which writes to prod every morning. ---
+      #
+      # `scripts/differ.mjs` runs against PRODUCTION at 05:00 Pacific, daily,
+      # unattended, with DIFFER_APPLY=1. Its prose branch — insert, decline to
+      # rewrite unchanged text, replace changed text — was verified by hand
+      # once and had NEVER run in CI. The daily job was the only thing
+      # exercising it, on the one database where being wrong is expensive.
+      #
+      # This drives the REAL differ as a subprocess, exactly as the cron job
+      # does, feeding it a fixture through a `data:` URL — so no network, no
+      # test hatch in the write path, and readSource / readReviews /
+      # firstSeenDate / stageDescription / approve_change_group all run for
+      # real. It needs psql (installed above) and no web server.
+      - name: "test:prose (insert, idempotence, rewrite — the daily write path)"
+        env:
+          PSQL: psql
+        run: |
+          set -euo pipefail
+          npm run --silent test:prose 2>&1 | tee /tmp/prose.log
+          grep -q '0 failed' /tmp/prose.log \
+            || { echo "::error::the prose write path did not behave — see the assertions above"; exit 1; }
+          # THE IDEMPOTENCE ASSERTIONS ARE THE REASON THIS GATE EXISTS. A broken
+          # insert is loud: the summary says FAULT and the run goes red. A
+          # broken idempotence check is silent and cumulative — a change_log
+          # entry every morning for prose nobody touched, written_at marching
+          # forward, and within a week every review on the site reads "written
+          # today" while still looking perfectly healthy.
+          grep -q 'PASS  written_at DID NOT MOVE' /tmp/prose.log \
+            || { echo "::error::the first-seen assertion did not run — a re-stamping differ makes every date on the site worthless within a week"; exit 1; }
+          grep -q 'PASS  and writes NO change_log entry' /tmp/prose.log \
+            || { echo "::error::the no-op assertion did not run"; exit 1; }
+          grep -q 'PASS  still exactly ONE description for the room' /tmp/prose.log \
+            || { echo "::error::the replace-not-duplicate assertion did not run"; exit 1; }
+          # A probe that leaves prose on a room page has changed the product,
+          # and the only thing that would notice is a census in another suite.
+          grep -q 'PASS  the database is restored' /tmp/prose.log \
+            || { echo "::error::the restore assertion did not run — this suite writes to the database"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/prose.log || true)
+          echo "prose assertions: $n"
+          # 23 on 2026-08-11, the first run of this gate. Verified to fail:
+          # neutering the byte-identical compare in firstSeenDate turns four of
+          # these red, including written_at being dragged to today.
+          [ "$n" -ge 23 ] \
+            || { echo "::error::only $n prose assertions ran (expected >= 23) — the suite shrank"; exit 1; }
 
       # The anon key is generated per-stack, so it is read from the running
       # stack rather than hardcoded — a stale key would fail at request time,
@@ -291,6 +343,14 @@ jobs:
             || { echo "::error::the map probe did not pass"; exit 1; }
           grep -q 'PASS  THE MAP REQUESTED TILES' /tmp/map.log \
             || { echo "::error::the tile-request assertion did not run — it is the whole point of this gate"; exit 1; }
+          # ⚠️ THE TILE-FAILURE LINE MUST STILL BE MEASURED, just not asserted.
+          # It was split on 2026-08-11: "did the map ask" is ours and stays red;
+          # "did some remote fetches drop" is the network's and is REPORTED.
+          # The floor below drops by one because of that, so this guard is what
+          # stops the split from becoming a deletion — a NOTE line has to be
+          # there, saying what was counted.
+          grep -q '^  NOTE .*tile fetch' /tmp/map.log \
+            || { echo "::error::the tile-failure count is not being reported at all — the split became a deletion"; exit 1; }
           n=$(grep -c '  PASS' /tmp/map.log || true)
           echo "map assertions: $n"
           # 18 IN THIS CONFIGURATION, 35 WITH THE DEBUG HANDLE.
@@ -313,8 +373,18 @@ jobs:
           # form, genuinely collapsed, and the full credit one tap away. It is a
           # LICENCE condition, so "compact" must not be able to drift into "hidden".
           # a run pass.
-          [ "$n" -ge 28 ] \
-            || { echo "::error::only $n map assertions ran (expected >= 28)"; exit 1; }
+          # 27 on 2026-08-11 — A DELIBERATE DECREASE, and the only one in this
+          # file. `no tile request failed` stopped being an assertion and became
+          # a NOTE: a dropped tile on a runner's network is not a fact about
+          # this codebase, and it was the one line here that went red for
+          # somebody else's reason. What is NOT weakened is the line above it —
+          # zero tiles requested is the dead-worker regression this whole gate
+          # was written for and stays hard. No retry was added either: a retry
+          # would make "asked and the network dropped it" indistinguishable from
+          # "stopped asking", which is the distinction the gate exists for.
+          # The NOTE guard above is what keeps this decrease honest.
+          [ "$n" -ge 27 ] \
+            || { echo "::error::only $n map assertions ran (expected >= 27)"; exit 1; }
           # The SKIPs must stay SKIPs. If these stop appearing without the floor
           # moving, the shipping build has grown a debug handle.
           s=$(grep -c '^  SKIP' /tmp/map.log || true)
@@ -519,3 +589,168 @@ jobs:
           # nothing here is flag-gated.
           [ "$n" -ge 72 ] \
             || { echo "::error::only $n palette assertions ran (expected >= 72) — the suite shrank"; exit 1; }
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # THE DEBUG BUILD — the assertions the shipping build cannot make
+  # ═══════════════════════════════════════════════════════════════════════
+  #
+  # `window.__cid_map` is exposed only under NEXT_PUBLIC_MAP_DEBUG=1 and never
+  # ships. Everything that reads the live map through it — the rendered-mass
+  # counts, the camera readings, the four-viewport skyline sweep, the
+  # (variant, stakes) feature-state pair — therefore reported a named SKIP in
+  # the job above and was verified nowhere but on Phil's Mac, by hand, when
+  # somebody remembered.
+  #
+  # THAT IS NOT A SMALL GAP. Measured 2026-08-11: 18 map assertions and 13
+  # mobile assertions run here and cannot run there. And the first time the two
+  # flag-gated map assertions were actually EXECUTED — by this job — both were
+  # RED, and had been since 2026-08-09. Not for a reason about the product: the
+  # collapsed-filter trap that runs before them leaves two boxes checked and
+  # unmounted, so the counter-example could not find its own checkbox and
+  # returned `{ err: … }` into an assertion that read a different key off the
+  # object and never looked at `err`. Six weeks of "verified on the Mac" was
+  # verifying nothing. That is the entire argument for this job.
+  #
+  # ⚠️ THE FLAGLESS JOB STAYS AND IS THE AUTHORITY ON WHAT SHIPS. This one runs
+  # a configuration no reader will ever load. It exists to check the map's
+  # behaviour, not the build; if the two ever disagree about something other
+  # than the handle, the flagless job is right.
+  #
+  # `next dev`, not `next build && next start`, for the same reason the job
+  # above uses it: the mobile probe stages a description fixture through psql
+  # and then reads a room page, and /rooms/[slug] is prerendered with
+  # revalidate=300 — under `next start` the fixture is invisible for five
+  # minutes and the prose assertions fail for a reason that is not about the
+  # map.
+  debug-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: supabase start
+        run: supabase start
+
+      - name: Assert database is reachable and seeded
+        # Same assertion as the main job, for the same reason: `supabase start`
+        # exiting 0 is not the same as Postgres accepting connections, and every
+        # map assertion below is about rooms that have to exist.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          export PGPASSWORD=postgres
+          rooms=$(psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -c 'select count(*) from rooms')
+          echo "rooms=$rooms"
+          [ "$rooms" = "17" ] || { echo "::error::expected 17 seeded rooms, got '$rooms'"; exit 1; }
+
+      - name: Capture stack env
+        run: |
+          set -euo pipefail
+          key=$(supabase status -o json | jq -r '.ANON_KEY')
+          [ -n "$key" ] && [ "$key" != "null" ] \
+            || { echo "::error::could not read ANON_KEY from the running stack"; exit 1; }
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$key"
+          } >> "$GITHUB_ENV"
+
+      # The map's worker is a GENERATED copy of a file in node_modules. `next
+      # dev` does not run `prebuild`, so this job syncs it explicitly — a
+      # drifted worker dies on load and the map requests NO TILES, silently,
+      # which is the exact failure every assertion below would then blame on
+      # something else.
+      - name: "check:worker"
+        run: npm run check:worker
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: next dev, WITH the debug handle
+        env:
+          NEXT_PUBLIC_MAP_DEBUG: '1'
+        run: |
+          set -euo pipefail
+          npm run dev &
+          for i in $(seq 1 90); do
+            curl -sf -o /dev/null http://127.0.0.1:3000/facts && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:3000/facts \
+            || { echo "::error::the app never became reachable"; exit 1; }
+
+      - name: "test:map WITH the handle (rendered masses, cameras, feature state)"
+        env:
+          BASE_URL: http://localhost:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:map 2>&1 | tee /tmp/map-debug.log
+          grep -q 'Map probe passed' /tmp/map-debug.log \
+            || { echo "::error::the map probe did not pass under the debug handle"; exit 1; }
+          # ⚠️ ZERO SKIPS IS THE POINT OF THIS JOB. If the flag silently fails to
+          # reach the browser — a typo in the env name, a Next change to how
+          # NEXT_PUBLIC_* is inlined — every assertion this job exists for
+          # degrades to a named SKIP and the suite still exits 0. The floor
+          # would catch it eventually; this names the cause immediately.
+          s=$(grep -c '^  SKIP' /tmp/map-debug.log || true)
+          [ "$s" = "0" ] \
+            || { echo "::error::$s map assertions SKIPPED in the debug job — the handle did not reach the page, so this job proved nothing"; exit 1; }
+          # The two that had been red since 2026-08-09 while nobody was running
+          # them, pinned by name so they cannot quietly go back to skipping.
+          grep -q 'PASS  THE COUNTER-EXAMPLE: ARIA' /tmp/map-debug.log \
+            || { echo "::error::the ARIA counter-example did not pass — this is the assertion this job was built to run"; exit 1; }
+          grep -q 'PASS  THE CONTROL: Bellagio' /tmp/map-debug.log \
+            || { echo "::error::the Bellagio control did not pass — a counter-example without a control proves nothing"; exit 1; }
+          grep -q 'PASS  the filter panel is reset to a known state' /tmp/map-debug.log \
+            || { echo "::error::the panel-reset assertion did not run — the two above pass or fail on leftover filter state without it"; exit 1; }
+          grep -q 'PASS  the sourced buildings are RENDERED' /tmp/map-debug.log \
+            || { echo "::error::the rendered-mass assertion did not run — it is the whole reason the handle exists"; exit 1; }
+          n=$(grep -c '  PASS' /tmp/map-debug.log || true)
+          echo "map assertions WITH the handle: $n"
+          # 45, measured 2026-08-11 against 27 in the flagless job — so this job
+          # recovers 18. Raise it when assertions are added; never lower it.
+          [ "$n" -ge 45 ] \
+            || { echo "::error::only $n map assertions ran with the handle (expected >= 45)"; exit 1; }
+
+      - name: "test:mobile WITH the handle (the camera and the skyline sweep)"
+        env:
+          PSQL: psql
+          BASE_URL: http://localhost:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:mobile 2>&1 | tee /tmp/mobile-debug.log
+          grep -q '0 failed' /tmp/mobile-debug.log \
+            || { echo "::error::the mobile probe reported failures under the debug handle"; exit 1; }
+          s=$(grep -c '^  SKIP' /tmp/mobile-debug.log || true)
+          [ "$s" = "0" ] \
+            || { echo "::error::$s mobile assertions SKIPPED in the debug job — the handle did not reach the page"; exit 1; }
+          # THE FOUR-VIEWPORT SWEEP is the assertion Phil's screenshot settled
+          # by hand three times. Safari draws its URL bar over the page, so the
+          # canvas is ~600px where the screen is 844 — the corridor fit is
+          # measured against the viewport it actually gets, at four heights.
+          grep -q 'PASS  the skyline draws at iPhone SE' /tmp/mobile-debug.log \
+            || { echo "::error::the shortest-viewport skyline assertion did not run — it is the one that has inverted three times"; exit 1; }
+          # Safari draws its URL bar OVER the page, so the canvas is ~400px
+          # where the screen reports 844. Measuring the screen instead of the
+          # viewport is how this assertion passed against a flat frame twice.
+          grep -q "PASS  the skyline draws at Safari's real viewport" /tmp/mobile-debug.log \
+            || { echo "::error::the Safari-viewport skyline assertion did not run"; exit 1; }
+          grep -q 'PASS  all 17 rooms are accounted for at 390px' /tmp/mobile-debug.log \
+            || { echo "::error::the room-reachability assertion did not run"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/mobile-debug.log || true)
+          echo "mobile assertions WITH the handle: $n"
+          # 102, measured 2026-08-11 against 89 in the flagless job — 13
+          # recovered. Raise it when assertions are added; never lower it.
+          [ "$n" -ge 102 ] \
+            || { echo "::error::only $n mobile assertions ran with the handle (expected >= 102)"; exit 1; }
