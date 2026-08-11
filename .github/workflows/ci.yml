@@ -63,8 +63,16 @@ jobs:
           # 169 on 2026-08-10: +6 for lib/tournaments — how a schedule reads.
           # 172 on 2026-08-10: +3 for the room-timezone parse — an evening event
           # belongs to the day it runs, not the UTC day.
+          # 195 on 2026-08-11: +17 for lib/qr — the encoder written rather than
+          # depended on, and its tables checked three ways: data + EC = the
+          # version total, the version total = the free modules the geometry
+          # leaves, and a round trip through an independent decoder. A wrong
+          # NUMBER in those tables makes a symbol that renders perfectly and
+          # does not scan, which nothing else in this repo could see.
+          # +6 for lib/install — platform detection against real user-agent
+          # strings, including the iPad that reads as a laptop.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 172 ] \
+          [ "${n:-0}" -ge 195 ] \
             || { echo "::error::test:unit ran $n tests (expected >= 172) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
@@ -346,6 +354,11 @@ jobs:
             || { echo "::error::the overflow assertions did not run — they are the point of this gate"; exit 1; }
           grep -q 'PASS  facts: the rank qualifier survives on the card' /tmp/mobile.log \
             || { echo "::error::the rank-qualifier assertion did not run — a bare '#3' with no sort is a number attached to nothing"; exit 1; }
+          # ONE NAV, NOT TWO. This shipped broken from the day the bottom bar
+          # landed and no assertion could see it, so its absence is a hard
+          # failure rather than a quiet drop in the count.
+          grep -q 'PASS  facts: the HEADER nav is gone' /tmp/mobile.log \
+            || { echo "::error::the one-nav assertion did not run — the header nav shipped alongside the bottom bar for two days without it"; exit 1; }
           n=$(grep -c '^  PASS' /tmp/mobile.log || true)
           echo "mobile assertions: $n"
           # 43 IN THIS CONFIGURATION, 52 WITH THE DEBUG HANDLE.
@@ -375,9 +388,24 @@ jobs:
           # 65 on 2026-08-10: +6 for the tournaments section at 390px, including
           # empty-safe on a room that has none.
           # 65 on 2026-08-10: the tournaments page at 390px.
+          # 83 on 2026-08-11: +8 for /install joining the per-surface sweep,
+          # +5 for the FOOTER clearing the nav on every page — the old clearance
+          # was a spacer inside <main> and this sweep only ever looked at
+          # `main *`, so a footer buried under the fixed bar would have been
+          # invisible to every assertion in the file. +2 for the one-branch rule
+          # and the drawn glyph, +3 for the QR at 390px on the forced desktop
+          # branch, which is where a fractional module width would show up.
+          # 89 on 2026-08-11: +6 for ONE NAV, NOT TWO. The bottom bar's entire
+          # justification is that the header drops its links below this
+          # breakpoint, and that had never been true: the header nav carried
+          # `display: flex` as an inline style, which beats the media query's
+          # `display: none`, so every phone page shipped eight destinations in
+          # two bars. Every assertion in this file passed throughout — the
+          # header scrolls sideways by design, so even the overflow gate was
+          # content. Found by looking at a screenshot, not by a probe.
           # Raise this when assertions are added; never lower it to pass a run.
-          [ "$n" -ge 65 ] \
-            || { echo "::error::only $n mobile assertions ran (expected >= 65) — the suite shrank"; exit 1; }
+          [ "$n" -ge 89 ] \
+            || { echo "::error::only $n mobile assertions ran (expected >= 89) — the suite shrank"; exit 1; }
           # A skip must stay a skip. If these ever stop being skipped without
           # the floor moving, something changed configuration silently.
           s=$(grep -c '^  SKIP' /tmp/mobile.log || true)
@@ -401,14 +429,41 @@ jobs:
             || { echo "::error::the no-stale-figures assertion did not run — same"; exit 1; }
           grep -q 'PASS  NO page HTML is in the cache' /tmp/pwa.log \
             || { echo "::error::the cache-contents assertion did not run — it is the strongest form of the promise"; exit 1; }
+          # ⚠️ THE QR IS DECODED FROM RENDERED PIXELS, and that assertion is the
+          # only thing in this repo that can see a wrong or unscannable QR. It
+          # renders as a tidy square either way: right size, right contrast,
+          # passes the palette gate, and fails only in a stranger's phone.
+          grep -q 'PASS  the QR encodes the install URL' /tmp/pwa.log \
+            || { echo "::error::the QR decode did not run — a wrong QR is invisible to every other check"; exit 1; }
+          grep -q 'PASS  the QR keeps its four-module quiet zone' /tmp/pwa.log \
+            || { echo "::error::the quiet-zone assertion did not run — it is the commonest reason a valid QR will not scan"; exit 1; }
+          # A BUTTON THAT DOES NOTHING WHEN TAPPED is the failure the whole
+          # Android design was shaped around. Both halves are pinned: it must
+          # not appear without an offer, and dismissing must not re-arm it onto
+          # a consumed event that would throw.
+          grep -q 'PASS  no install button when the browser has not offered a prompt' /tmp/pwa.log \
+            || { echo "::error::the dead-button assertion did not run"; exit 1; }
+          grep -q 'PASS  dismissing REMOVES the button' /tmp/pwa.log \
+            || { echo "::error::the re-arm assertion did not run — a second tap on a consumed event throws"; exit 1; }
+          grep -q 'PASS  and the sign-in form is not offered inside the app' /tmp/pwa.log \
+            || { echo "::error::the installed-app trap assertion did not run — that session can never arrive"; exit 1; }
           n=$(grep -c '^  PASS' /tmp/pwa.log || true)
           echo "pwa assertions: $n"
-          # 23 — the full local count. Nothing here is flag-gated: the worker
+          # 50 IN CI, 51 ON macOS — and the one difference is deliberate.
+          #
+          # Chromium exposes BarcodeDetector on macOS and Android, backed by the
+          # OS decoder, and NOT on Linux. So the "a REAL scanner agrees"
+          # assertion is a second, independent opinion on the QR when the
+          # platform has one and a named SKIP when it does not. The floor is set
+          # to the Linux count so CI does not fail for lacking a decoder it was
+          # never going to have; locally it runs and is worth having.
+          #
+          # 23 before 2026-08-11. Nothing else here is flag-gated: the worker
           # registers under `next dev`, so unlike the map gate this floor is not
-          # reduced. If it ever drops, the worker stopped registering and the
-          # probe will say so on its SKIP lines rather than passing vacuously.
-          [ "$n" -ge 23 ] \
-            || { echo "::error::only $n pwa assertions ran (expected >= 23) — check the SKIP lines above"; exit 1; }
+          # otherwise reduced. If it drops, the worker stopped registering and
+          # the probe will say so on its SKIP lines rather than passing vacuously.
+          [ "$n" -ge 50 ] \
+            || { echo "::error::only $n pwa assertions ran (expected >= 50) — check the SKIP lines above"; exit 1; }
 
       - name: "test:palette (every text node clears its floor, opacity composited)"
         env:
@@ -432,6 +487,15 @@ jobs:
             || { echo "::error::the rendered-first guard did not run — an empty page passes every emptiness check"; exit 1; }
           grep -q 'gold never fills a surface' /tmp/palette.log \
             || { echo "::error::the gold-fill assertion did not run — the one discipline rule the palette law names"; exit 1; }
+          # ⚠️ THE FILL DETECTOR MUST BE ABLE TO SEE A FILL. Until 2026-08-11 it
+          # could not: the target colours are read from custom properties, which
+          # return hex, and the parser understood rgb() only — so `sameFill()`
+          # answered false for every element and BOTH fill assertions passed on
+          # an empty list, on every screen, since the file was written. The
+          # positive control is the only thing standing between that and a
+          # repeat, so its absence is a hard failure rather than a lower count.
+          grep -q 'PASS  install (Android, prompt offered): and the detector CAN see a fill' /tmp/palette.log \
+            || { echo "::error::the fill-detector control did not run — 'no more than one filled action' is satisfied by a detector that finds nothing"; exit 1; }
           n=$(grep -c '^  PASS' /tmp/palette.log || true)
           echo "palette assertions: $n"
           # 31 on 2026-08-09: +6 for the room-detail screen, added so the new
@@ -445,6 +509,13 @@ jobs:
           # 51 on 2026-08-10: +13 for the Wynn room screen — the tournament text
           # nodes composited like every other.
           # 51 on 2026-08-10: the tournaments page text nodes, composited.
-          # 25 — the full local count; nothing here is flag-gated.
-          [ "$n" -ge 51 ] \
-            || { echo "::error::only $n palette assertions ran (expected >= 51) — the suite shrank"; exit 1; }
+          # 72 on 2026-08-11: +20 for the four /install screens. Four, not one,
+          # because the page renders ONE branch per reader and the other two are
+          # unreachable from a desktop user agent — the iOS steps and the
+          # Android menu copy would never have been composited at all. The
+          # fourth stages a synthetic beforeinstallprompt so the install button
+          # exists to be measured; it is the app's only resting filled action.
+          # +1 for the fill-detector control that screen makes possible.
+          # nothing here is flag-gated.
+          [ "$n" -ge 72 ] \
+            || { echo "::error::only $n palette assertions ran (expected >= 72) — the suite shrank"; exit 1; }

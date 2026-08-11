@@ -15,8 +15,12 @@
 export const SITE_URL = 'https://checkitdown.com'
 
 /** The static routes, listed once. `/rooms/<slug>` is derived from the
- *  database — see `app/sitemap.ts` — and must never be added here. */
-export const STATIC_PATHS = ['/', '/facts', '/tournaments', '/promos'] as const
+ *  database — see `app/sitemap.ts` — and must never be added here.
+ *  `/install` IS listed and IS meant to be found: it is the answer to somebody
+ *  searching for how to get this on a phone, and a page nobody can find is the
+ *  exact problem it was built to solve. Its `?platform=` spellings are
+ *  `noindex, follow` at the page, the same ruling `/facts?compare=` carries. */
+export const STATIC_PATHS = ['/', '/facts', '/tournaments', '/promos', '/install'] as const
 
 /**
  * Paths no crawler should follow, and the reason is not secrecy.

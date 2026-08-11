@@ -52,6 +52,25 @@ const SCREENS = [
   ['facts + compare (the dim state)', '/facts?compare=venetian,south-point'],
   ['tournaments', '/tournaments'],
   ['promos', '/promos'],
+  /* THE DESKTOP BRANCH IS WHAT THIS VIEWPORT GETS ANYWAY — Chromium sends a
+     Macintosh/Linux user agent — but it is forced, so the screen this probe
+     measures cannot silently change when the detection does. */
+  ['install (the QR branch)', '/install?platform=desktop'],
+  /* AND THE OTHER TWO, because their text nodes exist nowhere else. The iOS
+     steps carry the only <strong> inside body copy in the app and the Android
+     branch carries the ONE FILLED ACTION on this page — neither is reachable
+     from a desktop user agent, so neither would ever be composited. A screen
+     that is only rendered for phones is still a screen. */
+  ['install (iOS steps)', '/install?platform=ios'],
+  ['install (Android)', '/install?platform=android'],
+  /* THE ONE FILLED ACTION ON THIS PAGE, WHICH OTHERWISE NEVER RENDERS.
+     The install button only exists once the browser has fired
+     `beforeinstallprompt`, and headless Chromium never does — so the accent
+     fill and the paper label on it would ship unmeasured, on the one screen in
+     the app that has a resting CTA at all. The third element dispatches a
+     synthetic event after mount. It is a stub of the BROWSER; what it renders
+     is our button, with our colours, which is what this probe measures. */
+  ['install (Android, prompt offered)', '/install?platform=android', 'offer'],
 ]
 
 let pass = 0, fail = 0
@@ -62,11 +81,42 @@ const ok = (name, cond, detail = '') => {
 
 /* Everything below runs INSIDE the page. */
 const AUDIT = () => {
+  /**
+   * ⚠️ HEX TOO, AND THIS IS WHY THE TWO FILL ASSERTIONS BELOW WERE VACUOUS.
+   *
+   * `getComputedStyle(el).backgroundColor` always comes back as `rgb(...)`, so
+   * a parser that only read that shape worked perfectly for every element on
+   * the page. But the TARGET colours are read from custom properties —
+   * `getPropertyValue('--cid-accent-700')` returns the token's own text,
+   * `#1E4E86`, because a custom property is a string and the engine does not
+   * resolve it to a colour. That returned null, `fillTarget` was null, and
+   * `sameFill()` therefore answered false for every element ever tested.
+   *
+   * So "no more than one filled action" was comparing against nothing and
+   * passing on an empty list, and "gold never fills a surface" skipped all four
+   * gold steps through `if (!g) continue` and asserted an empty array was
+   * empty. Both had reported PASS on every screen since the file was written —
+   * including, correctly-looking, the note in the source explaining that the
+   * measured count was zero. The measured count was zero because the
+   * measurement could not return anything else.
+   *
+   * Found 2026-08-11 by adding a screen that deliberately renders the app's one
+   * resting filled action and watching the gate report zero fills on it.
+   */
   const parse = (s) => {
-    const m = String(s).match(/rgba?\(([^)]+)\)/)
-    if (!m) return null
-    const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number)
-    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }
+    const str = String(s).trim()
+    const m = str.match(/rgba?\(([^)]+)\)/)
+    if (m) {
+      const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number)
+      return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }
+    }
+    const hex = str.match(/^#([0-9a-f]{3,8})$/i)
+    if (!hex) return null
+    let h = hex[1]
+    if (h.length === 3 || h.length === 4) h = [...h].map((c) => c + c).join('')
+    if (h.length !== 6 && h.length !== 8) return null
+    const n = (i) => parseInt(h.slice(i, i + 2), 16)
+    return { r: n(0), g: n(2), b: n(4), a: h.length === 8 ? n(6) / 255 : 1 }
   }
   const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }
   const Y = (c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
@@ -205,10 +255,20 @@ if (!staged) {
 }
 try {
 
-for (const [name, path] of SCREENS) {
+for (const [name, path, stage] of SCREENS) {
   console.log(`\n== ${name}  (${path}) ==`)
   await page.goto(BASE + path, { waitUntil: 'networkidle' }).catch(() => {})
   await page.waitForTimeout(400)
+
+  if (stage === 'offer') {
+    await page.evaluate(() => {
+      const e = new Event('beforeinstallprompt')
+      e.prompt = async () => {}
+      e.userChoice = Promise.resolve({ outcome: 'dismissed', platform: 'web' })
+      window.dispatchEvent(e)
+    })
+    await page.waitForTimeout(300)
+  }
 
   /* ⚠️ EXPAND THE ATTRIBUTION BEFORE SWEEPING. It is collapsed to a ⓘ on load
      now (2026-08-10), and a collapsed credit is `display: none` — invisible to
@@ -244,16 +304,34 @@ for (const [name, path] of SCREENS) {
   }
   /* AT MOST ONE, WHICH IS WHAT THE LAW ACTUALLY SAYS: "carries the one filled
      action per screen … NOTHING ELSE IS FILLED." That is a ceiling, not a
-     quota. Measured at rest the four public surfaces carry ZERO — the filled
-     action on this product appears on interaction (the map popup's CTA, a
-     checked filter box) rather than sitting on the page. Asserting a floor of
-     one here would not have found a bug; it would have demanded four new CTAs
-     to satisfy a probe, which is a design decision and not a palette one. The
-     count is reported either way so the look-gate can rule on it. */
+     quota. At rest the public surfaces carry ZERO — the filled action on this
+     product appears on interaction (the map popup's CTA, a checked filter box)
+     rather than sitting on the page. Asserting a floor of one here would not
+     have found a bug; it would have demanded new CTAs to satisfy a probe, which
+     is a design decision and not a palette one. The count is reported either
+     way so the look-gate can rule on it.
+     ⚠️ THAT ZERO WAS NOT A MEASUREMENT UNTIL 2026-08-11. The colour parser read
+     `rgb()` only, and the target is read from a custom property that returns
+     hex — so `sameFill()` answered false for every element on every screen and
+     this assertion passed on an empty list it could never have filled. The
+     sentence above was written from that empty list and happened to be right.
+     It is now measured: /install with the prompt offered reports exactly one,
+     and it is the install button. If this line ever reads 0 on that screen
+     again, the parser has regressed and not the design. */
   ok(`${name}: no more than one filled action`, r.filled.length <= 1,
     `${r.filled.length} filled with ${r.accent}${r.filled.length ? ` — ${r.filled.join(', ')}` : ' (the CTA appears on interaction)'}`)
   ok(`${name}: gold never fills a surface`, r.goldFills.length === 0,
     r.goldFills.length ? r.goldFills.join(', ') : 'no gold-filled element')
+
+  /* THE POSITIVE CONTROL FOR THE CEILING, and the reason this screen is in the
+     list at all. "No more than one" is satisfied by a detector that finds
+     nothing — which is exactly what this file did for its whole life. One
+     screen has to prove the detector can still see a fill, or the ceiling is
+     back to guarding an empty list. */
+  if (stage === 'offer') {
+    ok(`${name}: and the detector CAN see a fill — the ceiling is not guarding an empty list`,
+      r.filled.length === 1, r.filled.join(', ') || 'NOTHING DETECTED — the fill parser has regressed')
+  }
 
   /* THE PROSE ACTUALLY RENDERED. Without this the room-detail screen would
      report five cheerful passes against a page whose description section is

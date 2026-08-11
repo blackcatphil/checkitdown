@@ -435,6 +435,12 @@ const page2 = await ctx.newPage()
 for (const [path, label] of [
   ['/facts', 'facts'], ['/rooms/wynn-encore', 'room detail'],
   ['/tournaments', 'tournaments'], ['/promos', 'promos'], ['/', 'map'],
+  /* /install is the newest surface and the one a reader is most likely to
+     arrive at on an unfamiliar phone — scanned off somebody's laptop, in a
+     poker room, with no idea what the site is yet. This context is an iPhone,
+     so it measures the iOS branch: the one with the numbered steps and the
+     drawn glyph. */
+  ['/install', 'install'],
 ]) {
   await page2.goto(`${BASE}${path}`, { waitUntil: 'load' })
   await page2.waitForTimeout(1200)
@@ -503,13 +509,43 @@ for (const [path, label] of [
     }).map((e) => `${e.tagName}:${(e.textContent ?? '').trim().slice(0, 16)}`),
     headHidden: [...document.querySelectorAll('.cid-thead')]
       .every((e) => getComputedStyle(e).display === 'none'),
+    /* ⚠️ NOT BOTH NAVS. The bottom bar's whole justification is that the header
+       drops its links below this breakpoint — "two navs on a 390px screen is
+       two answers to 'where am I'". It had never been asserted, and it had
+       never been true: the header nav carried `display: flex` as an INLINE
+       style, which beats the media query's `display: none`, so every phone page
+       shipped eight destinations in two bars. Every other assertion in this
+       file passed throughout — the header scrolls sideways by design, so even
+       the overflow gate was happy. */
+    headerNav: (() => {
+      const n = document.querySelector('.cid-nav')
+      if (!n) return null
+      return { display: getComputedStyle(n).display, width: Math.round(n.getBoundingClientRect().width) }
+    })(),
     rankQ: document.querySelector('.cid-rank-q')?.textContent ?? null,
+    /* THE FOOTER IS THE LAST THING IN THE DOCUMENT NOW, so it — not the last
+       paragraph of main — is what the fixed nav can bury. The old clearance
+       lived on `.cid-page::after`, a spacer INSIDE main, and this scan only
+       ever looked at `main *`: a footer sitting under the bar would have been
+       invisible to every assertion in this file. */
+    foot: (() => {
+      const f = document.querySelector('.cid-sitefoot')
+      if (!f) return null
+      const link = f.querySelector('a')
+      const b = (link ?? f).getBoundingClientRect()
+      return { bottom: Math.round(b.bottom), h: Math.round(b.height), href: link?.getAttribute('href') ?? null }
+    })(),
+    /* /install only: the branch that rendered, and how many. */
+    branches: [...document.querySelectorAll('[data-install]')].map((e) => e.dataset.install),
+    glyph: document.querySelector('.cid-glyph svg') != null,
   }))
   ok(r.scrollW <= r.clientW + 1, `${label}: no horizontal overflow (${r.scrollW} vs ${r.clientW})`)
   /* THE NAV IS PART OF EVERY PAGE NOW, so every page asserts it rather than one
      page asserting it once. A bar that renders on four routes and not the fifth
      is the failure this catches. */
   ok(r.nav !== null && r.nav.items === 4, `${label}: the bottom nav is present with 4 destinations`)
+  ok(r.headerNav !== null && r.headerNav.display === 'none' && r.headerNav.width === 0,
+    `${label}: the HEADER nav is gone — one nav, not two${r.headerNav ? ` (display: ${r.headerNav.display}, ${r.headerNav.width}px)` : ' — no .cid-nav found at all'}`)
   if (r.nav) {
     ok(r.nav.short === 0, `${label}: every nav item clears 44px${r.nav.short ? ` — ${r.nav.short} short` : ''}`)
     /* THE HOME INDICATOR. `viewportFit: cover` draws under it; without the
@@ -526,13 +562,50 @@ for (const [path, label] of [
       `${label}: content clears the nav (deepest ${r.deepestContent.bottom} vs nav top ${r.nav.top})`)
   }
   ok(r.small.length === 0, `${label}: every standalone target clears 44px${r.small.length ? ` — ${r.small.slice(0, 3).join(', ')}` : ''}`)
+  /* THE ENTRY POINT HAS TO BE REACHABLE, which for a fixed bottom bar means
+     "ends above it" and for a 44px ruling means "is big enough to hit". A
+     footer link nobody can tap is the same as no entry point at all, and the
+     ruling was that this link is the ONLY one. */
+  ok(r.foot !== null && r.foot.href === '/install' && r.nav !== null && r.foot.bottom <= r.nav.top + 1,
+    `${label}: the footer's install link clears the nav (bottom ${r.foot?.bottom ?? '?'} vs nav top ${r.nav?.top ?? '?'})`)
   if (path === '/facts') {
     ok(r.headHidden, 'facts: the table head is gone — these are cards, not a squeezed table')
     /* RANK IS TIED TO THE SORT. On the table the qualifier is the column head;
        with the head hidden, "#3" alone is a number attached to nothing. */
     ok((r.rankQ ?? '').length > 0, `facts: the rank qualifier survives on the card (${r.rankQ ?? 'MISSING'})`)
   }
+  if (path === '/install') {
+    /* ONE SET OF INSTRUCTIONS. A reader who has to work out which third of the
+       page is theirs concludes that none of it is, and the reader who pays that
+       tax is the one who was least sure to begin with. */
+    ok(r.branches.length === 1 && r.branches[0] === 'ios',
+      `install: an iPhone gets ONE branch and it is the iOS one (${r.branches.join(', ') || 'none'})`)
+    ok(r.glyph, 'install: the Share glyph is drawn rather than screenshotted')
+  }
 }
+
+/* THE QR AT 390px, WHICH ONLY EXISTS IF SOMEBODY ASKS FOR IT. The desktop
+   branch is reachable from a phone through the switcher, and a 296px image
+   inside a padded card is exactly the shape that pushes a 390px page sideways.
+   Measured on the branch rather than assumed absent. */
+await page2.goto(`${BASE}/install?platform=desktop`, { waitUntil: 'load' })
+await page2.waitForTimeout(800)
+const qr = await page2.evaluate(() => {
+  const img = document.querySelector('.cid-qr img')
+  const card = document.querySelector('.cid-qr')
+  return {
+    scrollW: document.documentElement.scrollWidth,
+    clientW: document.documentElement.clientWidth,
+    imgW: img ? Math.round(img.getBoundingClientRect().width) : null,
+    cardRight: card ? Math.round(card.getBoundingClientRect().right) : null,
+    modules: card ? Number(getComputedStyle(card).getPropertyValue('--cid-qr-modules')) : null,
+  }
+})
+ok(qr.imgW !== null, `install: the QR renders on the forced desktop branch (${qr.imgW}px)`)
+ok(qr.scrollW <= qr.clientW + 1,
+  `install (desktop branch): no horizontal overflow (${qr.scrollW} vs ${qr.clientW})`)
+ok(qr.modules > 0 && qr.imgW % qr.modules === 0,
+  `install (desktop branch): still a whole number of pixels per module at 390px (${qr.imgW}px / ${qr.modules} modules)`)
 
 /* ---------------------------------------------------------------------
    THE CONSOLE, AND THE VIEWPORT SAFARI ACTUALLY GIVES

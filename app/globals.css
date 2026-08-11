@@ -43,6 +43,24 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   padding: 0 var(--cid-gutter);
 }
 
+/* ⚠️ THE HEADER NAV'S LAYOUT LIVES HERE, NOT INLINE — 2026-08-11.
+   It was `style={{ display: 'flex', … }}` on the element in layout.tsx, and an
+   inline style beats any class rule, so `.cid-nav { display: none }` in the
+   phone query NEVER APPLIED. Every phone page shipped BOTH navs: the header's
+   four links AND the bottom bar's four, which is the exact thing the bottom-bar
+   ruling forbids — "two navs on a 390px screen is two answers to 'where am
+   I'". Found by looking at a screenshot; no assertion in the suite could see it,
+   because the overflow gate passes fine (the header scrolls sideways by design)
+   and nothing had ever asked whether the header nav was DISPLAYED.
+   Same mechanism as the `.cid-page` padding note further down. That one was
+   worked around with a pseudo-element; this one is fixed at the cause, because
+   nothing else needs the inline style. */
+.cid-nav {
+  display: flex;
+  gap: var(--cid-space-6);
+  min-width: 0;
+}
+
 /* THE EYEBROWS ARE WHERE GOLD DOES THE MOST WORK. They were dim grey — a role
    aubergine was never going to take, because aubergine is the commitment
    colour and an eyebrow commits to nothing. */
@@ -631,29 +649,28 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
      the handle tappable, and the probe confirmed that — but the sheet still
      ran 29px PAST the nav's top edge and simply covered it. Tappable and
      correct are different things: a sheet drawn over the nav hides two of its
-     four destinations. `margin-bottom` shortens the panel instead, so the two
-     never share pixels; the padding is then just ordinary inner space. */
+     four destinations. The padding is ordinary inner space; the CLEARANCE it
+     used to carry as a margin has moved to the body — see below. */
   .cid-mappanel {
-    margin-bottom: var(--cid-botnav-clear);
     padding-bottom: var(--cid-space-6);
   }
-  /* CLEARANCE AS A SPACER, BECAUSE PADDING CANNOT WIN HERE.
-     Every `<main className="cid-page">` sets a `padding` SHORTHAND inline, and
-     an inline style beats any class rule — so this block's padding-bottom has
-     NEVER applied on any page, which means the `env(safe-area-inset-bottom)` it
-     used to carry never applied either. That was live and invisible until the
-     nav gave it something to fail against.
-     Rewriting those eleven inline paddings would also restore the class's
-     left/right gutter that each of them zeroes, which is a DESKTOP change and
-     out of scope for a mobile ruling. A pseudo-element is a CHILD: it stacks
-     below the last content inside the same box, inline padding cannot reach it,
-     and it exists only inside this query. The map page does not use .cid-page —
-     its sheet clears the bar by margin instead. */
-  .cid-page::after {
-    content: '';
-    display: block;
-    height: var(--cid-botnav-clear);
-  }
+  /* ═══ ONE OWNER FOR THE BOTTOM CLEARANCE, 2026-08-11 ═══
+     History, because the shape of it is the lesson. The nav is `position:
+     fixed`, so the last thing in the document sits under it. The first fix
+     tried `padding-bottom` on `.cid-page`, which NEVER APPLIED: every
+     `<main className="cid-page">` sets a `padding` shorthand inline, and an
+     inline style beats a class rule. The second fix was a `::after` spacer
+     inside main — a child, which inline padding cannot reach — plus a
+     `margin-bottom` on the map panel, because the map page has no `.cid-page`
+     at all. Two rules, two different mechanisms, for one requirement.
+     THE FOOTER MADE BOTH REDUNDANT. It is in the root layout, so it is the
+     last element of EVERY page including the map, and the requirement collapses
+     back to its simplest statement: reserve the bar's height once, at the
+     bottom of the document. `body` is the one box no page overrides inline, so
+     this is the version that can actually be stated where it is meant.
+     `--cid-botnav-clear` already carries `env(safe-area-inset-bottom)`; adding
+     the inset again would reserve the home-indicator row twice. */
+  body { padding-bottom: var(--cid-botnav-clear); }
   /* The map fills its cell rather than the page, so the sheet's own foot is
      what clears the bar there — but the ATTRIBUTION is pinned to the canvas and
      would sit behind it. */
@@ -807,5 +824,149 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
     min-height: var(--cid-target);
     display: inline-flex;
     align-items: center;
+  }
+}
+
+/* ═══ THE FOOTER — one link, on every page ═══
+   The whole entry point to /install, and the argument for it being this quiet
+   lives in app/SiteFooter.tsx. Treated like navigation rather than like prose:
+   no gold, no underline, because gold is the resting highlight and a footer
+   link is not a highlight. --cid-dim clears the 4.5:1 floor at 6.02:1. */
+.cid-sitefoot {
+  border-top: 1px solid var(--cid-line-1);
+  margin-top: var(--cid-space-9);
+  /* MEASURED, NOT GUESSED: without this the link's box bottom landed on exactly
+     the same y as the fixed nav's top edge on a phone — clearing it by nothing.
+     Two adjacent tap targets sharing an edge is how you tap PROMOS and open
+     /install. */
+  padding-bottom: var(--cid-space-5);
+}
+.cid-foot-link {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  color: var(--cid-dim);
+  border-bottom: none;
+  /* A STANDALONE TARGET, so it carries the 44px floor at every width — desktop
+     included, which is the standing ruling and not a mobile concession. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--cid-target);
+  padding: var(--cid-space-4) 0;
+}
+.cid-foot-link:hover { color: var(--cid-text); border-bottom: none; }
+
+/* ═══ /install ═══ */
+
+/* The one thing on this page that is neither a fact nor a control: a note
+   about what the app does NOT do. Same left-rule treatment as the room prose,
+   because it is the same kind of thing — a paragraph making a claim in words,
+   deliberately not dressed as a measured figure. */
+.cid-install-note {
+  border-left: 2px solid var(--cid-gold-line);
+  padding: var(--cid-space-2) 0 var(--cid-space-2) var(--cid-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cid-space-3);
+}
+
+/* NUMBERED STEPS, MONOSPACED MARKERS. The counter is furniture — it says which
+   tap you are on, so it reads like every other label in the app rather than
+   like a figure. `list-style: none` plus a counter, because a native marker
+   cannot be given the app's type. */
+.cid-steps {
+  list-style: none;
+  counter-reset: cid-step;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cid-space-6);
+  max-width: var(--cid-measure);
+}
+.cid-steps > li {
+  counter-increment: cid-step;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--cid-space-4);
+}
+.cid-steps > li::before {
+  content: counter(cid-step);
+  font: var(--cid-num);
+  color: var(--cid-gold-300);
+  /* Sits on the first line of its step rather than at the top of the box. */
+  line-height: 1.55;
+}
+.cid-step-body {
+  font: var(--cid-body);
+  color: var(--cid-text-2);
+}
+.cid-step-body strong { color: var(--cid-text); font-weight: 600; }
+
+/* The drawn Share glyph, on its own line under the step it belongs to. A tile
+   rather than a bare icon so it reads as "this thing, on your screen" — the
+   iOS toolbar is a light chrome, and a stroke floating on the page ground does
+   not look like a button at all. */
+.cid-glyph {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin-top: var(--cid-space-3);
+  color: var(--cid-accent-300);
+  background: var(--cid-ink-700);
+  border: 1px solid var(--cid-line-2);
+  border-radius: var(--cid-r-md);
+}
+
+/* THE ONE FILLED ACTION on this screen, and it only exists when the browser has
+   actually offered a prompt — see the state note in InstallGuide.tsx. */
+.cid-install-btn {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-action);
+  color: var(--cid-paper);
+  background: var(--cid-accent-700);
+  border: none;
+  border-radius: var(--cid-r-sm);
+  min-height: var(--cid-target);
+  padding: 0 var(--cid-space-7);
+  cursor: pointer;
+  align-self: flex-start;
+}
+.cid-install-btn:hover { background: var(--cid-accent-600); }
+.cid-install-btn[disabled] { cursor: default; opacity: 1; }
+
+/* THE QR CODE SITS ON PAPER, and the card is part of the symbol rather than
+   decoration around it: the SVG carries its own four modules of quiet zone, and
+   the padding here is what keeps the app's dark page from crowding it further.
+   A QR printed to the edge of its ground is a QR a camera cannot find. */
+.cid-qr {
+  display: inline-flex;
+  background: var(--cid-paper);
+  padding: var(--cid-space-4);
+  border-radius: var(--cid-r-md);
+  align-self: flex-start;
+}
+/* A WHOLE NUMBER OF PIXELS PER MODULE, AT EVERY WIDTH.
+   `--cid-qr-modules` is set on .cid-qr by the page and is the symbol's width in
+   modules INCLUDING its quiet zone — derived from the encoded URL rather than
+   typed here, because a longer address grows the symbol and a literal would
+   quietly stop matching it.
+   The plain rule is the floor: never wider than the screen. The `round()` rule
+   on top snaps that width down to an exact multiple of the module grid, so no
+   module is a fraction of a pixel wider than its neighbour. Wrapped in
+   @supports because the fallback is merely a slightly softer symbol, which is
+   not worth an unsupported declaration invalidating the width entirely. */
+.cid-qr img {
+  display: block;
+  width: min(74vw, calc(var(--cid-qr-modules) * 8px));
+  height: min(74vw, calc(var(--cid-qr-modules) * 8px));
+}
+@supports (width: round(down, 10px, 3px)) {
+  .cid-qr img {
+    width: round(down, min(74vw, calc(var(--cid-qr-modules) * 8px)), calc(var(--cid-qr-modules) * 1px));
+    height: round(down, min(74vw, calc(var(--cid-qr-modules) * 8px)), calc(var(--cid-qr-modules) * 1px));
   }
 }

@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 
 import { BottomNav } from './BottomNav'
+import { InstallPromptCapture } from './InstallPromptCapture'
 import { ServiceWorker } from './ServiceWorker'
+import { SiteFooter } from './SiteFooter'
 
 import { SITE_URL } from '@/lib/site'
 import { readServerToken } from '@/lib/tokens-server'
@@ -119,7 +121,12 @@ function SiteHeader() {
           >
             Check It Down
           </Link>
-          <nav className="cid-nav" style={{ display: 'flex', gap: 'var(--cid-space-6)', minWidth: 0 }}>
+          {/* NO INLINE LAYOUT HERE. `display: flex` inline beat
+              `.cid-nav { display: none }` in the phone media query, so this nav
+              shipped on every phone alongside the bottom bar — two navs, which
+              the bottom-bar ruling exists to prevent. The layout is in
+              globals.css now; see the note above `.cid-nav`. */}
+          <nav className="cid-nav">
             {nav.map(([label, href]) => (
               <Link
                 key={href}
@@ -153,8 +160,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <ServiceWorker />
+        {/* ABOVE THE ROUTER ON PURPOSE. `beforeinstallprompt` fires once, on
+            whichever page the reader landed on, and /install is only ever
+            reached by a link from somewhere else — so a listener mounted on
+            that page would be mounted after the event it exists to catch. */}
+        <InstallPromptCapture />
         <SiteHeader />
         {children}
+        <SiteFooter />
         {/* Rendered on every route and hidden above the phone breakpoint by
             CSS, not by JS. A JS-gated nav would flash on first paint and would
             be absent from the server HTML that the contrast and overflow gates
