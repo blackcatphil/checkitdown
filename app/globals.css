@@ -158,10 +158,42 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
    no-raw-colour lint rule applies here as it does everywhere in app/.
    --------------------------------------------------------------------- */
 .maplibregl-map { background: var(--cid-ink-800); }
-.maplibregl-ctrl-attrib {
+/* BOTH SELECTORS, BECAUSE COMPACT MODE BRINGS ITS OWN COLOURS.
+   `.maplibregl-ctrl-attrib.maplibregl-compact` sets `color:#000` and
+   `background-color:#fff` at two classes of specificity — it only applies in
+   compact mode, so it was dormant until 2026-08-10 and switching the control on
+   activated it. The LINKS were unaffected (the rule below already claims them),
+   but the plain words between them — "Data from" — went black on our dark
+   control at 1.18:1. Caught by the palette sweep the same run the compact
+   control landed, which is the second contrast failure this attribution has
+   produced; the first one shipped. */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib.maplibregl-compact {
   background: var(--cid-ink-700) !important;
-  color: var(--cid-dim);
+  /* !important FOR THE SAME REASON THE BACKGROUND HAS IT. MapLibre's compact
+     rule is `.maplibregl-ctrl-attrib.maplibregl-compact` — two classes, exactly
+     the specificity of the selector above — and its stylesheet is imported by
+     MapShell, so it loads after this file and wins the tie. That is the precise
+     failure recorded below for the links, arriving a second time on the plain
+     text; raising specificity again would just move the race one round on. */
+  color: var(--cid-dim) !important;
   font: var(--cid-caption);
+}
+/* THE COLLAPSED BUTTON IS A CONTROL ON OUR MAP, so it wears our ink rather than
+   MapLibre's white disc — but its ⓘ is a data-URI SVG with NO fill, which
+   renders black. Black on ink-700 is an invisible control, and an invisible
+   attribution button is a hidden credit however present it is in the DOM.
+   `invert` flips the glyph to near-white; the background is set on the same
+   element so it is inverted too, which is why it is declared as the INVERSE of
+   the ink we want rather than the ink itself. Measured after the change, not
+   reasoned about.
+   24px is below the 44px target rule, which WCAG 2.5.8 exempts for controls
+   whose presentation is legally required — the same exemption the mobile probe
+   already applies to this element. */
+.maplibregl-ctrl-attrib-button {
+  background-color: var(--cid-paper) !important;
+  filter: invert(1);
+  border-radius: var(--cid-r-sm);
 }
 /* THE ATTRIBUTION LINKS WERE 1.14:1 AND HAD BEEN SINCE THE MAP SHIPPED.
    MapLibre's own stylesheet sets `.maplibregl-ctrl-attrib a { color: rgba(0,0,0,.75) }`

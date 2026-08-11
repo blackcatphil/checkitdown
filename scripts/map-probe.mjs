@@ -720,6 +720,53 @@ const pre = (cond, msg) => preFindings.push([cond, msg])
       `...and the count is the right one (${trap.checkedCount} checked)`)
   }
 
+  /* ═══ ATTRIBUTION: COLLAPSED, NEVER REMOVED — 2026-08-10 ═══
+     The full credit was 336px across a 390px map. It is now MapLibre's compact
+     ⓘ, minimised on load.
+     THIS IS A LICENCE CONDITION, not a layout preference: the OpenStreetMap and
+     OpenMapTiles data this map is built on requires the credit, and a product
+     that lectures everybody else about provenance does not get to strip one.
+     So "compact" is asserted not to have become "hidden": the control is
+     present, it is genuinely collapsed (otherwise nothing was reclaimed), and
+     ONE tap brings back the full text and every link. */
+  const attrib = await page2.evaluate(async () => {
+    const el = document.querySelector('.maplibregl-ctrl-attrib')
+    if (el == null) return null
+    const btn = el.querySelector('.maplibregl-ctrl-attrib-button')
+    const box = el.getBoundingClientRect()
+    const collapsed = {
+      w: Math.round(box.width), h: Math.round(box.height),
+      compact: el.classList.contains('maplibregl-compact'),
+      shown: el.classList.contains('maplibregl-compact-show'),
+      hasButton: btn != null,
+      buttonBox: btn ? Math.round(btn.getBoundingClientRect().width) : 0,
+    }
+    if (btn) { btn.click(); await new Promise((r) => setTimeout(r, 350)) }
+    const inner = el.querySelector('.maplibregl-ctrl-attrib-inner')
+    return {
+      collapsed,
+      openedW: Math.round(el.getBoundingClientRect().width),
+      text: (inner?.textContent ?? '').trim(),
+      innerVisible: inner != null && getComputedStyle(inner).display !== 'none',
+      links: [...el.querySelectorAll('a')].map((a) => a.textContent.trim()),
+    }
+  })
+
+  if (attrib == null) {
+    pre(false, 'the map credits its data — no attribution control at all')
+  } else {
+    pre(attrib.collapsed.hasButton && attrib.collapsed.compact,
+      `attribution is present in COMPACT form (${attrib.collapsed.w}x${attrib.collapsed.h}, button ${attrib.collapsed.buttonBox}px)`)
+    /* GENUINELY COLLAPSED. Compact-but-expanded is what MapLibre ships by
+       default, and it reclaims nothing — the whole point of the change. */
+    pre(!attrib.collapsed.shown && attrib.collapsed.w < 60,
+      `and it is actually collapsed at rest, not merely compact-capable (${attrib.collapsed.w}px wide)`)
+    pre(attrib.innerVisible && attrib.openedW > 200,
+      `ONE TAP restores the full credit (${attrib.collapsed.w}px → ${attrib.openedW}px)`)
+    pre(/OpenStreetMap/i.test(attrib.text) && attrib.links.length >= 3,
+      `and the credit names its sources with working links (${attrib.links.length}: ${attrib.links.join(', ')})`)
+  }
+
   const hasHandle2 = await page2.evaluate(() => typeof window.__cid_map !== 'undefined')
   if (!hasHandle2) {
     skipped.push('THE COUNTER-EXAMPLE: ARIA must not match $1/2 NLH — needs NEXT_PUBLIC_MAP_DEBUG=1 (asserted unconditionally in lib/stakes-filter.test.mjs)')

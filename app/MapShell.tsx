@@ -559,7 +559,17 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
         bearing: -18,
         /* OSM's tile usage policy REQUIRES visible attribution. It was actively
            suppressed once already; MapLibre shows it by default and it stays. */
-        attributionControl: { compact: false },
+        /* COMPACT — 2026-08-10. The full credit is 336px wide on a 390px map:
+           86% of the width and 4.33% of the area, for a line nobody reads twice.
+           Compact renders MapLibre's ⓘ button, which expands to the same credit
+           on tap.
+           COLLAPSED, NOT REMOVED. Attribution is a licence condition of the
+           OpenStreetMap and OpenMapTiles data this map is built on, and this
+           product does not get to be the one that strips a credit while
+           lecturing everybody else about provenance. The probes assert it is
+           present in compact form AND reachable in one tap, precisely so
+           "compact" cannot drift into "hidden". */
+        attributionControl: { compact: true },
       })
       mapRef.current = map
       map.on('render', () => { diagRef.current.lastFrame = performance.now() })
@@ -591,6 +601,20 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
 
     function wire(map: InstanceType<typeof MLMap>, T: Record<string, string>) {
     map.on('load', () => {
+      /* COLLAPSE THE ATTRIBUTION ON LOAD.
+         MapLibre's compact control adds `maplibregl-compact` AND
+         `maplibregl-compact-show` on setup — it shows the credit once and
+         minimises it on the first MAP interaction. On a phone that interaction
+         may never come: the reader scrolls the page, never touches the canvas,
+         and the credit stays expanded at 362px across a 390px map. So it is
+         minimised here instead, which is the same class MapLibre's own
+         `_updateCompactMinimize` removes, just earlier.
+         THE CREDIT IS NOT REMOVED and the button is MapLibre's own, so one tap
+         restores the full attribution — asserted in the map and palette probes,
+         because "compact" turning into "hidden" would be a licence problem and
+         not merely a layout one. */
+      const attrib = map.getContainer().querySelector('.maplibregl-ctrl-attrib')
+      attrib?.classList.remove('maplibregl-compact-show')
       /* NO TILE BUILDING LAYER. Extruding from tiles meant taking
          `render_height`, which OpenMapTiles pre-merges from height= and
          building:levels — that IS the MGM-Grand-as-a-two-storey-box problem.
@@ -1701,6 +1725,21 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
           </div>
         )}
 
+        {/* ═══ THE STATUS BADGE IS DEVELOPER-FACING, AND NOW IT SAYS SO ═══
+            z14.5 · 17 ROOMS · 3D told a player their zoom level. On a 390px
+            phone it cost 165x25 — 2.93% of the map — and the room count is
+            already in the header and on the panel handle, so the only unique
+            thing it carried was an instrument reading.
+            GATED ENTIRELY, NOT HIDDEN ON MOBILE. The rule in globals.css
+            already asserted "the badge is flag-gated and never ships" — and it
+            was not: only the extra tile/frame diagnostics inside it were, while
+            the badge itself rendered for everyone. A comment describing a gate
+            that does not exist is worse than no comment, so the gate is now
+            real rather than the claim being softened.
+            Nothing user-facing is lost. Tile loading has its own message above
+            ("Ground tiles are still downloading"), and PALETTE FAILED was
+            always a developer signal. */}
+        {MAP_DEBUG && (
         <div className="num cid-mapbadge">
           z{zoom} · {roster.length} ROOMS · {in3d ? '3D' : `FLAT · 3D AT z${MIN_3D_ZOOM}`}
           {tilesIn ? '' : ' · LOADING'}
@@ -1714,6 +1753,7 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
               + ` · motion ${reduced() ? 'REDUCED' : 'full'}`
             : ''}
         </div>
+        )}
       </div>
     </div>
   )

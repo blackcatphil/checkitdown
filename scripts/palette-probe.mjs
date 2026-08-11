@@ -200,6 +200,23 @@ for (const [name, path] of SCREENS) {
   console.log(`\n== ${name}  (${path}) ==`)
   await page.goto(BASE + path, { waitUntil: 'networkidle' }).catch(() => {})
   await page.waitForTimeout(400)
+
+  /* ⚠️ EXPAND THE ATTRIBUTION BEFORE SWEEPING. It is collapsed to a ⓘ on load
+     now (2026-08-10), and a collapsed credit is `display: none` — invisible to
+     a contrast sweep that only measures rendered text.
+     This sweep is what caught the attribution links at 1.14:1, a failure that
+     had shipped since the map did. If the collapse quietly took that text out
+     of scope, the regression could come back with every gate green — the
+     licence text would still be there, still one tap away, and still
+     unreadable. So it is opened first and measured with everything else. */
+  await page.evaluate(async () => {
+    const btn = document.querySelector('.maplibregl-ctrl-attrib-button')
+    if (btn && !document.querySelector('.maplibregl-compact-show')) {
+      btn.click()
+      await new Promise((r) => setTimeout(r, 300))
+    }
+  })
+  await page.waitForTimeout(200)
   const r = await page.evaluate(AUDIT)
 
   /* THE SCREEN LOADED AT ALL — asserted FIRST, and the only reason this line
