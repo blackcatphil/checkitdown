@@ -1107,3 +1107,25 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
   font: var(--cid-caption);
   color: var(--cid-text-3);
 }
+
+/* ═══ THE MARK IN THE HEADER ═══
+   32px in a 64px header, from the 64px generated PNG so a 2x display gets one
+   device pixel per source pixel. `flex: none` because the lockup sits in a
+   shrinkable flex group — the wordmark may compress, the mark may not, and a
+   squashed logo is worse than a truncated word.
+   Its own artwork comes from scripts/make-icons.py; nothing here redraws it. */
+.cid-mark {
+  display: block;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;   /* the art is a disc on ink; the corners are never seen */
+}
+
+@media (max-width: 860px) {
+  /* 28px on a phone. Measured: at 390px the lockup is the only thing left in
+     the header — the nav and the trust line are both gone — so there is room
+     for the mark AND the wordmark, and dropping either would be a change made
+     to a constraint that does not exist. */
+  .cid-mark { width: 28px; height: 28px; }
+}

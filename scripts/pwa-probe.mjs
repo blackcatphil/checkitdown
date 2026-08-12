@@ -22,6 +22,17 @@ import { chromium, devices } from 'playwright'
 
 import { INSTALL_URL } from '../lib/install.ts'
 import { decodeMatrix, matrixFromLuma } from '../lib/qr-decode.ts'
+import { readServerToken } from '../lib/tokens-server.ts'
+
+/* The same two tokens `scripts/make-icons.py` draws the mark from, read the
+   same way the manifest reads its colours — so this cannot pass against an icon
+   drawn from a palette the app has since left behind. */
+const readTokenRgb = (hex) => {
+  const h = hex.trim().replace('#', '')
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16))
+}
+const manifestBlue = readServerToken('--cid-accent-500')
+const manifestGold = readServerToken('--cid-gold-500')
 
 const BASE = process.argv[2] ?? process.env.BASE_URL ?? 'http://localhost:3100'
 
@@ -89,6 +100,72 @@ ok(meta.title.length > 0, 'iOS home-screen title is set', meta.title)
 ok(meta.touch.length > 0, 'apple-touch-icon is linked')
 ok(meta.theme === manifest?.theme_color,
   'the meta theme-color and the manifest agree', `${meta.theme} vs ${manifest?.theme_color}`)
+
+/**
+ * ⚠️ THE TAB ICON IS OURS, AND THIS IS NOT A HYPOTHETICAL CHECK.
+ *
+ * `app/favicon.ico` was the NEXT.JS DEFAULT — a black disc with a white
+ * triangle, Vercel's mark — and it had been the identity in every browser tab
+ * on checkitdown.com since launch. Nothing caught it: the file existed, the
+ * route returned 200, the manifest icons were all correct and all ours, and
+ * `<link rel="icon">` pointed at a real image. Every structural check passes on
+ * a framework's logo.
+ *
+ * So the assertion is about the PIXELS: our mark is a blue disc with a gold
+ * rim, both read from the same tokens the manifest uses, and an icon that is
+ * black-and-white contains neither. Sampled from the rendered image rather than
+ * compared to a stored hash, because a hash pins the file we happen to ship and
+ * says nothing about whether it is the right artwork.
+ */
+const iconPalette = await page.evaluate(async (tokens) => {
+  /* ⚠️ THE HREF THE BROWSER IS ACTUALLY GIVEN, not a guessed path. Next serves
+     app/icon.png from a hashed route and emits the <link> itself, so probing
+     '/icon.png' would test a URL no browser is told to use — and would have
+     kept passing after a rename. */
+  const link = document.querySelector('link[rel="icon"][href], link[rel="shortcut icon"][href]')
+  if (!link) return { error: 'no <link rel="icon"> in the document at all' }
+  const href = link.getAttribute('href')
+  const load = (src) => new Promise((res) => {
+    const i = new Image()
+    i.onload = () => res(i)
+    i.onerror = () => res(null)
+    i.src = src
+  })
+  const img = await load(href)
+  if (!img) return { error: `the declared icon did not load: ${href}` }
+  const c = document.createElement('canvas')
+  c.width = img.naturalWidth; c.height = img.naturalHeight
+  const cx = c.getContext('2d')
+  cx.drawImage(img, 0, 0)
+  const { data } = cx.getImageData(0, 0, c.width, c.height)
+  const near = (r, g, b, t, tol) => Math.abs(r - t[0]) <= tol && Math.abs(g - t[1]) <= tol && Math.abs(b - t[2]) <= tol
+  let blue = 0, gold = 0, total = 0
+  for (let i = 0; i < data.length; i += 4) {
+    total++
+    if (near(data[i], data[i + 1], data[i + 2], tokens.blue, 40)) blue++
+    if (near(data[i], data[i + 1], data[i + 2], tokens.gold, 40)) gold++
+  }
+  return { href, size: `${c.width}x${c.height}`, bluePct: Math.round((blue / total) * 100), goldPct: Math.round((gold / total) * 100) }
+}, {
+  blue: [...(readTokenRgb(manifestBlue))],
+  gold: [...(readTokenRgb(manifestGold))],
+})
+if (iconPalette.error) {
+  ok(false, 'the tab icon is our mark', iconPalette.error)
+} else {
+  ok(iconPalette.bluePct >= 15,
+    'the tab icon is OUR mark, not the framework default — it is mostly the brand blue',
+    `${iconPalette.href} ${iconPalette.size}, ${iconPalette.bluePct}% brand blue`)
+  ok(iconPalette.goldPct >= 2,
+    'and it carries the gold rim, which no default icon has',
+    `${iconPalette.goldPct}% gold`)
+}
+
+const icoRes = await page.request.get(`${BASE}/favicon.ico`)
+ok(icoRes.ok() && Number(icoRes.headers()['content-length'] ?? 1) > 0,
+  '/favicon.ico is served — still requested unconditionally by unfurlers and feed readers',
+  `${icoRes.status()} ${icoRes.headers()['content-type'] ?? ''}`)
+
 
 /* ── 2/3/4. The cache ──────────────────────────────────────────────────────
    EVERYTHING BELOW HAS ONE PRECONDITION: a registered, controlling service

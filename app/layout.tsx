@@ -109,6 +109,17 @@ function SiteHeader() {
             flex: '0 1 auto',
           }}
         >
+          {/* THE LOCKUP — mark then wordmark, one link.
+              ⚠️ THE SAME ARTWORK AS THE ICONS, not a redrawn SVG. A hand-drawn
+              copy would be a second mark the moment the tokens move, and this
+              project has already watched an icon set stay aubergine for five
+              days after the palette was retired. `public/mark-64.png` comes out
+              of `scripts/make-icons.py` beside the home-screen icons, from the
+              same tokens, so the header cannot drift from the tab.
+              64px source in a 32px slot: crisp on a 2x display, cleanly
+              downsampled on a 1x one. The full CID mark rather than the
+              small-size variant, because the wordmark is right beside it — the
+              mark is carrying identity here, not text. */}
           <Link
             href="/"
             className="cid-brand"
@@ -117,8 +128,22 @@ function SiteHeader() {
               color: 'var(--cid-text)',
               borderBottom: 'none',
               whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'var(--cid-space-3)',
             }}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element -- a 64px
+                generated PNG at a fixed size; the image pipeline has nothing to
+                optimise and would add a proxy hop to every page in the app. */}
+            <img
+              src="/mark-64.png"
+              alt=""
+              aria-hidden="true"
+              width={32}
+              height={32}
+              className="cid-mark"
+            />
             Check It Down
           </Link>
           {/* NO INLINE LAYOUT HERE. `display: flex` inline beat

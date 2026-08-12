@@ -1609,7 +1609,7 @@ test · **prose** = correctly prose-only · **GAP** = should be enforced, is not
 | All 17 rooms reachable and non-overlapping at 390px | code + test | `VALLEY_Z_PHONE`; `test:mobile` |
 | No surface overflows a 390px viewport | test | `test:mobile` across all five surfaces |
 | The rank qualifier survives the table-to-cards change | code + test | `.cid-rank-q`; `test:mobile` |
-| Manifest colours and icons come from the tokens | code + test | `lib/tokens-server.ts`, `make-icons.mjs`; `test:pwa` |
+| Manifest colours and icons come from the tokens | code + test | `lib/tokens-server.ts`, `make-icons.py`; `test:pwa` |
 | The sitemap holds one entry per room, derived from the table | code + test | `app/sitemap.ts`; `test:mixed` count equality + per-slug check |
 | A closed or seasonal room keeps its URL | code + test | no status filter; `test:mixed` closes and seasons Bellagio |
 | lastmod is a provenance stamp, never the build time | code + test | `latestVerified()`; `test:mixed` distinct-dates + moves-with-the-data |
@@ -2513,7 +2513,7 @@ directly whether it holds the URL.
 
 An installed app keeps its icon until someone reinstalls it, so a hardcoded hex
 would outlive the palette by months on every phone that added the site — and the
-blue/gold palette is landing underneath this work. `scripts/make-icons.mjs`
+blue/gold palette is landing underneath this work. `scripts/make-icons.py`
 draws them from `colors.css`; `lib/tokens-server.ts` reads the same file for
 `theme_color` and `background_color`. Nothing in this pass contains a colour
 value.

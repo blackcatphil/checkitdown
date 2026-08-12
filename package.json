@@ -17,7 +17,7 @@
     "test:map": "node scripts/map-probe.mjs",
     "test:mobile": "node scripts/mobile-probe.mjs",
     "test:pwa": "node scripts/pwa-probe.mjs",
-    "icons": "node scripts/make-icons.mjs",
+    "icons": "python3 scripts/make-icons.py",
     "test:flicker": "STEP=0.002 N=10 node scripts/flicker.mjs",
     "test:palette": "node scripts/palette-probe.mjs",
     "test:auth": "node scripts/auth-probe.mjs",
