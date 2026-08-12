@@ -136,7 +136,14 @@ jobs:
           # directory, so a shared server silently stops the probe's own from
           # ever serving. That rule would otherwise live only in step order,
           # which is where it was when it broke.
-          [ "${n:-0}" -ge 259 ] \
+          # 271 on 2026-08-12: +12 for lib/growth-absence — the rule that decides
+          # whether a console cell is an em-dash, a 0, or a date. Every other
+          # gate in this repo protects a pipeline; this one protects the MEANING
+          # of a number somebody makes decisions from. Each of the three states
+          # is forced and the WRONG glyph asserted absent, which is a different
+          # test from checking the right one appears — and red-proved by
+          # injecting all five confusions.
+          [ "${n:-0}" -ge 271 ] \
             || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1

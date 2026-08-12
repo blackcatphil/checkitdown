@@ -1,0 +1,152 @@
+import { Pool } from 'pg'
+
+import { EVENT_NAMES, RATE_LIMIT } from './analytics-events.ts'
+import { BOT_RULES_VERSION } from './bot.ts'
+
+/**
+ * WHAT THE GROWTH CONSOLE READS.
+ *
+ * ⚠️ NOT OVER PostgREST. The `analytics` schema is deliberately not exposed to
+ * it (migration 017), so supabase-js cannot reach the roll-up with any key.
+ * This goes through `public.growth_weekly()` — SECURITY DEFINER, EXECUTE
+ * granted to `cid_events_writer` only — over the same pooled connection the
+ * write path uses. Reusing that pool is deliberate: one credential, one door,
+ * and the app still holds no service key.
+ */
+
+if (typeof window !== 'undefined') {
+  throw new Error('lib/growth.ts is server-only — it opens a Postgres connection')
+}
+
+const url = process.env.CID_EVENTS_DATABASE_URL
+
+declare global {
+  /* `var` attaches to globalThis, which is what survives a dev hot reload. */
+  var __cidGrowthPool: Pool | undefined
+}
+
+function pool(): Pool | null {
+  if (!url) return null
+  if (globalThis.__cidGrowthPool) return globalThis.__cidGrowthPool
+  const p = new Pool({
+    connectionString: url,
+    statement_timeout: 4000,
+    max: 2,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 4000,
+    ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false },
+  })
+  p.on('error', (e) => console.error('[growth] idle client error:', e.message))
+  globalThis.__cidGrowthPool = p
+  return p
+}
+
+export type Week = {
+  iso_week: string
+  week_ends: string
+  is_complete: boolean
+  weekly_active_people: number
+  new_reach: number
+  activated: number
+  prior_week_active: number
+  returned_from_prior: number
+  outbound_clicks: number
+}
+
+export type Rollup = {
+  /** Every week the roll-up holds, oldest first. May be empty. */
+  weeks: Week[]
+  /** Complete weeks only — the ones the console may present as a reading. */
+  complete: Week[]
+  /** The earliest event, for deriving `first reading <date>`. Null if none. */
+  earliestEvent: Date | null
+  refreshedAt: Date | null
+  /** True when the roll-up could not be read at all — a fault, not an absence. */
+  unreachable: boolean
+}
+
+export async function readRollup(): Promise<Rollup> {
+  const p = pool()
+  const empty: Rollup = {
+    weeks: [], complete: [], earliestEvent: null, refreshedAt: null, unreachable: true,
+  }
+  if (!p) return empty
+  try {
+    const { rows } = await p.query('select * from public.growth_weekly()')
+    const { rows: meta } = await p.query('select public.growth_refreshed_at() as at')
+    /* ⚠️ `pg` RETURNS A `date` COLUMN AS A JS Date, NOT A STRING, and React
+       cannot render a Date as a child — the Engine tab threw and produced no
+       <main> at all until this was added. The type said `string`, which is what
+       the rest of the console wants, so the coercion belongs here at the
+       boundary rather than at every call site. */
+    const weeks = (rows as Array<Record<string, unknown>>).map((r) => ({
+      ...r,
+      iso_week: r.iso_week instanceof Date
+        ? r.iso_week.toISOString().slice(0, 10) : String(r.iso_week),
+      week_ends: r.week_ends instanceof Date
+        ? r.week_ends.toISOString().slice(0, 10) : String(r.week_ends),
+    })) as Week[]
+    /* ⚠️ THE EARLIEST EVENT COMES FROM THE ROLL-UP'S OWN FIRST WEEK, not a
+       second query against `events`. Two sources for "when did this start"
+       would drift, and the date the console prints has to be the one the
+       numbers are computed from. */
+    const withData = weeks.filter((w) => w.weekly_active_people > 0 || w.new_reach > 0)
+    return {
+      weeks,
+      complete: weeks.filter((w) => w.is_complete),
+      earliestEvent: withData.length ? new Date(`${withData[0].iso_week}T00:00:00Z`) : null,
+      refreshedAt: meta[0]?.at ? new Date(meta[0].at) : null,
+      unreachable: false,
+    }
+  } catch (e) {
+    /* ⚠️ UNREACHABLE IS NOT ABSENT. If the roll-up cannot be read the console
+       must say so rather than render every cell as an em-dash, which would be
+       indistinguishable from "no producer exists" — the exact confusion this
+       whole console is built to prevent. */
+    console.error('[growth] roll-up unreadable:', e instanceof Error ? e.message : String(e))
+    return empty
+  }
+}
+
+/**
+ * ⚠️ THE PER-CLICK RATE IS NOT IN CODE, AND MUST NOT BE.
+ *
+ * No room pays for a click today. A number here would flow straight into a
+ * revenue line and become a figure somebody quotes — invented money, which is
+ * the one thing worse than an invented metric. Unset means every revenue line
+ * reads "no rate set" until a room actually signs.
+ */
+export const REVENUE_PER_CLICK: number | null =
+  process.env.CID_REVENUE_PER_CLICK ? Number(process.env.CID_REVENUE_PER_CLICK) : null
+
+/**
+ * WHAT THE SPEC TAB PRINTS — generated from the same constants the queries use,
+ * so it cannot drift from what is measured. A spec page maintained by hand is a
+ * spec page that describes last month's pipeline.
+ */
+export const SPEC = {
+  eventNames: EVENT_NAMES,
+  /* Kept in step with `analytics.decision_events()`; the Spec tab prints both
+     and the console asserts they match. */
+  decisionEvents: ['room_facts_view', 'outbound_room_click',
+    'source_link_click', 'tournament_row_open'] as const,
+  rateLimit: RATE_LIMIT,
+  botRulesVersion: BOT_RULES_VERSION,
+  notCounted: [
+    ['our own traffic', '`is_internal` is set by the client and never cleared by a request'],
+    ['bots', 'classified at write time from the user-agent, which is not stored'],
+    ['incomplete weeks', 'a week in progress is never presented as a reading'],
+    ['builds', 'every event fires from a client component; a cached server render counts nothing'],
+  ],
+  sources: [
+    ['analytics.events', 'the seven events above, written through one SECURITY DEFINER door'],
+    ['analytics.devices', 'one row per device, never deleted — what makes "new" mean ever'],
+    ['the room tables', 'coverage and verification, read from the facts themselves'],
+  ],
+  guardrails: [
+    ['no IP, no user-agent, no referrer', 'migration 017 — one bot bit is stored, not the string'],
+    ['no personal data', '`device_id` is a random token in localStorage, not a fingerprint'],
+    ['usage sits outside the precedence law', 'a click is not evidence about a poker room'],
+    ['rate limited', `${RATE_LIMIT.events} events per ${RATE_LIMIT.windowMs / 1000}s per session`],
+  ],
+} as const

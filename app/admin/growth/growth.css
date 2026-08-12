@@ -1,0 +1,50 @@
+/* ⚠️ SCOPED TO THIS ROUTE, AND NOTHING HERE TOUCHES globals.css.
+   The Modernist design system (docs/design/growth-engine/_ds/) is NOT in the
+   repo, so its tokens are deliberately not reproduced here — the brief was
+   explicit that they must come from that stylesheet rather than be re-derived
+   from prose. This is the app's own admin styling, structured so swapping the
+   real system in is a change to this file alone.
+   The one palette rule that survives regardless: NO DATA STATE IS CARRIED BY
+   COLOUR. An absent cell is dimmer, never a different hue; a fault is the only
+   thing that uses the accent, and a fault is not a data state. */
+.ge { padding: var(--cid-space-8) 0 var(--cid-space-9); display: flex;
+      flex-direction: column; gap: var(--cid-space-6); }
+.ge-head { display: flex; justify-content: space-between; align-items: flex-end;
+           border-bottom: 2px solid var(--cid-line-2); padding-bottom: var(--cid-space-4); }
+.ge-h1 { font: var(--cid-statement); margin: var(--cid-space-3) 0 0; }
+.ge-h2 { font: var(--cid-body-strong); margin: var(--cid-space-6) 0 var(--cid-space-3);
+         border-bottom: 2px solid var(--cid-line-2); padding-bottom: var(--cid-space-2); }
+.ge-asof { font: var(--cid-caption); color: var(--cid-dim); }
+.ge-tabs { display: flex; gap: var(--cid-space-6); border-bottom: 1px solid var(--cid-line-1); }
+.ge-tab { font: var(--cid-tag); letter-spacing: var(--cid-track-nav); color: var(--cid-dim);
+          border-bottom: 2px solid transparent; padding-bottom: var(--cid-space-3); }
+.ge-tab-on { color: var(--cid-text); border-bottom-color: var(--cid-text); }
+.ge-section { display: flex; flex-direction: column; }
+.ge-copy { font: var(--cid-body); color: var(--cid-text-2);
+           margin: 0 0 var(--cid-space-3); max-width: var(--cid-measure); }
+.ge-dim { color: var(--cid-dim); font: var(--cid-caption); }
+.ge-empty { color: var(--cid-dim); font-style: normal; }
+.ge-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+           gap: 1px; background: var(--cid-line-1); border: 1px solid var(--cid-line-1); }
+.ge-fig { background: var(--cid-ink-700); padding: var(--cid-space-5);
+          display: flex; flex-direction: column; gap: var(--cid-space-2); }
+.ge-fig-label { font: var(--cid-label); letter-spacing: var(--cid-track-nav); color: var(--cid-dim); }
+.ge-fig-value { font: var(--cid-statement); }
+/* An absence is DIMMER, never a different colour — §6. */
+.ge-fig-absent { font: var(--cid-caption); color: var(--cid-unverified); }
+.ge-fig-why { font: var(--cid-caption); color: var(--cid-dim); }
+/* A FAULT is not a data state, so it may use the accent. */
+.ge-fig-fault { outline: 2px solid var(--cid-gold); }
+.ge-fault, .ge-fault-box { color: var(--cid-gold); font: var(--cid-body-strong); }
+.ge-fault-box { border: 2px solid var(--cid-gold); padding: var(--cid-space-5); margin: 0; }
+.ge-table { width: 100%; border-collapse: collapse; font: var(--cid-caption); }
+.ge-table th { text-align: left; font: var(--cid-label); letter-spacing: var(--cid-track-nav);
+               color: var(--cid-dim); border-bottom: 2px solid var(--cid-line-2);
+               padding: var(--cid-space-3) var(--cid-space-4) var(--cid-space-3) 0; }
+.ge-table td { border-bottom: 1px solid var(--cid-line-1); vertical-align: top;
+               padding: var(--cid-space-3) var(--cid-space-4) var(--cid-space-3) 0; }
+.ge-table .num, .ge-table th.num { text-align: left; font-variant-numeric: tabular-nums; }
+.ge-missing { color: var(--cid-dim); }
+.ge-loop { border-bottom: 1px solid var(--cid-line-1); padding: var(--cid-space-5) 0; }
+.ge-loop-head { display: flex; justify-content: space-between; align-items: baseline;
+                margin-bottom: var(--cid-space-3); }
