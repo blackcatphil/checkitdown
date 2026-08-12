@@ -32,6 +32,7 @@ path, which is the failure `differ.mjs` opens by warning about.
 """
 import datetime
 import os
+import re
 import subprocess
 import tempfile
 
@@ -178,16 +179,184 @@ def verify(db, checks):
     return bad
 
 
+def host_of(db):
+    """Host and database only — never the credentials.
+
+    POSITIONAL, not a blanket search-and-replace: everything before the `@` is
+    dropped wholesale, so a password that happens to equal the username or the
+    database name cannot survive by coincidence, and a short password cannot
+    eat the rest of the string. The same rule `scripts/db-target.mjs` follows,
+    for the same reason — a refusal has to say WHICH database it refused or the
+    operator cannot act on it.
+    """
+    return re.sub(r'//[^@]*@', '//', db).split('/')[2] if '//' in db else '?'
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ⚠️ TWO ENVIRONMENT VARIABLES GATE EVERY WRITE. THE MATRIX IS THE POINT.
+# ═══════════════════════════════════════════════════════════════════════
+#
+#   INGEST_APPLY   unset/anything but 1 → DRY RUN. Reads, writes nothing.
+#                  1                    → this run will write.
+#   INGEST_TARGET  unset                → PRODUCTION. Writing there requires
+#                                          PROD_DATABASE_URL by name.
+#                  local                → DATABASE_URL, which must be a local
+#                                          host or the run refuses.
+#                  ANYTHING ELSE        → REFUSES. Including EMPTY, and
+#                                          including on a dry run.
+#
+#   ⚠️ ONE SENTENCE: unset is prod · exactly `local` is local · anything else
+#   refuses. A DRY RUN RESOLVES BY THE SAME RULE — it is a rehearsal, and a
+#   rehearsal that reads a different database from the one the take will write
+#   to is not rehearsing anything.
+#
+#   APPLY  TARGET   PROD_DATABASE_URL  DATABASE_URL   what happens
+#   ─────  ──────   ─────────────────  ────────────   ────────────────────────
+#   unset  unset    set                any            DRY RUN, reads PRODUCTION.
+#   unset  unset    UNSET              set            DRY RUN, reads DATABASE_URL.
+#   unset  local    any                local URL      DRY RUN, reads LOCAL —
+#                                                     ⚠️ ignored the switch and
+#                                                     read prod until 2026-08-12.
+#   unset  local    any                non-local URL  REFUSES, naming the host.
+#   1      unset    set                any            WRITES TO PRODUCTION.
+#   1      unset    UNSET              set            REFUSES. No fallback to
+#                                                     DATABASE_URL — that name
+#                                                     means local now.
+#   1      local    any                local URL      WRITES TO LOCAL. Ignores
+#                                                     PROD_DATABASE_URL entirely.
+#   1      local    any                non-local URL  REFUSES, naming the host.
+#   1      local    any                UNSET          REFUSES.
+#   any    locl     any                any            REFUSES. ⚠️ THESE FOUR
+#   any    Local    any                any            REFUSES.    ALL REACHED
+#   any    'local ' any                any            REFUSES.    PRODUCTION
+#   any    '' empty any                any            REFUSES.    UNTIL 2026-08-12
+#                                                     — production is the
+#                                                     fallthrough, so every
+#                                                     unrecognised value landed
+#                                                     on it. No case folding, no
+#                                                     trimming, and empty is not
+#                                                     "no answer": it is usually
+#                                                     `$VAR` that expanded to
+#                                                     nothing in a command whose
+#                                                     purpose was to name a target.
+#
+# ⚠️ WHY THIS SWITCH EXISTS AT ALL, AND WHAT WAS REFUSED INSTEAD.
+#
+# The Wynn port's diff harness has to run the ingest against a local database
+# and compare the result to a production snapshot. Before this switch there was
+# no sanctioned way to write locally, and the obvious workaround was to set
+# PROD_DATABASE_URL to a local URL. That was refused: it reintroduces exactly the
+# one-name-two-databases ambiguity that put migration 017 on production on
+# 2026-08-12, and it would have taught the next person that PROD_DATABASE_URL
+# sometimes means local. A separate, explicitly-named switch that CANNOT reach
+# production is the opposite of that trade.
+#
+# Two variables is already one more than anybody wants. The matrix above exists
+# so the answer to "how do I write to X" is looked up rather than invented — a
+# third variable is how this becomes unreadable.
+def resolve_db(writing):
+    """Which database, said out loud, before the first statement.
+
+    ⚠️ `DATABASE_URL` MEANS LOCAL NOW. It used to hold PRODUCTION in
+    `.env.local`, which is how migration 017 reached prod on 2026-08-12 from a
+    run that believed it was local. Production lives in PROD_DATABASE_URL and
+    must be asked for by name.
+
+    ⚠️ ONE SENTENCE, AND IT IS THE WHOLE RULE:
+    UNSET IS PRODUCTION · EXACTLY `local` IS LOCAL · ANYTHING ELSE REFUSES.
+
+    That holds for a dry run exactly as it holds for a write. The only
+    difference between the two is that writing to production requires
+    PROD_DATABASE_URL by name and reading it does not.
+    """
+    prod = os.environ.get('PROD_DATABASE_URL')
+    local = os.environ.get('DATABASE_URL')
+    target = os.environ.get('INGEST_TARGET')
+
+    # ═══════════════════════════════════════════════════════════════════
+    # ⚠️ ANYTHING BUT UNSET-OR-`local` REFUSES. IT USED TO FAIL OPEN.
+    # ═══════════════════════════════════════════════════════════════════
+    # The production path is the FALLTHROUGH — `if TARGET == 'local' … else
+    # production` — so every unrecognised value landed on it. `INGEST_TARGET=locl`,
+    # `Local`, or `local ` with a trailing space all read as "not local" and
+    # wrote to production, while the operator who typed them was asking for the
+    # opposite. The one input that means "keep me away from prod" was the one
+    # input a typo turned into a prod write.
+    #
+    # ⚠️ EMPTY REFUSES TOO, and it is not a pedantic case. The realistic way an
+    # empty value arises is `INGEST_TARGET=$SOMETHING` where SOMETHING is unset —
+    # an expansion that came out empty inside a command whose entire purpose was
+    # to name a target. Treating that as "no target given" sends it to
+    # production. `is not None` rather than a truthiness test is the difference,
+    # and it is the whole difference.
+    #
+    # ⚠️ AND NO NORMALISING. Not `.lower()`, not `.strip()`. A switch that
+    # guesses what you meant is a switch that can guess wrong, and this one
+    # decides which database gets written to.
+    if target is not None and target != 'local':
+        shown = repr(target) if target else "'' (set but empty — an expansion that came out empty?)"
+        raise SystemExit(
+            f'INGEST_TARGET={shown} is not a target this understands.\n'
+            '  accepted:  local   (exactly — no capitals, no surrounding spaces)\n'
+            '  or UNSET:  goes to PRODUCTION, and writing there needs PROD_DATABASE_URL\n'
+            'Refusing rather than guessing: production is the fallthrough here, '
+            'so a value this does not recognise would otherwise have been used '
+            'by whoever was trying to avoid it.')
+
+    # ── INGEST_TARGET=local. Same answer whether reading or writing. ──────
+    #
+    # ⚠️ A DRY RUN HONOURS THIS TOO, since 2026-08-12. It did not: dry runs read
+    # `PROD_DATABASE_URL or DATABASE_URL` and ignored the switch entirely, so a
+    # rehearsal with INGEST_TARGET=local quietly described PRODUCTION. Read-only,
+    # so nothing was ever at risk — and useless for the one decision a dry run
+    # exists to inform, because it was not a rehearsal of the run that would
+    # follow. A switch that means one thing on the rehearsal and another on the
+    # take is worse than no switch.
+    #
+    # WHY THE SWITCH EXISTS AT ALL: the Wynn port's diff harness has to run the
+    # ingest against a local database and compare against a production snapshot.
+    # The alternative was setting PROD_DATABASE_URL to a local URL, which was
+    # refused — it reintroduces exactly the one-name-two-databases ambiguity that
+    # put migration 017 on production, and would teach the next person that
+    # PROD_DATABASE_URL sometimes means local.
+    if target == 'local':
+        if not local:
+            raise SystemExit('INGEST_TARGET=local needs DATABASE_URL set.')
+        if not re.search(r'@(127\.0\.0\.1|localhost|\[::1\])[:/]', local):
+            raise SystemExit(
+                'INGEST_TARGET=local, but DATABASE_URL is not a local database.\n'
+                f'  refused: {host_of(local)}\n'
+                'Refusing: the one thing this switch promises is that it cannot '
+                'reach production.')
+        return local, 'local'
+
+    # ── INGEST_TARGET unset: production. ─────────────────────────────────
+    if writing:
+        if not prod:
+            raise SystemExit(
+                'INGEST_APPLY=1 writes tournament rows to PRODUCTION, and '
+                'PROD_DATABASE_URL is not set.\n'
+                'It will NOT fall back to DATABASE_URL — that name means local '
+                'now, and one name for two databases is what put a migration on '
+                'production by accident.\n'
+                'To write to a local database say so: INGEST_TARGET=local.')
+        return prod, 'PRODUCTION'
+
+    # Reading with no target named: production if we hold it, else whatever
+    # DATABASE_URL is — and `main` prints which, every time.
+    db = prod or local
+    if not db:
+        raise SystemExit('Neither PROD_DATABASE_URL nor DATABASE_URL is set. '
+                         'This reads a database, so it will not guess.')
+    return db, 'PRODUCTION' if db is prod else 'local'
+
+
 def main(room):
     """Run one room module. `room` supplies NAME, ROOM, SOURCES, build(), CHECKS."""
-    db = os.environ.get('DATABASE_URL')
-    if not db:
-        raise SystemExit('DATABASE_URL is not set. This writes to whatever it is given, '
-                         'so it will not guess.')
-    import re as _re
     dry = os.environ.get('INGEST_APPLY') != '1'
-    host = _re.sub(r'//[^@]*@', '//', db).split('/')[2] if '//' in db else '?'
-    print(f'\n══ {room.NAME} TOURNAMENT INGEST ══  target {host}  '
+    db, which = resolve_db(writing=not dry)
+    host = host_of(db)
+    print(f'\n══ {room.NAME} TOURNAMENT INGEST ══  target {which} {host}  '
           f'{"APPLY" if not dry else "dry run"}')
 
     preflight(db, room.ROOM)

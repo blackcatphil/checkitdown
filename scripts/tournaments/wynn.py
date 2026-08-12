@@ -1,6 +1,39 @@
 """
-WYNN TOURNAMENT INGEST — reads the published documents, writes to whatever
-DATABASE_URL it is given, and verifies by reading back.
+WYNN — the Signature Series and the four dailies, on the shared rails.
+
+    DATABASE_URL=... python3 scripts/tournaments/ingest.py wynn            # dry (local)
+    PROD_DATABASE_URL=... INGEST_APPLY=1 python3 scripts/tournaments/ingest.py wynn
+
+═══ PORTED 2026-08-12, AND PROVED TO CHANGE NOTHING ═══
+
+This was the original ingest and carried its own copy of every rail. The rails
+now live in `rails.py`, so preflight, precedence, the fetch, the transaction,
+the in-transaction gate, the post-commit read-back and the dry-run default all
+come from there and the duplicates are gone.
+
+The port was verified by `scripts/wynn-snapshot.mjs` + `scripts/wynn-diff.mjs`
+against a point-in-time snapshot of production: run against an EMPTY local
+target, every template, instance and level compared column by column,
+ZERO DIFFERENCES across 26 / 61 / 659.
+
+⚠️ WHAT DELIBERATELY DID NOT MOVE TO THE RAILS, and why:
+
+  GAME()          Orleans' version has no `plo5` and its `Big-?O` does not
+                  match "Big O" (space, not hyphen). Sharing it would have
+                  silently retyped THREE production rows — 5-Card PLO from
+                  plo5 to plo, and both Big O events from other to nlh.
+                  Measured against prod before the port, not guessed.
+  sheet_hash()    content identity of a structure sheet; no other room has
+                  structure sheets to hash.
+  parse_sheet()   the main/limit/stud level vocabulary, which is Wynn's.
+  DAILIES         hand-transcribed and gated against seed.sql; see below.
+
+⚠️ THE FOUR DOCUMENTS ARE FETCHED WITH `rails.fetch`, which sends a browser
+User-Agent and refuses a body that is not a PDF — `wynn.fetch` did neither.
+Adopting it was verified rather than assumed: all four URLs were fetched both
+ways and compared by SHA-256 on 2026-08-12. See DOCUMENT_SHA256 below.
+
+═══ WHY THIS IS NOT THE QUEUE ═══
 
 ═══ WHY THIS IS NOT THE QUEUE ═══
 
@@ -33,9 +66,12 @@ rails the queue would otherwise have provided:
   · IDEMPOTENT BY CONTENT — each sheet is hashed; an unchanged document writes
     nothing and logs nothing.
 """
-import hashlib, json, os, re, subprocess, sys, urllib.request, datetime
+import datetime, hashlib, json, re, sys
 
-VEGAS_TZ = '-07'
+from rails import (FETCHED, N, Q, VEGAS_TZ, fetch, floor_verified, pages, sql)
+
+NAME = 'WYNN'
+ROOM = 'wynn-encore'
 SCHED = ('https://cdn.wynnresorts.com/image/upload/v1753296112/visitwynn_pdfs_files/'
          'Poker/Wynn%20Signature%20Series/Wynn_Signature_Series_Schedule.pdf')
 STRUCT = ('https://cdn.wynnresorts.com/image/upload/v1762299460/visitwynn_pdfs_files/'
@@ -45,17 +81,24 @@ POSTER = ('https://cdn.wynnresorts.com/image/upload/v1752011166/visitwynn_pdfs_f
 DAILY_STRUCT = ('https://cdn.wynnresorts.com/image/upload/v1752011191/visitwynn_pdfs_files/'
                 'Poker/Daily%20Tournaments/Poker-All_Daily_Structures.pdf')
 
-N = lambda s: int(str(s).replace(',', ''))
-Q = lambda s: "'" + str(s).replace("'", "''") + "'"
+SOURCES = [
+    (SCHED, 'Wynn Signature Series — schedule (PDF)'),
+    (STRUCT, 'Wynn Signature Series — structures (PDF)'),
+    (POSTER, 'Wynn — daily tournament poster (PDF)'),
+    (DAILY_STRUCT, 'Wynn — all daily structures (PDF)'),
+]
 
-def fetch(url):
-    with urllib.request.urlopen(url, timeout=60) as r:
-        return r.read()
-
-def pages(raw):
-    import pypdf, io
-    return [re.sub(r'[ \t]+', ' ', p.extract_text() or '')
-            for p in pypdf.PdfReader(io.BytesIO(raw)).pages]
+# ⚠️ EVIDENCE, NOT CONFIGURATION. Recorded when `rails.fetch` replaced this
+# module's own fetch on 2026-08-12. Both fetchers were run against all four URLs
+# and the bytes were identical, so adding a User-Agent and a %PDF check changed
+# nothing about what is parsed. Kept because "we checked" is a claim, and a hash
+# is the only form of it anybody can re-run.
+DOCUMENT_SHA256 = {
+    'SCHED':        'b3b8a348666a26407c962253e095777a894b9940879ddc77ffe5330ed4f1c2cf',
+    'STRUCT':       'ee235bdc87ca814940a3ec547d33a3568dfbf202409956fd8bc2bf021e478aa6',
+    'POSTER':       'f7dc8281b1b508b55cfcea08485665ad2e627d19c4d274359c6c3f89cf71ccec',
+    'DAILY_STRUCT': '0de7ebf42d8af2c9943a5378567b0eb396929e539ab4c919ffce7b0f227adb77',
+}
 
 # ── structure sheets ──────────────────────────────────────────────────
 MAIN  = re.compile(r'^ ?(\d{1,2}) ([\d,]+) ([\d,]+) ([\d,]+) ?$', re.M)
@@ -174,7 +217,7 @@ GAME = lambda n: ('mixed' if re.search(r'HORSE|TORSE', n, re.I) else
                   'other' if re.search(r'Big O|Omaha', n, re.I) else
                   'plo' if re.search(r'\bPLO\b', n, re.I) else 'nlh')
 
-def build(struct_pages, sched_pages):
+def parse_documents(struct_pages, sched_pages):
     sheets = []
     for i, t in enumerate(struct_pages):
         levels = parse_sheet(t)
@@ -329,74 +372,27 @@ DAILIES = [
 # version stamp is not used, and the PDF's own CreationDate is what stands.
 DAILY_DOC_DATE = '2026-06-19'
 
-def psql_bin():
-    if os.environ.get('PSQL'):
-        return os.environ['PSQL']
-    for c in ('psql', '/opt/homebrew/opt/postgresql@17/bin/psql'):
-        try:
-            subprocess.run([c, '--version'], check=True, capture_output=True); return c
-        except Exception:
-            pass
-    raise SystemExit('psql not found. Install it, or set PSQL to its full path.')
+def build(db):
+    """Fetch, parse, and return the statements — the rails run them.
 
-def sql(db, q):
-    r = subprocess.run([psql_bin(), db, '-qtAX', '-v', 'ON_ERROR_STOP=1', '-c', q],
-                       capture_output=True, text=True)
-    if r.returncode:
-        raise SystemExit(f'SQL FAILED:\n{r.stderr.strip()[:900]}')
-    return r.stdout.strip()
+    ⚠️ NOTHING HERE WRITES. `preflight`, the source rows, the transaction, the
+    gate and the read-back all belong to `rails.main` now. This function reads
+    the target (precedence, structure hashes, which daily terms moved) because
+    a statement cannot report on its own row count from inside a batch, but the
+    only thing it returns is text.
 
-FETCHED = "timestamptz '{}'".format(
-    datetime.datetime.now().astimezone().replace(microsecond=0).isoformat())
+    ⚠️ `sources` IS NO LONGER COUNTED HERE. The rails prepend the four source
+    rows from SOURCES; a `sources: 4` in these stats would be this function
+    taking credit for statements it did not build.
+    """
+    sheets, instances = parse_documents(pages(fetch(STRUCT)), pages(fetch(SCHED)))
+    print(f'  parsed {len(sheets)} structure sheets, '
+          f'{sum(len(s["levels"]) for s in sheets)} levels, {len(instances)} scheduled events')
 
-def run_sql_file(db, text):
-    """One psql invocation = one session = one transaction. Via a file, because
-       659 levels of VALUES is past what belongs on a command line."""
-    import tempfile
-    with tempfile.NamedTemporaryFile('w', suffix='.sql', delete=False) as f:
-        f.write(text); path = f.name
-    try:
-        r = subprocess.run([psql_bin(), db, '-qtAX', '-v', 'ON_ERROR_STOP=1', '-f', path],
-                           capture_output=True, text=True)
-        if r.returncode:
-            raise SystemExit(f'WRITE FAILED — nothing was committed:\n{r.stderr.strip()[:1200]}')
-        return r.stdout
-    finally:
-        os.unlink(path)
-
-def preflight(db):
-    """⚠️ THE ROOM MUST EXIST, asked before anything is written.
-
-    Every insert here is `insert ... select ... from rooms where slug = ...`.
-    If the room is absent that SELECT returns no rows, so the INSERT writes
-    nothing, succeeds, and reports no error — and the run goes on to claim it
-    wrote 22 templates and 659 levels. That is exactly how a fresh unseeded
-    database produced 'sheets replaced 22 · levels written 659' followed by a
-    read-back of zero. A missing precondition must be a stopped run, not a
-    cheerful one."""
-    n = int(sql(db, "select count(*) from rooms where slug = 'wynn-encore'") or 0)
-    if n != 1:
-        raise SystemExit(
-            f"refusing to run: rooms has {n} rows for slug 'wynn-encore'.\n"
-            "  Every write here hangs off that row, and without it the inserts\n"
-            "  would silently write nothing while reporting success.")
-
-def apply(db, sheets, instances, dry):
-    stats = dict(sources=0, series=0, dailies=0, templates=0, sheets_replaced=0,
+    stats = dict(series=0, dailies=0, templates=0, sheets_replaced=0,
                  sheets_unchanged=0, levels=0, instances=0, refused=[],
                  terms_updated=0, terms_unchanged=0)
-    preflight(db)
     stmts = []
-
-    for url, label in ((SCHED, 'Wynn Signature Series — schedule (PDF)'),
-                       (STRUCT, 'Wynn Signature Series — structures (PDF)'),
-                       (POSTER, 'Wynn — daily tournament poster (PDF)'),
-                       (DAILY_STRUCT, 'Wynn — all daily structures (PDF)')):
-        stmts.append(f"""insert into sources (data_type, url, label, cadence_hours, status,
-                                     last_fetched_at, last_ok_at)
-                values ('tournaments', {Q(url)}, {Q(label)}, 168, 'ok', now(), now())
-                on conflict (url, data_type) do nothing;""")
-        stats['sources'] += 1
 
     # ── THE DAILIES. Same path to prod as everything else, which is the whole
     #    point: they were in seed.sql and seed.sql does not reach production.
@@ -537,10 +533,9 @@ def apply(db, sheets, instances, dry):
         stats['templates'] += 1
 
         # ── PRECEDENCE, read before the transaction is built. A web-sourced
-        #    sheet may not overwrite floor-sourced levels.
-        floor = sql(db, f"""select count(*) from tournament_templates t
-                             where t.slug = {Q(s_['slug'])} and t.verified_at is not null""")
-        if floor and int(floor) > 0:
+        #    sheet may not overwrite floor-sourced levels. `floor_verified` is
+        #    the rails' helper and runs the identical query this used inline.
+        if floor_verified(db, s_['slug']):
             stats['refused'].append(f"{s_['slug']}: levels are floor-verified; a web sheet "
                                     f"may not overwrite them")
             continue
@@ -596,32 +591,15 @@ def apply(db, sheets, instances, dry):
                 on conflict (template_id, starts_at) do update set entry_kind = excluded.entry_kind;""")
         stats['instances'] += 1
 
-    def census():
-        """Counts read from the TARGET. Never from the parse — reporting what a
-           run meant to write, as though it were what is there, is the defect
-           that let a database holding nothing report 659 levels."""
-        for k, q in (('templates', "select count(*) from tournament_templates "
-                                   "where series_id is not null"),
-                     ('dailies',   "select count(*) from tournament_templates "
-                                   "where series_id is null"),
-                     ('levels',    "select count(*) from tournament_levels"),
-                     ('instances', "select count(*) from tournament_instances")):
-            stats[k] = int(sql(db, q) or 0)
+    # ⚠️ NO census() HERE, AND NOTHING IS LOST BY THAT. It re-read four counts
+    # from the target after COMMIT and printed them. All four — templates,
+    # dailies, levels, instances — are already in CHECKS with the identical
+    # queries, so they run INSIDE the transaction where a mismatch rolls the
+    # write back, and again over a fresh connection in `rails.verify`. A
+    # post-commit print can only report; the gate can refuse. Verified by
+    # comparing the query strings, not by eye.
+    return stmts, stats
 
-    if dry:
-        # A dry run reports the target AS IT STANDS, plus what would change.
-        # The same read-only query the applied path uses afterwards.
-        census()
-        print('  DRY RUN — nothing written. The transaction was built but not run,')
-        print(f'  and it would have ended with {len(CHECKS)} assertions gating its COMMIT.')
-        return stats
-
-    # ── ONE TRANSACTION. The assertions gate the COMMIT, so a run that cannot
-    #    verify leaves the database exactly as it found it.
-    run_sql_file(db, 'begin;\n' + '\n'.join(stmts) + '\n' + gate_sql() + '\ncommit;\n')
-
-    census()
-    return stats
 
 # ══ THE FIDELITY ASSERTIONS — ONE DEFINITION, TWO CALL SITES ══════════
 #
@@ -678,80 +656,25 @@ CHECKS = [
         "where rebuy_chips is not null", 0),
 ]
 
-def gate_sql():
-    """The assertions as a DO block, so a bad write cannot reach COMMIT.
+# ⚠️ NO gate_sql(), verify() OR main() HERE ANY MORE. `rails.gate_sql(CHECKS)`
+# builds the same DO block, `rails.verify(db, CHECKS)` re-reads the same
+# assertions over a fresh connection, and `rails.main` sequences them. Three
+# copies of the thing that gates a production write is exactly the drift the
+# rails exist to prevent — and the copy that rotted would have been the one
+# holding the COMMIT open.
 
-    ⚠️ THIS IS THE PART THAT WAS MISSING, and it is why prod ended up in the
-    half-finished state the standing rule forbids. Verification that runs AFTER
-    the data is already committed does not prevent anything — it reports. The
-    gate has to be inside the transaction, where a raise means a rollback."""
-    out = ['do $gate$', 'declare g bigint;', 'begin']
-    for name, q, want in CHECKS:
-        out.append(f"  g := ({q.strip().rstrip(';')});")
-        out.append(f"  if g <> {want} then raise exception "
-                   f"'fidelity gate: {name} is %, expected {want}', g; end if;")
-    out += ['end $gate$;']
-    return '\n'.join(out)
 
-def verify(db):
-    """The same assertions, re-read over a fresh connection after commit —
-       against whatever we wrote to, not against the parse that produced it."""
-    bad = 0
-    for name, q, want in CHECKS:
-        got = int(sql(db, q) or 0)
-        ok = got == want
-        bad += 0 if ok else 1
-        print(f"  {'PASS' if ok else 'FAIL'}  {name}: {got}" + ('' if ok else f' (expected {want})'))
-    return bad
-
-def main():
-    db = os.environ.get('DATABASE_URL')
-    if not db:
-        raise SystemExit('DATABASE_URL is not set. This script writes to whatever it is given, '
-                         'so it will not guess.')
-    dry = os.environ.get('INGEST_APPLY') != '1'
-    host = re.sub(r'//[^@]*@', '//', db).split('/')[2] if '//' in db else '?'
-    print(f'\n══ WYNN TOURNAMENT INGEST ══  target {host}  {"APPLY" if not dry else "dry run"}')
-
-    print('  fetching the published documents…')
-    sheets, instances = build(pages(fetch(STRUCT)), pages(fetch(SCHED)))
-    print(f'  parsed {len(sheets)} structure sheets, '
-          f'{sum(len(s["levels"]) for s in sheets)} levels, {len(instances)} scheduled events')
-
-    st = apply(db, sheets, instances, dry)
-    print(f"  sources {st['sources']} · series {st['series']} · "
-          f"sheets replaced {st['sheets_replaced']}, unchanged {st['sheets_unchanged']}")
-    # The terms backfill reports the same way the sheets do: what MOVED and what
-    # was already right. A run that says "4 dailies" and nothing else cannot be
-    # told from one that wrote nothing.
-    print(f"  daily rebuy/add-on terms: {st['terms_updated']} updated, "
-          f"{st['terms_unchanged']} already current")
-    # ⚠️ "in the database", not "written". These are read back from the target
-    # after commit. The previous wording reported the parse's own counts and so
-    # said 659 levels about a database holding none.
-    print(f"  {'in the database now' if dry else 'in the database after commit'}: dailies {st['dailies']} · series templates {st['templates']} · "
-          f"levels {st['levels']} · instances {st['instances']}")
-    for r in st['refused']:
-        print(f'  REFUSED BY PRECEDENCE: {r}')
-
-    if dry:
-        print('  (dry run — no verification, because nothing was written)\n')
-        return 0
-
-    # The second read of the same assertions, over a fresh connection. The gate
-    # inside the transaction already refused to commit anything that fails
-    # these; this proves it against what is actually on disk.
-    print('\n  verifying by reading the target back:')
-    bad = verify(db)
-    if bad:
-        # ⚠️ LOUD, because a non-zero exit is invisible through a pipe — the
-        # first prod run was read through `| tail` and its exit code never
-        # reached a shell. The banner survives what the status code does not.
-        print(f'\n  ✖✖ VERIFICATION FAILED — {bad} assertion(s). EXIT 1. ✖✖')
-        print('     Nothing should have committed; if these rows exist, say so loudly.\n')
-        return 1
-    print('\n  ✓ all assertions pass against the target. EXIT 0.\n')
-    return 0
-
+# ⚠️ THIS FILE IS A ROOM MODULE AND HAS NO ENTRY POINT. Running it directly used
+# to ingest; now it would import cleanly, define some functions and exit 0
+# having done nothing — a silent no-op that looks exactly like a successful run.
+# `npm run ingest:tournaments` pointed here until 2026-08-12 and was repointed
+# in the same change; this guard exists for the muscle memory that outlives it.
 if __name__ == '__main__':
-    sys.exit(main())
+    raise SystemExit(
+        'wynn.py is a room module — it parses and returns statements, and writes\n'
+        'nothing on its own. Run it through the shared runner:\n'
+        '    DATABASE_URL=... python3 scripts/tournaments/ingest.py wynn          # dry\n'
+        '    INGEST_TARGET=local INGEST_APPLY=1 DATABASE_URL=... \\\n'
+        '        python3 scripts/tournaments/ingest.py wynn                       # local\n'
+        '    PROD_DATABASE_URL=... INGEST_APPLY=1 \\\n'
+        '        python3 scripts/tournaments/ingest.py wynn                       # production')

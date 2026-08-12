@@ -1,8 +1,8 @@
 """
 THE ORLEANS — the live August 2026 daily schedule.
 
-    DATABASE_URL=... python3 scripts/tournaments/ingest.py orleans          # dry
-    DATABASE_URL=... INGEST_APPLY=1 python3 scripts/tournaments/ingest.py orleans
+    DATABASE_URL=... python3 scripts/tournaments/ingest.py orleans          # dry (local)
+    PROD_DATABASE_URL=... INGEST_APPLY=1 python3 scripts/tournaments/ingest.py orleans
 
 ═══ ⚠️ THE ENTRY/FEE SPLIT IS NOT PUBLISHED, AND THAT IS THE POINT ═══
 
