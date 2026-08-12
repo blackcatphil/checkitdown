@@ -18,11 +18,12 @@ import { execFileSync } from 'node:child_process'
 
 import Supercluster from 'supercluster'
 import { resolvePsql } from './psql-path.mjs'
+import { readTarget } from './db-target.mjs'
 
 /* $PSQL, else `psql` from PATH, else the Homebrew path. See psql-path.mjs:
    an absolute machine-specific path as a DEFAULT is what broke CI. */
 const PSQL = resolvePsql()
-const DB = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+const DB = readTarget('map-measure')
 
 const rows = execFileSync(PSQL, [DB, '-qtAX', '-F', '\t', '-c',
   `select slug, name, area, latitude, longitude from rooms

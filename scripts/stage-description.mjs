@@ -19,11 +19,12 @@
  */
 import { execFileSync } from 'node:child_process'
 import { resolvePsql } from './psql-path.mjs'
+import { localTarget } from './db-target.mjs'
 
 /* $PSQL, else `psql` from PATH, else the Homebrew path. See psql-path.mjs:
    an absolute machine-specific path as a DEFAULT is what broke CI. */
 const PSQL = resolvePsql()
-const DB = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+const DB = localTarget('stage-description')
 
 /** The sentinel. Nothing real will ever cite this, so deletion is exact. */
 export const STAGED_SOURCE = 'https://example.test/probe-staged-description'

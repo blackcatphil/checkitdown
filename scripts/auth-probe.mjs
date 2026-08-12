@@ -30,9 +30,10 @@
 import { execFileSync } from 'node:child_process'
 
 import { resolvePsql } from './psql-path.mjs'
+import { localTarget } from './db-target.mjs'
 
 const PSQL = resolvePsql()
-const DB = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+const DB = localTarget('auth-probe')
 const APP = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 const API = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
 

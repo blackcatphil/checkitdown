@@ -44,7 +44,7 @@ import { execFileSync } from 'node:child_process'
 /* $PSQL, else `psql` from PATH, else the Homebrew path. See psql-path.mjs:
    an absolute machine-specific path as a DEFAULT is what broke CI. */
 const PSQL = resolvePsql()
-const DB = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+const DB = localTarget('mixed-state')
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
@@ -53,6 +53,7 @@ const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8'
    would be asserting against its own idea of what a figure is. */
 import { currencyFigures } from '../lib/description.ts'
 import { resolvePsql } from './psql-path.mjs'
+import { localTarget } from './db-target.mjs'
 
 const SNAP = 'cid_mixed_state_snapshot'
 

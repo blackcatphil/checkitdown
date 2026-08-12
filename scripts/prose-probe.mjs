@@ -54,10 +54,11 @@
 import { execFileSync } from 'node:child_process'
 
 import { resolvePsql } from './psql-path.mjs'
+import { localTarget } from './db-target.mjs'
 import { readReviews } from '../lib/reviews-doc.ts'
 
 const PSQL = resolvePsql()
-const DB = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+const DB = localTarget('prose-probe')
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 const q1 = (s) => `'${String(s).replace(/'/g, "''")}'`

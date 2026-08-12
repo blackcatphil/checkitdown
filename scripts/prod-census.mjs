@@ -26,13 +26,13 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
 import { resolvePsql } from './psql-path.mjs'
+import { prodTarget } from './db-target.mjs'
 
 const PSQL = resolvePsql()
-const DB = process.env.DATABASE_URL
-if (!DB) {
-  console.error('DATABASE_URL is not set — this compares PRODUCTION to the seed, so it will not guess.')
-  process.exit(1)
-}
+/* PROD_DATABASE_URL, not DATABASE_URL. This compares PRODUCTION to the seed, so
+   pointing it at local would produce a census of the wrong database that reads
+   exactly like a census of the right one. `DATABASE_URL` means local now. */
+const DB = prodTarget('prod-census')
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 
 /* THE EXPECTED TUPLE IS PARSED FROM seed.sql, not restated here. */

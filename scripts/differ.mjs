@@ -34,12 +34,13 @@
 import { execFileSync } from 'node:child_process'
 
 import { resolvePsql } from './psql-path.mjs'
+import { localTarget } from './db-target.mjs'
 import { batch, parseCsv } from '../lib/differ.ts'
 import { readFloorSheet } from '../lib/floor-sheet.ts'
 import { firstSeenDate, readReviews, storageBlockers } from '../lib/reviews-doc.ts'
 
 const PSQL = resolvePsql()
-const DB = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+const DB = localTarget('differ')
 const APPLY = process.env.DIFFER_APPLY === '1'
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()

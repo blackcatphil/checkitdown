@@ -80,7 +80,9 @@ actually executed, two of them had been red for two days.
 
 `npm run ingest:tournaments` (Wynn) and
 `python3 scripts/tournaments/ingest.py orleans` read published documents and
-write to whatever `DATABASE_URL` they are given. **Both are dry-run by default**;
+write to whatever database they are given. **Both are dry-run by default**;
+`INGEST_APPLY=1` requires `PROD_DATABASE_URL` and refuses to fall back to
+`DATABASE_URL`, which means *local*;
 `INGEST_APPLY=1` is the only thing that changes it. Each verifies inside its own
 transaction — a run that cannot assert its expected counts rolls back rather
 than leaving the database half-written — and then reads the same assertions back
