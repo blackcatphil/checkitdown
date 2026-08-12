@@ -91,6 +91,81 @@ ok(sql("select to_regclass('analytics.events') is not null") === 't',
   'analytics.events exists (migration 017 applied locally)')
 ok(sql('select count(*) from rooms') === '17', 'the roster is seeded')
 
+/**
+ * ⚠️ IS THE PAGE ALIVE? ASKED ONCE, BEFORE ANY EVENT IS COUNTED.
+ *
+ * On 2026-08-12 this suite failed 18 assertions at once and every one of them
+ * was a symptom. `next dev` initialises on `localhost`, so `127.0.0.1` — the
+ * host CI uses — is a DIFFERENT ORIGIN and Next 16 answers 403 to
+ * `/_next/static/chunks/*` for it. The server HTML was complete: links present,
+ * clickable, and clicks succeeded. Nothing mounted, so nothing fired.
+ *
+ * The shape of that failure is the reason for this check. Every GREEN half read
+ * zero and every RED half PASSED — "counts NOTHING" is trivially true on a page
+ * where nothing can happen — so the log looked like eighteen separate event
+ * bugs rather than one dead page. A suite that cannot tell "the feature is
+ * broken" from "the page never loaded" will send somebody to read
+ * `lib/analytics.ts` for a day.
+ *
+ * ⚠️ SCOPED, so it cannot become permanently red for somebody else's noise.
+ * Only failures on THIS origin count, and only `/_next/` — the app's own code.
+ * A 404 from a room's website, or the dev server's unrelated chatter, is not
+ * this probe's business. Same discipline as the fail-closed probe, which scopes
+ * to `/api/events`.
+ *
+ * ⚠️ AND HYDRATION IS TESTED BY THE THING THE SUITE DEPENDS ON: whether React
+ * attached a click handler. `window.next` exists on a page whose chunks all
+ * 403'd — it was true throughout the outage — so it proves nothing. A DOM node
+ * carrying `__reactProps$…` with an `onClick` proves the tree mounted AND that
+ * handlers are live, which is precisely what every GREEN assertion needs.
+ */
+async function pageIsAlive(path, selector) {
+  const ctx = await browser.newContext({ userAgent: HUMAN, viewport: { width: 1440, height: 900 } })
+  const page = await ctx.newPage()
+  const blocked = []
+  const thrown = []
+  page.on('pageerror', (e) => thrown.push(String(e).split('\n')[0]))
+  page.on('response', (r) => {
+    if (r.status() >= 400 && r.url().startsWith(BASE) && r.url().includes('/_next/')) {
+      blocked.push(`${r.status()} ${r.url().slice(BASE.length)}`)
+    }
+  })
+  await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(1500)
+  const wired = await page.locator(selector).first().evaluate((el) => {
+    const k = Object.keys(el).find((x) => x.startsWith('__reactProps$'))
+    return Boolean(k && typeof el[k].onClick === 'function')
+  }).catch(() => false)
+  await ctx.close()
+  return { blocked, thrown, wired }
+}
+
+{
+  const { blocked, thrown, wired } = await pageIsAlive('/rooms/aria', 'a:has-text("OWN PAGE")')
+  if (blocked.length || thrown.length || !wired) {
+    console.error('\n  ⚠️  THE PAGE IS BROKEN. NOT RUNNING THE EVENT ASSERTIONS.')
+    console.error('      Every one of them would fail on the GREEN half and PASS on the RED,')
+    console.error('      and the log would read as eighteen event bugs instead of one dead page.\n')
+    if (blocked.length) {
+      console.error(`      the app's own assets were refused (${blocked.length}):`)
+      for (const b of blocked.slice(0, 4)) console.error(`        ${b}`)
+      console.error(`\n      403 on /_next/ from ${BASE} is almost always allowedDevOrigins:`)
+      console.error('      `next dev` initialises on localhost, so 127.0.0.1 and any LAN address')
+      console.error('      are different origins and are refused. See next.config.ts.')
+    }
+    if (thrown.length) {
+      console.error('      the page threw:')
+      for (const t of thrown.slice(0, 3)) console.error(`        ${t}`)
+    }
+    if (!blocked.length && !thrown.length && !wired) {
+      console.error('      React never attached a click handler — the tree did not mount.')
+    }
+    await browser.close()
+    process.exit(2)
+  }
+  ok(true, 'the page under test mounted and its handlers are live — the events below can fire')
+}
+
 /* ── 0. THE WRITE PATH ITSELF ─────────────────────────────────────────────
    ⚠️ THE TRANSACTION POOLER FORBIDS PREPARED STATEMENTS, and the failure it
    causes is invisible locally: a prepared statement lives on one backend, the

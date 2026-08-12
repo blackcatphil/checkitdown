@@ -153,14 +153,17 @@ for (const [label, env] of SCENARIOS) {
       'the server logs the failure — quiet for the reader is not quiet for us',
       (log.match(/\[analytics\][^\n]*/) ?? ['(nothing logged)'])[0].slice(0, 90))
 
-    /* ⚠️ ISOLATED ON /api/events, NOT "ZERO CONSOLE ERRORS".
-       The first version asserted a clean console and failed on
-       `HTTP 403 /_next/static/chunks/node_modules_next_dist_….js` — a Next dev
-       chunk, present identically whether analytics works or not. Asserting zero
-       would have made this gate a detector of unrelated dev-server noise: red
-       for something nobody here can fix, and — worse — it would go green again
-       the day that noise stopped, having never tested analytics at all.
-       The question is whether ANALYTICS puts anything in the reader's console. */
+    /* ⚠️ ISOLATED ON /api/events — but NOT because the other errors were noise.
+       This comment used to call `HTTP 403 /_next/static/chunks/…` "unrelated
+       dev-server noise" and scope around it. That was wrong, and it cost a red
+       main a day later: the 403 was Next 16 refusing its own client chunks to
+       `127.0.0.1`, which is a different origin from the `localhost` the dev
+       server initialises on. This probe runs on 127.0.0.1, saw the symptom, and
+       explained it away. See next.config.ts and the page precondition in
+       scripts/events-probe.mjs, which now catches it deliberately.
+       The scoping stays, because the question HERE is genuinely whether
+       ANALYTICS puts anything in the reader's console — but "not my assertion"
+       is a reason to scope, never a reason to conclude something is harmless. */
     const ours = r.errors.filter((e) => /\/api\/events/.test(e))
     ok(ours.length === 0, 'analytics puts NOTHING in the reader\'s console',
       ours.length ? ours.slice(0, 2).join(' | ') : `0 (of ${r.errors.length} unrelated dev-server messages)`)
