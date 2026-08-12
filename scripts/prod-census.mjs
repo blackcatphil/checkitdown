@@ -43,13 +43,39 @@ if (!m) {
   process.exit(1)
 }
 const expected = m[1].split(',').map((x) => Number(x.trim()))
-const LABELS = ['rooms', 'cash_games', 'game-verified', 'rake-verified', 'sources', 'waitlist', 'formats']
+/* ⚠️ DERIVED FROM THE SEED, NOT RETYPED. The tuple counts ALL sources; the
+   query above counts only the non-tournament ones, so the expectation has to
+   drop the tournament rows the seed itself inserts. Counted out of seed.sql so
+   a new seeded document moves both halves together. */
+/* ⚠️ COUNTS VALUES TUPLES, NOT INSERT STATEMENTS. The first version matched
+   `insert into sources ... 'tournaments'` and found 2 — the seed writes its four
+   tournament sources as four VALUES rows across two INSERTs, so the expectation
+   came out 46 against an actual 44 and the census failed for a reason that was
+   entirely mine. */
+const SEEDED_TOURNAMENT_SOURCES =
+  (seed.match(/\(\s*'tournaments',/g) ?? []).length
+expected[4] -= SEEDED_TOURNAMENT_SOURCES
+const LABELS = ['rooms', 'cash_games', 'game-verified', 'rake-verified',
+  'sources (seeded)', 'waitlist', 'formats']
 const QUERIES = [
   'select count(*) from rooms',
   'select count(*) from cash_games',
   'select count(*) from cash_games where verified_at is not null',
   'select count(*) from cash_games where rake_verified_at is not null',
-  'select count(*) from sources',
+  /* ⚠️ EXCLUDING THE ONES THE INGEST REGISTERS. The tuple says 48 and the seed
+     produces exactly 48 — that number is RIGHT, and it was nearly "corrected"
+     to 50 on the belief that it had been wrong since Orleans. It has not: the
+     two extra rows on production are the Orleans and Bellagio schedule PDFs,
+     inserted by `rails.source_rows` when each ingest ran. Raising the tuple to
+     50 would have made `seed.sql` assert a count its own INSERTs cannot reach,
+     so `supabase db reset` would fail on the seed's self-check — the seed
+     lying about itself to make a census quiet.
+
+     `data_type = 'tournaments'` is the exact seam: the seed ships 4 of them
+     (Wynn's documents) and each ingested room adds one. So this compares the 44
+     rows the seed genuinely owns and STILL FAILS if one of them goes missing,
+     while the ingest-registered ones are declared below with their URLs. */
+  "select count(*) from sources where data_type <> 'tournaments'",
   'select count(*) from room_waitlist',
   'select count(*) from room_formats',
 ]
@@ -59,10 +85,14 @@ const QUERIES = [
    miss it again. Counted from the seed's own assertions so these stay honest
    too. */
 const EXTRA = [
-  ['tournament_templates', 26],
+  /* ⚠️ tournament_templates AND tournament_levels HAVE MOVED TO `DECLARED`.
+     They are the ingest's output, not the seed's, and asserting a seed number
+     against them made this census fail every morning for a ruling nobody had
+     revisited. `tournament_series` and `tournament_instances` STAY HERE: the
+     seed builds both in full, no ingest has added to either, and a change in
+     them would be real drift. */
   ['tournament_series', 1],
   ['tournament_instances', 61],
-  ['tournament_levels', 659],
 ]
 
 /* DECLARED DIVERGENCES — reported, never silently exempt.
@@ -78,7 +108,21 @@ const DECLARED = [
   ['room_descriptions',
    'content arrives through the queue, not the seed (2026-08-09 ruling) — prod ' +
    'holds the 4 partner reviews and 13 approved descriptions; the seed ships none'],
+  ['tournament_templates',
+   'rooms arrive through the INGEST, not the seed (2026-08-12 ruling). The seed ' +
+   "builds Wynn's 26 from transcription; Orleans (16, July) and Bellagio (6) are " +
+   'parsed from live PDFs that `supabase db reset` cannot fetch, so no seed number ' +
+   'can ever describe this table'],
+  ['tournament_levels',
+   "same ruling. The seed builds Wynn's 659; Bellagio's 124 come from a live " +
+   'document. A seed asserting 783 would be asserting rows it cannot produce'],
 ]
+
+/* The one divergence that is a COUNT rather than a table: each ingested room
+   registers its own source document. Printed with the URLs so "one more source"
+   is never a number nobody can account for. */
+const TOURNAMENT_SOURCES =
+  "select count(*) from sources where data_type = 'tournaments'"
 
 let bad = 0
 const host = DB.includes('@') ? DB.split('@')[1].split('/')[0] : 'local'
@@ -103,6 +147,15 @@ for (const [table, want] of EXTRA) {
 console.log('\n  declared divergences (reported, not failed):')
 for (const [table, why] of DECLARED) {
   console.log(`    INFO  ${table.padEnd(22)} ${String(sql(`select count(*) from ${table}`)).padStart(5)}   ${why}`)
+}
+{
+  const n = Number(sql(TOURNAMENT_SOURCES))
+  console.log(`    INFO  ${'sources (tournaments)'.padEnd(22)} ${String(n).padStart(5)}   `
+    + `${SEEDED_TOURNAMENT_SOURCES} shipped by the seed, ${n - SEEDED_TOURNAMENT_SOURCES} `
+    + 'registered by ingests. Each room the ingest runs for adds its own document:')
+  for (const url of sql("select url from sources where data_type = 'tournaments' order by url").split('\n')) {
+    console.log(`            ${url.trim().slice(0, 96)}`)
+  }
 }
 
 if (bad) {
