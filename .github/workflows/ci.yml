@@ -126,7 +126,17 @@ jobs:
           # because those reviews quote dollar figures and a CHECK refused the
           # row. A figureless partner review overwrote our text, kept our label,
           # and raised nothing at all.
-          [ "${n:-0}" -ge 257 ] \
+          # 258 on 2026-08-12: +1 in lib/workflow-env — the guard generalised from
+          # "the differ, by name" to every writing script. A rule enforced for
+          # one named caller is enforced for nothing the day a second one is
+          # added, which is how test:prose ended up running the differ's write
+          # path with no target named at all.
+          # 259 on 2026-08-12: +1 in lib/workflow-env — test:failclosed must run in
+          # a job that starts no shared `next dev`. Next allows one per project
+          # directory, so a shared server silently stops the probe's own from
+          # ever serving. That rule would otherwise live only in step order,
+          # which is where it was when it broke.
+          [ "${n:-0}" -ge 259 ] \
             || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
@@ -561,40 +571,6 @@ jobs:
           # where nothing can happen.
           [ "$n" -ge 35 ] \
             || { echo "::error::only $n events assertions ran (expected >= 33) — the suite shrank"; exit 1; }
-
-      # --- GATE 3c: ANALYTICS BREAKS, THE PRODUCT DOES NOT. ---
-      # Starts its own dev servers on a spare port with a DELIBERATELY BROKEN
-      # analytics config — no env var, then an unreachable pool — because that
-      # config cannot be shared with the servers the other gates need.
-      #
-      # This was measured, not assumed, and the measurement changed the code:
-      # the handler answered 503 while logging nothing (a missing env var
-      # invisible to whoever deployed it) and 500 on an unreachable database (a
-      # red line in the console of every reader with devtools open, which
-      # `.catch()` cannot suppress because the browser logs it first). Both are
-      # 204-and-log now.
-      - name: "test:failclosed (analytics down, page unharmed)"
-        run: |
-          set -euo pipefail
-          npm run --silent test:failclosed 2>&1 | tee /tmp/fc.log
-          grep -q '^  0 failed' /tmp/fc.log \
-            || { echo "::error::analytics failing takes something from the reader — see the assertions above"; exit 1; }
-          # BOTH SCENARIOS MUST HAVE RUN. One of them passing is not the claim.
-          grep -q 'A. CID_EVENTS_DATABASE_URL unset' /tmp/fc.log \
-            || { echo "::error::the missing-env-var scenario did not run"; exit 1; }
-          grep -q 'B. the pool is unreachable' /tmp/fc.log \
-            || { echo "::error::the unreachable-pool scenario did not run"; exit 1; }
-          # ⚠️ AND THE SERVER MUST STILL BE TOLD. Quiet for the reader is the
-          # goal; quiet for us is how a broken deploy runs for a month.
-          grep -q 'the server logs the failure' /tmp/fc.log \
-            || { echo "::error::the server-logging assertion did not run — silent-to-everyone is not fail-closed"; exit 1; }
-          n=$(grep -c '^  PASS' /tmp/fc.log || true)
-          echo "failclosed assertions: $n"
-          # 12 on 2026-08-11, the first run of this gate: 6 per scenario —
-          # status, empty body, server log, nothing in the reader's console,
-          # nothing thrown, and the outbound click not delayed.
-          [ "$n" -ge 12 ] \
-            || { echo "::error::only $n failclosed assertions ran (expected >= 12) — the suite shrank"; exit 1; }
 
       - name: "test:map (tile requests + painted pixels, observed)"
         env:
@@ -1041,3 +1017,114 @@ jobs:
           # recovered. Raise it when assertions are added; never lower it.
           [ "$n" -ge 102 ] \
             || { echo "::error::only $n mobile assertions ran with the handle (expected >= 102)"; exit 1; }
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # ANALYTICS BREAKS, THE PRODUCT DOES NOT — ITS OWN JOB, AND THAT IS THE POINT.
+  # ═══════════════════════════════════════════════════════════════════════
+  # ⚠️ THIS JOB MUST NOT START A SHARED `next dev`. THAT IS THE WHOLE ISOLATION.
+  #
+  # `scripts/failclosed-probe.mjs` starts and stops its OWN dev servers, twice,
+  # each with a deliberately broken analytics config — no env var, then an
+  # unreachable pool. It cannot share a server with anything, because a server
+  # that works is not the condition under test.
+  #
+  # It used to live in `test`, after that job's shared `next dev`. Next 16 allows
+  # ONE `next dev` per project directory, so the probe's server printed `✓ Ready`
+  # and then `⨯ Another next dev server is already running`, served nothing, and
+  # the run died 93 seconds later on ECONNREFUSED — a stack trace about a fetch,
+  # for a cause that was a step ordering.
+  #
+  # Ruled 2026-08-12 after pricing four options. A separate `distDir` works but
+  # makes Next rewrite tracked `tsconfig.json`, which a test-only concern may not
+  # do. Reusing the shared server would need a test hatch in the write path,
+  # which `prose-probe.mjs` forbids for good reason. Reordering steps works and
+  # leaves the rule living in step order, where nothing enforces it. A separate
+  # job costs Actions minutes — free on a public repo — and runs in parallel, so
+  # it adds no wall clock against a ~7-minute `test`.
+  #
+  # `lib/workflow-env.test.mjs` asserts this job starts no shared dev server, so
+  # the isolation is a checked rule rather than a convention.
+  failclosed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: supabase start
+        run: supabase start
+
+      # The probe writes and reads analytics.events through the app, so the
+      # stack has to be genuinely up — `supabase start` exiting 0 is not that.
+      - name: Assert database is reachable and seeded
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          export PGPASSWORD=postgres
+          rooms=$(psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX -c 'select count(*) from rooms')
+          [ "$rooms" = "17" ] || { echo "::error::expected 17 seeded rooms, got '$rooms'"; exit 1; }
+
+      # The anon key is generated per-stack; the probe's own dev servers need it
+      # to render a room page at all.
+      - name: Capture stack env
+        run: |
+          set -euo pipefail
+          key=$(supabase status -o json | jq -r '.ANON_KEY')
+          [ -n "$key" ] && [ "$key" != "null" ] \
+            || { echo "::error::could not read ANON_KEY from the running stack"; exit 1; }
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$key"
+          } >> "$GITHUB_ENV"
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # --- THE GATE ITSELF. Kept verbatim from the `test` job it moved out of,
+      # so the floor and every grep guard travelled with it rather than being
+      # retyped. ---
+      #
+      # This was measured, not assumed, and the measurement changed the code:
+      # the handler answered 503 while logging nothing (a missing env var
+      # invisible to whoever deployed it) and 500 on an unreachable database (a
+      # red line in the console of every reader with devtools open, which
+      # `.catch()` cannot suppress because the browser logs it first). Both are
+      # 204-and-log now.
+      - name: "test:failclosed (analytics down, page unharmed)"
+        run: |
+          set -euo pipefail
+          npm run --silent test:failclosed 2>&1 | tee /tmp/fc.log
+          grep -q '^  0 failed' /tmp/fc.log \
+            || { echo "::error::analytics failing takes something from the reader — see the assertions above"; exit 1; }
+          # ⚠️ THE PROBE OWNS ITS SERVERS, AND SAYS SO WHEN THEY DO NOT START.
+          # Exit 2 with "MY OWN DEV SERVER NEVER STARTED" is a configuration
+          # fault, not an analytics fault, and must not read as one.
+          grep -q 'MY OWN DEV SERVER NEVER STARTED' /tmp/fc.log \
+            && { echo "::error::the probe could not start its own dev server — see its captured output above; this job must not run a shared next dev"; exit 1; }
+          # BOTH SCENARIOS MUST HAVE RUN. One of them passing is not the claim.
+          grep -q 'A. CID_EVENTS_DATABASE_URL unset' /tmp/fc.log \
+            || { echo "::error::the missing-env-var scenario did not run"; exit 1; }
+          grep -q 'B. the pool is unreachable' /tmp/fc.log \
+            || { echo "::error::the unreachable-pool scenario did not run"; exit 1; }
+          # ⚠️ AND THE SERVER MUST STILL BE TOLD. Quiet for the reader is the
+          # goal; quiet for us is how a broken deploy runs for a month.
+          grep -q 'the server logs the failure' /tmp/fc.log \
+            || { echo "::error::the server-logging assertion did not run — silent-to-everyone is not fail-closed"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/fc.log || true)
+          echo "failclosed assertions: $n"
+          # 12 on 2026-08-11, the first run of this gate: 6 per scenario —
+          # status, empty body, server log, nothing in the reader's console,
+          # nothing thrown, and the outbound click not delayed.
+          [ "$n" -ge 12 ] \
+            || { echo "::error::only $n failclosed assertions ran (expected >= 12) — the suite shrank"; exit 1; }

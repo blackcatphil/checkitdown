@@ -47,12 +47,49 @@ async function withServer(env, fn) {
   proc.stdout.on('data', (d) => { log += d })
   proc.stderr.on('data', (d) => { log += d })
   try {
-    for (let i = 0; i < 90; i++) {
+    /**
+     * ⚠️ DID MY OWN SERVER ACTUALLY START? ASKED BEFORE ANY ASSERTION.
+     *
+     * This loop used to swallow every connection error and fall through to the
+     * first assertion regardless. When the server never came up, the failure
+     * surfaced ~93 seconds later as an uncaught `TypeError: fetch failed /
+     * ECONNREFUSED 127.0.0.1:3210` from inside `post()` — a stack trace about
+     * the wrong thing, with the actual explanation sitting captured and unread
+     * in `log`.
+     *
+     * The cause in CI: NEXT 16 ALLOWS ONE `next dev` PER DIRECTORY. CI already
+     * runs one on 3000 for the other browser suites, so this probe's second
+     * server prints `✓ Ready` and then `⨯ Another next dev server is already
+     * running` and serves nothing. It passes standalone and fails in CI for
+     * exactly that reason.
+     */
+    let up = false
+    for (let i = 0; i < 60; i++) {
       try {
         const r = await fetch(`${BASE}/`, { signal: AbortSignal.timeout(1500) })
-        if (r.ok) break
+        if (r.ok) { up = true; break }
       } catch { /* not up yet */ }
+      if (proc.exitCode !== null) break
       await new Promise((r) => setTimeout(r, 1000))
+    }
+    if (!up) {
+      console.error(`\n  ⚠️  MY OWN DEV SERVER NEVER STARTED ON ${BASE}.`)
+      console.error('      Not running the fail-closed assertions — every one of them would')
+      console.error('      fail against a server that is not there, and the first would throw')
+      console.error('      a connection error that describes none of this.\n')
+      if (/Another next dev server is already running/.test(log)) {
+        console.error('      NEXT ALLOWS ONE `next dev` PER DIRECTORY, and one is already running')
+        console.error('      from this one. This probe needs its own server because it needs a')
+        console.error('      deliberately broken analytics config, which cannot be shared with')
+        console.error('      the server the other suites are using.\n')
+      }
+      console.error('      what the spawned server said:')
+      for (const line of (log.trim() || '(nothing at all)').split('\n').slice(0, 18)) {
+        console.error(`        ${line}`)
+      }
+      console.error('')
+      process.exitCode = 2
+      return { aborted: true }
     }
     return await fn(() => log)
   } finally {
@@ -131,7 +168,7 @@ const SCENARIOS = [
 
 for (const [label, env] of SCENARIOS) {
   console.log(`\n${label}`)
-  await withServer(env, async (getLog) => {
+  const r = await withServer(env, async (getLog) => {
     const { status, body } = await post()
 
     /* ⚠️ 204, NOT 5xx. A 5xx is logged by the BROWSER, unconditionally, before
@@ -173,6 +210,13 @@ for (const [label, env] of SCENARIOS) {
        BLOCKED on a network round trip, not micro-benchmarking the browser. */
     ok(r.clickMs < 400, 'the outbound click is not delayed by the dead write path', `${r.clickMs}ms`)
   })
+  /* ⚠️ STOP AT THE FIRST DEAD SERVER. Carrying on would spawn the second
+     scenario's server into the same blocked directory and print a second
+     identical failure, burying the one explanation under a repeat of itself. */
+  if (r?.aborted) {
+    await browser.close()
+    process.exit(2)
+  }
 }
 
 await browser.close()
