@@ -142,3 +142,51 @@ export function render(c: Cell): string {
 
 /** An overdue cell is a fault the page must show as one, not a quiet state. */
 export const isFault = (c: Cell): boolean => c.kind === 'overdue'
+
+/**
+ * WHY IS THIS OVERDUE — THE ROLL-UP, OR THE PRODUCER?
+ *
+ * ⚠️ A TRUE FAULT FOR A FALSE REASON IS STILL A WRONG ANSWER. The date exists so
+ * that a cell which never becomes a number is loud. But there are two ways for
+ * that to happen and they need different people:
+ *
+ *   THE ROLL-UP IS STALE   events are arriving and nothing has refreshed the
+ *                          materialised view. Nobody's producer is broken; a
+ *                          scheduler is missing. Whoever reads the console on
+ *                          17 August will otherwise go looking for a bug in
+ *                          analytics that is not there.
+ *   THE PRODUCER STOPPED   the roll-up is current and there is still nothing in
+ *                          it. That is the failure the date was built to catch.
+ *
+ * `staleAfterHours` is deliberately generous. The refresh policy is hourly; two
+ * hours is late enough to be real and early enough to matter, and a matview an
+ * hour old is not a fault.
+ */
+export function diagnoseOverdue({
+  refreshedAt, latestEvent, now, staleAfterHours = 2,
+}: {
+  refreshedAt: Date | null
+  latestEvent: Date | null
+  now: Date
+  staleAfterHours?: number
+}): string {
+  const hours = (a: Date, b: Date) => (a.getTime() - b.getTime()) / 3_600_000
+
+  /* Never refreshed at all is the strongest form of stale, and the likeliest
+     on the day this first bites: 021 describes an hourly refresh and ships no
+     scheduler. */
+  if (!refreshedAt) {
+    return 'the roll-up has NEVER been refreshed — no scheduler is running. '
+      + 'This is not a producer fault.'
+  }
+  if (hours(now, refreshedAt) > staleAfterHours) {
+    return `the roll-up has not refreshed since ${refreshedAt.toISOString().slice(0, 16).replace('T', ' ')} `
+      + '— a scheduler is missing or stopped. This is NOT a producer fault.'
+  }
+  /* The roll-up is current, so the emptiness is real. */
+  if (!latestEvent) {
+    return 'the roll-up is current and holds no events at all — the producer has stopped.'
+  }
+  return `the roll-up is current; the last event was ${latestEvent.toISOString().slice(0, 16).replace('T', ' ')} `
+    + '— the producer has stopped.'
+}

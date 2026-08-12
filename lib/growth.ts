@@ -61,6 +61,9 @@ export type Rollup = {
   /** The earliest event, for deriving `first reading <date>`. Null if none. */
   earliestEvent: Date | null
   refreshedAt: Date | null
+  /** The newest event the roll-up can see — for telling a stale view from a
+   *  stopped producer. */
+  latestEvent: Date | null
   /** True when the roll-up could not be read at all — a fault, not an absence. */
   unreachable: boolean
 }
@@ -68,12 +71,19 @@ export type Rollup = {
 export async function readRollup(): Promise<Rollup> {
   const p = pool()
   const empty: Rollup = {
-    weeks: [], complete: [], earliestEvent: null, refreshedAt: null, unreachable: true,
+    weeks: [], complete: [], earliestEvent: null, latestEvent: null,
+    refreshedAt: null, unreachable: true,
   }
   if (!p) return empty
   try {
     const { rows } = await p.query('select * from public.growth_weekly()')
     const { rows: meta } = await p.query('select public.growth_refreshed_at() as at')
+    const { rows: last } = await p.query('select public.growth_latest_event() as at')
+    /* ⚠️ FROM THE EVENTS, NOT THE ROLL-UP. Deriving this from the matview was
+       circular: a stale view holds no weeks, so no date could be computed, so
+       every cell fell through to "no producer exists". A stale roll-up must
+       never be able to impersonate an absent one. */
+    const { rows: first } = await p.query('select public.growth_earliest_event() as at')
     /* ⚠️ `pg` RETURNS A `date` COLUMN AS A JS Date, NOT A STRING, and React
        cannot render a Date as a child — the Engine tab threw and produced no
        <main> at all until this was added. The type said `string`, which is what
@@ -90,12 +100,12 @@ export async function readRollup(): Promise<Rollup> {
        second query against `events`. Two sources for "when did this start"
        would drift, and the date the console prints has to be the one the
        numbers are computed from. */
-    const withData = weeks.filter((w) => w.weekly_active_people > 0 || w.new_reach > 0)
     return {
       weeks,
       complete: weeks.filter((w) => w.is_complete),
-      earliestEvent: withData.length ? new Date(`${withData[0].iso_week}T00:00:00Z`) : null,
+      earliestEvent: first[0]?.at ? new Date(first[0].at) : null,
       refreshedAt: meta[0]?.at ? new Date(meta[0].at) : null,
+      latestEvent: last[0]?.at ? new Date(last[0].at) : null,
       unreachable: false,
     }
   } catch (e) {

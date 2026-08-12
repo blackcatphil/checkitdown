@@ -1,6 +1,8 @@
 import Link from 'next/link'
 
-import { cellFor, composite, isFault, render, type Cell } from '@/lib/growth-absence'
+import {
+  cellFor, composite, diagnoseOverdue, isFault, render, type Cell,
+} from '@/lib/growth-absence'
 import { COVERAGE_FIELDS, coverageFor, verificationFor } from '@/lib/ledger'
 import { inRoster, type RosterRoom } from '@/lib/roster'
 import { readRollup, REVENUE_PER_CLICK, SPEC, type Rollup, type Week } from '@/lib/growth'
@@ -62,11 +64,17 @@ export default async function Growth({
   const now = new Date()
 
   /** Every metric goes through here. Nothing formats a number by hand. */
+  /* ⚠️ AN OVERDUE CELL MUST NAME WHICH FAULT. Without this, 17 August reads
+     OVERDUE because nothing refreshes the matview and somebody spends a day
+     debugging a producer that is working. See diagnoseOverdue. */
+  const overdueReason = diagnoseOverdue({
+    refreshedAt: rollup.refreshedAt, latestEvent: rollup.latestEvent, now,
+  })
   const metric: Metric = (
     producer: boolean, weeksNeeded: number, value: number | null, missing?: string,
   ): Cell => cellFor({
     producer,
-    missing,
+    missing: missing ?? (producer ? overdueReason : undefined),
     earliestEvent: rollup.earliestEvent,
     completeWeeks: rollup.complete.length,
     weeksNeeded,
@@ -130,6 +138,7 @@ function Fig({ label, cell, note }: { label: string; cell: Cell; note?: string }
         {render(cell)}
       </span>
       {cell.kind === 'no-producer' && <span className="ge-fig-why">{cell.missing}</span>}
+      {cell.kind === 'overdue' && <span className="ge-fig-why">{cell.missing}</span>}
       {note && <span className="ge-fig-why">{note}</span>}
     </div>
   )

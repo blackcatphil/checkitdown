@@ -143,7 +143,11 @@ jobs:
           # is forced and the WRONG glyph asserted absent, which is a different
           # test from checking the right one appears — and red-proved by
           # injecting all five confusions.
-          [ "${n:-0}" -ge 271 ] \
+          # 274 on 2026-08-12: +3 for diagnoseOverdue — telling a stale roll-up from a
+          # stopped producer. On 17 Aug the first OVERDUE will be caused by a
+          # missing scheduler, and a fault that blames the producer sends
+          # somebody to debug analytics that is working.
+          [ "${n:-0}" -ge 274 ] \
             || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
