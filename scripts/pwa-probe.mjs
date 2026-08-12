@@ -161,6 +161,74 @@ if (iconPalette.error) {
     `${iconPalette.goldPct}% gold`)
 }
 
+/**
+ * ⚠️ THE SHARE CARD, IN PIXELS — same pattern as the tab icon above, and this
+ * gate has quietly become the identity gate as well as the installability one.
+ * That is deliberate: both are generated brand artefacts served as images, and
+ * both fail in the way a status code cannot see.
+ *
+ * There was NO OpenGraph anything before 2026-08-11 — no metadata, no image,
+ * nothing in the head — so every share of this site rendered as a bare URL.
+ * A route that 200s with a blank canvas would restore exactly that outcome
+ * while looking fixed, so the assertion is that the brand is actually ON it.
+ */
+const og = await page.evaluate(async (tokens) => {
+  /* The URL the CRAWLER is given, read from the document rather than guessed —
+     Next serves the image from a hashed route and a hardcoded path would test a
+     URL nothing points at. */
+  const meta = document.querySelector('meta[property="og:image"]')
+  if (!meta) return { error: 'no <meta property="og:image"> in the document' }
+  const href = meta.getAttribute('content')
+  const img = await new Promise((res) => {
+    const i = new Image()
+    i.onload = () => res(i); i.onerror = () => res(null)
+    i.src = href
+  })
+  if (!img) return { error: `the declared og:image did not load: ${href}` }
+  const c = document.createElement('canvas')
+  c.width = img.naturalWidth; c.height = img.naturalHeight
+  const cx = c.getContext('2d')
+  cx.drawImage(img, 0, 0)
+  const { data } = cx.getImageData(0, 0, c.width, c.height)
+  const near = (i, t, tol) => Math.abs(data[i] - t[0]) <= tol
+    && Math.abs(data[i + 1] - t[1]) <= tol && Math.abs(data[i + 2] - t[2]) <= tol
+  let blue = 0, gold = 0, ink = 0, total = 0
+  for (let i = 0; i < data.length; i += 4) {
+    total++
+    if (near(i, tokens.blue, 40)) blue++
+    if (near(i, tokens.gold, 55)) gold++
+    if (near(i, tokens.ink, 12)) ink++
+  }
+  const pc = (n) => Math.round((n / total) * 1000) / 10
+  return {
+    href, w: c.width, h: c.height,
+    bluePct: pc(blue), goldPct: pc(gold), inkPct: pc(ink),
+    twitter: document.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ?? null,
+    card: document.querySelector('meta[name="twitter:card"]')?.getAttribute('content') ?? null,
+  }
+}, { blue: readTokenRgb(manifestBlue), gold: readTokenRgb(manifestGold), ink: readTokenRgb(readServerToken('--cid-ink-800')) })
+
+if (og.error) {
+  ok(false, 'the share card renders', og.error)
+} else {
+  /* 1200x630 is what every platform crops from. A card at any other ratio gets
+     cut, and the crop is never where you would have chosen. */
+  ok(og.w === 1200 && og.h === 630,
+    'the share card is 1200x630 — the size every platform crops from', `${og.w}x${og.h}`)
+  ok(og.inkPct > 50,
+    'it is drawn on the app\'s own ink, not a default white canvas', `${og.inkPct}% ink`)
+  ok(og.bluePct >= 0.5,
+    'the brand blue is actually in the pixels — the mark is on the card', `${og.bluePct}%`)
+  ok(og.goldPct >= 0.3,
+    'and so is the gold, which is the hairline and the trust line', `${og.goldPct}%`)
+  /* THE TWITTER IMAGE COMES FREE from the same file — asserted rather than
+     assumed, because if Next ever stops emitting it, X falls back to no image
+     at all and nothing else here would notice. */
+  ok(og.twitter === og.href && og.card === 'summary_large_image',
+    'X gets the same card, at large-image size, without a second file',
+    `${og.card} · ${og.twitter === og.href ? 'same image' : og.twitter}`)
+}
+
 const icoRes = await page.request.get(`${BASE}/favicon.ico`)
 ok(icoRes.ok() && Number(icoRes.headers()['content-length'] ?? 1) > 0,
   '/favicon.ico is served — still requested unconditionally by unfurlers and feed readers',

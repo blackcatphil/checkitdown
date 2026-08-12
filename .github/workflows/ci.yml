@@ -84,6 +84,15 @@ jobs:
           # into contradicting each other on the same card. +3 in
           # lib/wynn-dailies for the ten new columns: the pair gate now diffs 28
           # columns per daily instead of 18, and parses the note on both copies.
+          # 243 on 2026-08-11: +7 for lib/og — the share card. The assertions
+          # that earn their place are the three about COPY: the card's words
+          # live in OG_LINES as data and must contain no digit and no number
+          # spelled out, and the image must render every visible string from
+          # that constant so a line typed straight into the JSX cannot escape
+          # the check. "17 ROOMS" baked into a share image is the
+          # number-copied-forward failure on an artefact CACHED BY THE PLATFORM
+          # — it would still say 17 the day the roster is 19, on every link ever
+          # posted, and no deploy of ours could correct it.
           # 236 on 2026-08-11: +14 for lib/tournament-filters — /tournaments
           # goes from 65 rows to several hundred with three rooms in, and a
           # filtered table does not LOOK filtered, it looks like a shorter
@@ -93,8 +102,8 @@ jobs:
           # dimension is KEPT so a gap in our data is never published as a fact
           # about a room's schedule.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 236 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 236) — a suite that shrinks still exits 0"; exit 1; }
+          [ "${n:-0}" -ge 243 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 243) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -563,9 +572,18 @@ jobs:
           # red at 0% brand blue.
           grep -q 'PASS  the tab icon is OUR mark' /tmp/pwa.log \
             || { echo "::error::the tab-icon assertion did not run — a framework logo passes every other check in this gate"; exit 1; }
+          # ⚠️ THE SHARE CARD IS ON THE CARD. There was no OpenGraph anything
+          # before this — every share of the site rendered as a bare URL — and a
+          # route that 200s with a blank canvas restores exactly that outcome
+          # while looking fixed. Verified to fail: a white background and no
+          # mark turn two of these red at 0%.
+          grep -q 'PASS  the share card is 1200x630' /tmp/pwa.log \
+            || { echo "::error::the share-card dimension assertion did not run — a mis-sized card is cropped by every platform"; exit 1; }
+          grep -q 'PASS  the brand blue is actually in the pixels' /tmp/pwa.log \
+            || { echo "::error::the share-card pixel assertion did not run — a blank card 200s like a good one"; exit 1; }
           n=$(grep -c '^  PASS' /tmp/pwa.log || true)
           echo "pwa assertions: $n"
-          # 53 IN CI, 54 ON macOS — and the one difference is deliberate.
+          # 58 IN CI, 59 ON macOS — and the one difference is deliberate.
           #
           # Chromium exposes BarcodeDetector on macOS and Android, backed by the
           # OS decoder, and NOT on Linux. So the "a REAL scanner agrees"
@@ -580,8 +598,11 @@ jobs:
           # the probe will say so on its SKIP lines rather than passing vacuously.
           # +3 on 2026-08-11: the two tab-icon pixel assertions and
           # /favicon.ico being served at all.
-          [ "$n" -ge 53 ] \
-            || { echo "::error::only $n pwa assertions ran (expected >= 53) — check the SKIP lines above"; exit 1; }
+          # +5 on 2026-08-11: the share card — dimensions, that it is drawn on
+          # our ink rather than a default canvas, blue and gold actually in the
+          # pixels, and that X gets the same image without a second file.
+          [ "$n" -ge 58 ] \
+            || { echo "::error::only $n pwa assertions ran (expected >= 58) — check the SKIP lines above"; exit 1; }
 
       - name: "test:palette (every text node clears its floor, opacity composited)"
         env:
