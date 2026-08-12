@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from 'react'
 
+import { track } from '@/lib/analytics'
 import { INSTALL_URL, type Platform } from '@/lib/install'
 import {
   installPromptSnapshot, isDesktopClassTouchDevice, isStandalone, notStandalone,
@@ -178,7 +179,10 @@ function AndroidSteps({
   async function install() {
     setOutcome('prompting')
     const result = await showInstallPrompt()
-    if (result === 'accepted') setOutcome('accepted')
+    /* ⚠️ FROM userChoice, NOT FROM THE CLICK. A tap that opened the dialog and
+       was then dismissed is not an install, and counting the button would make
+       the number measure interest while reading as adoption. */
+    if (result === 'accepted') { track('install_accept'); setOutcome('accepted') }
     else if (result === 'dismissed') setOutcome('dismissed')
     else setOutcome('idle')
   }

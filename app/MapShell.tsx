@@ -14,6 +14,8 @@ import {
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { track } from '@/lib/analytics'
+
 import type { AmenityDef, FilterState } from '@/lib/amenity-filter'
 import { amenityGroups, GROUP_LABEL, amenityState, combineStates, summaryLine, tally } from '@/lib/amenity-filter'
 import { FilterGroup } from './FilterGroup'
@@ -1439,10 +1441,27 @@ export function MapShell({ rooms, amenityDefs }: { rooms: MapRoom[]; amenityDefs
     mapRef.current?.easeTo({ center: VALLEY, zoom: valleyZoom(), pitch: 0, bearing: 0 })
   }, [stopDrift, valleyZoom])
 
-  const toggle = (k: string) =>
-    setChecked((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]))
-  const toggleAmen = (slug: string) =>
-    setAmenChecked((c) => (c.includes(slug) ? c.filter((x) => x !== slug) : [...c, slug]))
+  /* ⚠️ COUNTED ON APPLY, NOT ON RENDER, and `on` says which direction. A
+     filter being ON is a state the map re-renders constantly; a filter being
+     APPLIED is a thing a person did once. Counting the state would produce a
+     number that climbs while nobody touches anything. */
+  /* ⚠️ THE EVENT FIRES OUTSIDE THE STATE UPDATER, and the first version did not.
+     React invokes an updater function TWICE under Strict Mode, so a `track()`
+     inside `setChecked(c => ...)` sent the event twice for one click — in
+     development only, which is the version nobody profiles. The red-proof
+     caught it: one filter click, two rows.
+     An updater must be pure. `on` is computed from the current state here, and
+     the updater below does nothing but return the next value. */
+  const toggle = (k: string) => {
+    const on = !checked.includes(k)
+    track('map_filter_apply', { props: { group: 'stakes', key: k, on } })
+    setChecked((c) => (on ? [...c, k] : c.filter((x) => x !== k)))
+  }
+  const toggleAmen = (slug: string) => {
+    const on = !amenChecked.includes(slug)
+    track('map_filter_apply', { props: { group: 'amenity', key: slug, on } })
+    setAmenChecked((c) => (on ? [...c, slug] : c.filter((x) => x !== slug)))
+  }
 
   const toggleCompare = (slug: string) =>
     setCompare((c) => (c.includes(slug) ? c.filter((x) => x !== slug) : [...c, slug]))

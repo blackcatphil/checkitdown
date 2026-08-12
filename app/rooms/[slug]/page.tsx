@@ -15,6 +15,8 @@ import { formatRake } from '@/lib/figures'
 import { hostOf, inPersonReceipt, isPrivate, type PrivateSources } from '@/lib/receipts'
 import { supabase } from '@/lib/supabase'
 
+import { OutboundLink, SourceLink, TrackView } from '@/app/Track'
+
 import { CorrectionForm } from './CorrectionForm'
 
 export const revalidate = 300
@@ -137,7 +139,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
          distinct from the rake's — the partner apply cited stakes to a doc and
          rake to the sheet on the same row. The provenance block needs both. */
       + 'rake_cap,jackpot_drop,structure_note,big_blind,big_bet,source_url,verified_at,rake_source_url,rake_verified_at),'
-      + 'room_amenities(available,detail,menu_url,source_url,verified_at,amenity_types(slug,label,grp)),'
+      + 'room_amenities(available,detail,source_url,verified_at,amenity_types(slug,label,grp)),'
       + 'house_rules(label,value,source_url,verified_at),'
       + 'room_formats(slug,label,note,source_url,verified_at)'
       /* PROSE, fetched with everything else. `author_kind` is deliberately
@@ -190,7 +192,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       rake_source_url: string | null; rake_verified_at: string | null
     }>
     room_amenities: Array<{
-      available: boolean; detail: string | null; menu_url: string | null
+      available: boolean; detail: string | null
       source_url: string | null; verified_at: string | null
       amenity_types: { slug: string; label: string; grp: string } | null
     }>
@@ -859,7 +861,13 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                 <p className="num cid-tourney-meta">
                   {t.structure_pdf_url && (
                     <>
-                      <a href={t.structure_pdf_url} target="_blank" rel="noopener noreferrer">FULL STRUCTURE (PDF)</a>
+                      <OutboundLink
+                        href={t.structure_pdf_url}
+                        roomSlug={room.slug}
+                        kind="structure_pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >FULL STRUCTURE (PDF)</OutboundLink>
                       {' · '}
                     </>
                   )}
@@ -873,6 +881,49 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
           </div>
         </Block>
       )}
+
+      {/* ⚠️ THE VIEW IS COUNTED IN THE BROWSER, NOT IN THIS RENDER. This page
+          is ISR (revalidate = 300) and one cached render serves everybody who
+          arrives for the next five minutes — counting here would count builds.
+          <TrackView> is a client component whose effect fires on mount. */}
+      <TrackView event="room_facts_view" roomSlug={room.slug} />
+
+      {/* ═══ THE ROOM'S OWN DOORS ═══
+          `website_url` and `phone` have been SELECTED AND TYPED since this page
+          was written and rendered nowhere — the columns were fetched on every
+          request and thrown away. Found by inventorying the producers for
+          `outbound_room_click` and discovering there were almost none: two
+          anchors on one page, neither of them the room's own site.
+
+          ⚠️ NOTHING IS INVENTED. A room with no phone gets no CALL, not a
+          disabled one — a greyed control claims we looked and found nothing,
+          which is the confirmed-absence treatment and this is not that. Every
+          link here exists only when the value behind it does. */}
+      <p className="cid-roomlinks">
+        {/* Nullable in the type even though it is 17/17 in the data, and the
+            guard stays: the compiler is enforcing the same rule as the comment
+            above, and the eighteenth room may arrive without one. */}
+        {room.website_url && (
+          <OutboundLink href={room.website_url} roomSlug={room.slug} kind="website"
+            target="_blank" rel="noopener noreferrer"
+          >THE ROOM&rsquo;S OWN PAGE</OutboundLink>
+        )}
+        {/* DIRECTIONS IS BUILT FROM THE COORDINATES WE ALREADY PLOT, not from a
+            stored URL. The map pin and this link therefore cannot disagree: one
+            latitude, one longitude, two renderings of it. */}
+        <OutboundLink
+          href={`https://www.google.com/maps/dir/?api=1&destination=${room.latitude},${room.longitude}`}
+          roomSlug={room.slug} kind="directions" target="_blank" rel="noopener noreferrer"
+        >DIRECTIONS</OutboundLink>
+        {room.phone && (
+          /* `tel:` is outbound in every way that matters — it leaves for the
+             room. Digits only: a number with spaces and brackets is a string
+             some dialers refuse. */
+          <OutboundLink href={`tel:${room.phone.replace(/[^\d+]/g, '')}`}
+            roomSlug={room.slug} kind="phone"
+          >CALL {room.phone}</OutboundLink>
+        )}
+      </p>
 
       <Block label="THE FACTS">
         <div className="cid-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '1px', background: 'var(--cid-line-1)', border: '1px solid var(--cid-line-1)' }}>
@@ -961,6 +1012,20 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                 <span className="cid-label">{a.amenity_types?.label}</span>
                 <span className="cid-unverified" style={{ font: 'var(--cid-body)' }}>
                   {a.detail ?? 'Yes'}
+                  {/* NO MENU LINK HERE, DELIBERATELY. `room_amenities.menu_url`
+                      is real and is 0/39 rows — no room has one — so a renderer
+                      for it was code with no producer: never exercised, never
+                      red-provable, and indistinguishable from a working feature
+                      when read. This repo has removed that shape twice before
+                      (an unwired `revalidatePath`, a deleted `setHover`) on the
+                      same reasoning: a safeguard that has never run is not a
+                      safeguard, it is a claim.
+                      The gap is NAMED instead — floor-visit sheet, and
+                      docs/README.md ("Open items"),
+                      which names the column and this render site. When a value lands, the link goes here, as an
+                      `outbound_room_click` producer with kind="menu", and gets
+                      a red/green pair in scripts/events-probe.mjs like the
+                      other four. */}
                 </span>
               </div>
             ))}
@@ -1043,7 +1108,24 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
                     {src.isPrivate
                       ? 'a partner document that is not public'
                       : src.host
-                        ? <a href={src.url} rel="nofollow noopener" target="_blank">{src.host}</a>
+                        ? (
+                          /* A RECEIPT, NOT A DOOR. This fires source_link_click
+                             — see lib/analytics-events.ts for why the two are
+                             not one event. `host_is_room` is decided here by
+                             comparing the citation's host with the room's own,
+                             so the props answer "were they checking us, on the
+                             room's own site" without a second event name. */
+                          <SourceLink
+                            href={src.url}
+                            roomSlug={room.slug}
+                            hostIsRoom={
+                              room.website_url != null && src.host != null
+                              && hostOf(room.website_url) === src.host
+                            }
+                            rel="nofollow noopener"
+                            target="_blank"
+                          >{src.host}</SourceLink>
+                        )
                         : 'an unnamed source'}
                   </span>
                 ))}
@@ -1052,7 +1134,7 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
             )}
           </p>
         )}
-        <CorrectionForm roomId={room.id} roomName={room.name} />
+        <CorrectionForm roomId={room.id} roomName={room.name} roomSlug={room.slug} />
       </section>
     </main>
   )

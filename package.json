@@ -23,19 +23,25 @@
     "test:auth": "node scripts/auth-probe.mjs",
     "differ": "node scripts/differ.mjs",
     "test:differ": "node --test lib/differ.test.mjs lib/floor-sheet.test.mjs",
-    "ingest:tournaments": "python3 scripts/tournaments/wynn.py",
-    "census:prod": "node scripts/prod-census.mjs"
+    "ingest:tournaments": "python3 scripts/tournaments/ingest.py wynn",
+    "census:prod": "node scripts/prod-census.mjs",
+    "test:events": "node scripts/events-probe.mjs",
+    "gate:017": "node scripts/migration-017-gate.mjs",
+    "gate:017:prod": "node scripts/migration-017-gate-prod.mjs",
+    "test:failclosed": "node scripts/failclosed-probe.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.0",
     "maplibre-gl": "^6.1.0",
     "next": "16.3.0",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pg": "^8.21.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

@@ -5,6 +5,7 @@ import {
   DAY_LABELS, ENTRY_BANDS, FILTER_KEYS, GAME_LABELS, type FilterKey,
   bandOf, describe as describeFilters, filterQuery, isFiltered, matches, parseFilters, toggle,
 } from '@/lib/tournament-filters'
+import { OutboundLink, TrackedClick } from '@/app/Track'
 import { costShape } from '@/lib/tournament-terms'
 import { timeLabel, vegasParts } from '@/lib/tournaments'
 
@@ -422,17 +423,35 @@ export default async function Tournaments({
               <div key={r.key} className="cid-tt-row">
                 <span>
                   {r.name}
+                  {r.pdf && (
+                    <>
+                      {' '}
+                      <OutboundLink href={r.pdf} roomSlug={r.roomSlug} kind="structure_pdf"
+                        target="_blank" rel="noopener noreferrer"
+                        className="cid-tt-pdf"
+                      >STRUCTURE</OutboundLink>
+                    </>
+                  )}
                   {/* ⚠️ A CONTINUATION TAKES NO BUY-IN. Six Day 2s would
                       otherwise read as entry points and a reader would turn up
                       with cash on the wrong day. */}
                   {r.takesEntry === false && <span className="cid-tt-noentry"> — Day 2, no entry</span>}
                 </span>
-                <span><Link href={`/rooms/${r.roomSlug}`}>{r.room}</Link></span>
+                <span>
+                  <TrackedClick event="tournament_row_open" roomSlug={r.roomSlug}
+                    props={{ event_slug: r.key }}
+                  >
+                    <Link href={`/rooms/${r.roomSlug}`}>{r.room}</Link>
+                  </TrackedClick>
+                </span>
                 <span className="num">{r.time}</span>
                 <span className="num">{r.takesEntry === false ? '—' : r.entry != null ? `$${Number(r.entry).toFixed(0)}` : '—'}</span>
                 {/* THE EXTRAS, LISTED IN THEIR OWN CELL AND NEVER ADDED TO THE
                     ONE BESIDE THEM. "$200 REBUY · UNLIMITED" is what the room
                     published; "$440" would be a number we invented. */}
+                {/* THE STRUCTURE PDF, WHICH THIS PAGE HAS CARRIED IN ITS Row
+                    TYPE SINCE IT WAS WRITTEN and never rendered — `pdf` was
+                    assigned from `structure_pdf_url` and read by nothing. */}
                 <span className="num cid-tt-plus">
                   {r.takesEntry === false || r.extras.length === 0 ? '—' : r.extras.map((x) => (
                     <span key={x.label} className="cid-tt-extra">

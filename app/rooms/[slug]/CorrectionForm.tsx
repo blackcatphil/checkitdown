@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+import { track } from '@/lib/analytics'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -12,7 +13,7 @@ import { supabase } from '@/lib/supabase'
  * This is the other half of the empty state. A gap that can be corrected is an
  * input; a gap that just sits there is an apology.
  */
-export function CorrectionForm({ roomId, roomName }: { roomId: string; roomName: string }) {
+export function CorrectionForm({ roomId, roomName, roomSlug }: { roomId: string; roomName: string; roomSlug: string }) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [contact, setContact] = useState('')
@@ -33,6 +34,10 @@ export function CorrectionForm({ roomId, roomName }: { roomId: string; roomName:
       setState('error')
       return
     }
+    /* ⚠️ AFTER the insert, not on submit. A report that failed is not a
+       report, and counting the click would make the metric measure intent
+       while reading as outcome. */
+    track('fact_report_submit', { roomSlug })
     setState('sent')
     setMessage('')
     setContact('')

@@ -1129,3 +1129,63 @@ a:hover { color: var(--cid-accent-300); border-bottom-color: var(--cid-accent-li
      to a constraint that does not exist. */
   .cid-mark { width: 28px; height: 28px; }
 }
+
+/* ═══ THE ROOM'S OWN DOORS ═══
+   A row of outbound links: the room's site, directions from the coordinates we
+   already plot, and the phone as a dialable number. Mono and tracked like every
+   other label in the app, because these are navigation rather than prose.
+   Every one is a 44px target — the standing ruling, desktop included. */
+.cid-roomlinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cid-space-5);
+  margin: 0;
+}
+.cid-roomlinks a {
+  font: var(--cid-tag);
+  letter-spacing: var(--cid-track-nav);
+  min-height: var(--cid-target);
+  display: inline-flex;
+  align-items: center;
+}
+/* The structure link inside a tournament row is INLINE IN A SENTENCE of event
+   name, so it takes the caption size and is exempt from the 44px floor under
+   WCAG 2.5.8 — the same exemption the receipts on room detail carry. */
+.cid-tt-pdf { font: var(--cid-caption); white-space: nowrap; }
+
+/* ═══ THE ROOMS LEDGER — internal, /admin/ledger ═══
+   CID tokens throughout; the design bundle's Modernist stylesheet is not
+   imported and its red-for-movement convention does not come across — colour
+   carries no data state here either (§6), and an internal screen is exactly
+   where that habit would start. */
+.cid-ledger { border: 1px solid var(--cid-line-1); }
+.cid-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 7rem minmax(0, 1.6fr) minmax(0, 1.3fr);
+  gap: var(--cid-space-5);
+  align-items: baseline;
+  padding: var(--cid-space-4) var(--cid-space-5);
+  border-bottom: 1px solid var(--cid-line-1);
+  font: var(--cid-body);
+}
+.cid-ledger-row:last-child { border-bottom: none; }
+.cid-ledger-head { background: var(--cid-fill-1); border-bottom: 1px solid var(--cid-line-2); }
+.cid-ledger-row > * { min-width: 0; }
+.cid-ledger-area { font: var(--cid-tag); color: var(--cid-text-3); text-transform: uppercase; }
+
+/* n/8 on its own line, then the names of what is missing. The names are the
+   actionable half — "missing comps, phone" is a morning's work. */
+.cid-ledger-filled, .cid-ledger-verified {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cid-space-1);
+}
+.cid-ledger-missing { font: var(--cid-caption); color: var(--cid-text-3); }
+.cid-ledger-when { font: var(--cid-caption); color: var(--cid-dim); }
+
+@media (max-width: 860px) {
+  .cid-ledger-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--cid-space-2); }
+  .cid-ledger-head { display: none; }
+  .cid-ledger-row > *:nth-child(1) { grid-column: 1 / -1; font: var(--cid-body-strong); }
+}

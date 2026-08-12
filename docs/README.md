@@ -2541,6 +2541,22 @@ false from `756bf16` onward.*
 |---|---|---|
 | **dbbp at Venetian and South Point** | **Now stored** — `room_formats`, both rooms, partner-verified, `label` NULL so nothing renders. Read as **double-board bomb pots**, a game *format* | The **word**, not the column. `slug` is TEXT precisely so the guess is cheap to correct, and the NULL label is the render gate: confirm the expansion on the floor and one `UPDATE` makes the block appear |
 | **Atlas-or-Bravo** | **Now stored** — `room_waitlist`, 15 of 17 rooms, 3 PokerAtlas and 12 Bravo. Both vendors measured shut (`403` each). Skyline and Boulder Station are absent rather than false: the sheet says nothing about them | A per-room reason to trust a list. `enabled` defaults false everywhere and the button ships hidden. With both vendors unfetchable the question is "which, if either, do we deal with" — a partnership question, not an engineering one |
+| **Tableside-food menu links** (2026-08-11) | The column and nothing in it: **`room_amenities.menu_url`, 0 of 39 rows**. No room publishes one we hold | A floor visit. It is on the checklist. When a value lands, the link renders **in the amenities block of `app/rooms/[slug]/page.tsx`**, beside the amenity detail, as an `outbound_room_click` producer with `kind="menu"` — and gets a red/green pair in `scripts/events-probe.mjs` like the other four doors |
+
+### The renderer for that link was written, then removed (2026-08-11)
+
+It was guarded on null, so it rendered for nobody and could not produce a wrong
+number. It came out anyway, and the reasoning is the same one that deleted an
+unwired `revalidatePath` and a `setHover` that nothing called: **code with no
+producer cannot be proved and reads exactly like code that works.** Every other
+outbound link on that page has a red-before-green pair; this one could not have
+one, because there is nothing to click. A reader of the file would have counted
+five working doors and found four.
+
+The gap is now named in two places a person actually looks — the floor-visit
+checklist and the row above — instead of being implied by a branch that never
+runs. Naming a gap is a claim you can check; a dormant renderer is a claim that
+checks itself and always agrees.
 
 Two cautions attached to the dbbp line specifically:
 

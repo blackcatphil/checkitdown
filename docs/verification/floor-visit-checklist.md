@@ -26,6 +26,7 @@ _Derived from the seeded database 2026-08-05, main@1916d70. If seed data changes
 - Dress code and drinks policy are unpublished by every casino - ask both at all 17 rooms; this sheet is the only way those columns ever fill.
 - **[2026-08-07] One game question to settle at Golden Nugget**: we now hold BOTH a $3/6 limit and a $4/8 limit. The $4/8 is partner-confirmed; the $3/6 is not. Is the $3/6 still spread, or did the $4/8 replace it?
 - **[2026-08-07] One receipt to collect at ARIA**: who designated @ARIAPoker as the schedule source, and when. A designation we cannot attribute is not yet a source.
+- **[2026-08-11] Tableside-food MENU LINKS - 0 of 39 amenity rows hold one**: where a room lists tableside food, ask whether the menu exists online and note the URL. This is `room_amenities.menu_url`, it is empty for every room, and it is the only outbound link the site could offer that it currently cannot. A photo of a paper menu is NOT a substitute - the column holds a URL, and a room that has no online menu is a finding worth writing down as "none" so nobody asks again.
 
 ---
 

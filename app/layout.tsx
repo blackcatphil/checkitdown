@@ -35,6 +35,25 @@ export const metadata: Metadata = {
        the safe-area insets keep content out from under the notch. */
     statusBarStyle: 'black-translucent',
   },
+  /**
+   * ⚠️ GOOGLE SEARCH CONSOLE — WIRED, BUT EMITTING NOTHING UNTIL PHIL CONFIRMS.
+   *
+   * Nobody could answer "is checkitdown.com verified in GSC?" from this repo:
+   * there was no meta tag, no token file in public/ and no gtag — and DNS
+   * verification leaves no repo trace at all, so its absence proved nothing
+   * either way. That unanswerable question is the reason for preferring the
+   * meta tag over DNS: the tag is IN THE DIFF, so the next person can read the
+   * answer off the code.
+   *
+   * NO TOKEN IS COMMITTED AND NONE IS INVENTED. This reads one env var; unset,
+   * Next emits no tag at all, which is exactly today's behaviour. Setting
+   * GOOGLE_SITE_VERIFICATION in the deploy environment turns it on with no code
+   * change — and if the domain is ALREADY verified by DNS, leaving it unset
+   * costs nothing and a second method would be redundant.
+   */
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+    : {}),
   icons: {
     icon: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],

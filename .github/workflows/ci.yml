@@ -102,8 +102,17 @@ jobs:
           # dimension is KEPT so a gap in our data is never published as a fact
           # about a room's schedule.
           # which is not the failure worth guarding.
-          [ "${n:-0}" -ge 243 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 243) — a suite that shrinks still exits 0"; exit 1; }
+          # 247 on 2026-08-11: +4 for lib/bot — the classifier whose ANSWER is
+          # the only thing stored, since the user-agent that produced it is
+          # deliberately thrown away. The assertion that earns its place is that
+          # an ABSENT or empty UA counts as a bot: the fail-open spelling of
+          # that rule marks nothing, and "we filtered bots" becomes a claim
+          # about a filter that never fired. Note these four tests existed
+          # BEFORE this floor was last touched and never moved it — the floor
+          # sat at 243 against a suite of 247, which is the drift these
+          # numbered comments exist to stop.
+          [ "${n:-0}" -ge 247 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 247) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -124,6 +133,54 @@ jobs:
           echo "rooms=$rooms games=$games"
           [ "$rooms" = "17" ] || { echo "::error::expected 17 seeded rooms, got '$rooms' — migration or seed did not run"; exit 1; }
           [ "$games" = "78" ] || { echo "::error::expected 78 seeded cash games, got '$games'"; exit 1; }
+
+      # --- GATE 1b: MIGRATION 017'S PERMISSIONS, PROVED FROM THE FILE. ---
+      # ⚠️ THIS DOES NOT TEST THE DATABASE THE OTHER GATES USE. It builds a
+      # scratch database, applies ONLY 017 to it, and asks the roles themselves
+      # what they can reach. That distinction is the entire reason it exists:
+      # the first version of 017 omitted `revoke all on function ... from
+      # public`, and anon was still refused locally — for an unrelated reason.
+      # A permission demonstrated by an environment is not a permission the
+      # migration grants, and only a database with nothing else in it can tell
+      # the two apart.
+      #
+      # It ran on one laptop until 2026-08-11, which is not a gate.
+      - name: "gate:017 (the analytics permissions, on a scratch database)"
+        run: |
+          set -euo pipefail
+          npm run --silent gate:017 2>&1 | tee /tmp/g017.log
+          grep -q '^  0 failed' /tmp/g017.log \
+            || { echo "::error::migration 017 does not grant what it claims — see the assertions above"; exit 1; }
+          # THE POSITIVE CONTROLS, PINNED BY NAME. Every other assertion in this
+          # gate is a refusal, and a migration that granted NOTHING to anybody
+          # would satisfy all of them — a wall passing as a door. Two controls
+          # stop that: the writer can actually write, and the default-privileges
+          # probe can actually see a grant when one exists.
+          grep -q 'PASS  cid_events_writer CAN execute record_events' /tmp/g017.log \
+            || { echo "::error::the writer-can-write control did not run — the refusals prove nothing without it"; exit 1; }
+          grep -q 'PASS  CONTROL: with a granting default installed' /tmp/g017.log \
+            || { echo "::error::the default-privileges control did not run — the two 'no SELECT' assertions are blind without it"; exit 1; }
+          # ⚠️ THE DENIALS MUST NAME THE OBJECT. `permission denied` alone is not
+          # evidence: "permission denied to set role" contains it, and an early
+          # version of this gate scored two of those as passes. Asserting the
+          # object name here means a probe that breaks its own setup cannot
+          # quietly re-mark itself green.
+          grep -q 'permission denied for function record_events' /tmp/g017.log \
+            || { echo "::error::no function-level denial was observed — the anon/authenticated/service_role refusals are not what they claim"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/g017.log || true)
+          echo "017 assertions: $n"
+          # 18 on 2026-08-11, the first run of this gate in CI: 4 on ownership
+          # and body, 5 anon/authenticated/service_role refusals, 5 on the
+          # writer role, 3 on default privileges for the table nobody has
+          # written yet, 1 on the enum.
+          # 22 on 2026-08-11: +4 for analytics.devices. The one that earns its
+          # place is that a SECOND event must not move `first_seen_at` —
+          # `on conflict do update` and `do nothing` both compile and both run,
+          # and the first turns first-seen into last-seen, after which "new
+          # reach" counts every returning reader as new. Silent, one-way, and
+          # upward. Red-proved by injection, not reasoned about.
+          [ "$n" -ge 22 ] \
+            || { echo "::error::only $n 017 assertions ran (expected >= 18) — the gate shrank"; exit 1; }
 
       # --- GATE 2: RLS + grants, against the real roles. ---
       - name: "test:rls (RLS + grants — the floor is asserted below)"
@@ -256,9 +313,54 @@ jobs:
       # every request: true by accident of environment, not by construction.
       # `next build` above still gates the production build; the suite runs
       # against dev, which is the mode its premise actually holds in.
+      # ⚠️ CI EXERCISES THE REAL LEAST-PRIVILEGE ROLE, NOT postgres.
+      # Migration 017 creates `cid_events_writer` with NO PASSWORD — a password
+      # in a migration is a secret in git — so it cannot log in until somebody
+      # sets one out of band. Here that "somebody" is this step, with a throwaway
+      # value that exists for the length of a CI run against a database created
+      # for the length of a CI run.
+      #
+      # Pointing the app at `postgres` instead would be easier and would defeat
+      # the point: every assertion about what the writer CANNOT do would be
+      # tested against a superuser that can do everything, and the gate would
+      # pass no matter what the grants said.
+      # ⚠️ GENERATED, NOT WRITTEN DOWN. THIS REPOSITORY IS PUBLIC.
+      # An earlier version of this step used the literal 'ci-throwaway'. It was
+      # genuinely throwaway — a local database that lives for one job — but a
+      # password literal in a public workflow is a pattern, and the next person
+      # who needs one copies the shape rather than the reasoning. There is no
+      # version of "a credential in a public file" worth teaching.
+      #
+      # Generated per run, exported to the job so later steps can use it, and
+      # MASKED so it cannot appear in the log even if something echoes it.
+      - name: Give the writer role a password (CI-only, generated per run)
+        run: |
+          set -euo pipefail
+          pw="$(openssl rand -hex 16)"
+          echo "::add-mask::$pw"
+          # The whole URL goes to the job env, not the password on its own: the
+          # only consumer is `next dev`, and assembling it here means no later
+          # step has to interpolate a secret into a string.
+          echo "CID_EVENTS_DATABASE_URL=postgresql://cid_events_writer:$pw@127.0.0.1:54322/postgres" \
+            >> "$GITHUB_ENV"
+          export PGPASSWORD=postgres
+          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -qtAX \
+            -c "alter role cid_events_writer with password '$pw'"
+          # Prove it can actually connect as itself before anything depends on it.
+          PGPASSWORD="$pw" psql -h 127.0.0.1 -p 54322 -U cid_events_writer \
+            -d postgres -qtAX -c "select 'writer connected'" \
+            || { echo "::error::cid_events_writer cannot log in — every events assertion would fail for the wrong reason"; exit 1; }
+
+      # CID_EVENTS_DATABASE_URL reaches this step through $GITHUB_ENV, set by the
+      # password step above. It is direct 54322, not a pooler: local Supabase
+      # does not run Supavisor in CI. The no-prepared-statements property that
+      # makes the app pooler-safe in production is asserted by the probe itself
+      # (section 0) rather than by the transport, so it is still gated here.
       - name: next dev
         run: |
           set -euo pipefail
+          [ -n "${CID_EVENTS_DATABASE_URL:-}" ] \
+            || { echo "::error::CID_EVENTS_DATABASE_URL did not reach this step — every events assertion would fail on a 204 from an unconfigured handler"; exit 1; }
           npm run dev &
           for i in $(seq 1 90); do
             curl -sf -o /dev/null http://127.0.0.1:3000/facts && break
@@ -377,6 +479,92 @@ jobs:
       # separates a working map from a dead one is whether it ASKED FOR TILES.
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+
+      # --- GATE 3b: THE EVENTS, RED BEFORE GREEN, IN A REAL BROWSER. ---
+      # Every event is proved twice: once on a page that CARRIES the affordance
+      # and was not used (must count nothing), once on the interaction (must
+      # count exactly one). A suite that only checked the green half passes
+      # against an implementation that counts page loads, which is the bug this
+      # whole design is arranged to prevent — `/rooms/[slug]` is ISR, so a view
+      # counted at render time counts BUILDS and rises convincingly forever.
+      - name: "test:events (every event red before green)"
+        env:
+          BASE_URL: http://127.0.0.1:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:events 2>&1 | tee /tmp/events.log
+          grep -q '^  0 failed' /tmp/events.log \
+            || { echo "::error::the events probe failed — see the assertions above"; exit 1; }
+          # ⚠️ THE RED HALVES, PINNED. If a RED assertion stops RUNNING, the
+          # green ones alone are satisfied by an implementation that fires on
+          # render — and the log would still end in "0 failed".
+          for red in \
+            'RED  a server render of the room page counts NOTHING' \
+            'RED  loading the map and touching nothing counts NOTHING' \
+            'RED  listing tournaments counts NOTHING' \
+            'RED  a page CARRYING outbound links, none clicked, counts NOTHING' \
+            'RED  a page carrying receipts, none clicked, counts NOTHING' \
+            'RED  a prompt the reader DISMISSED counts NOTHING'; do
+            grep -qF "$red" /tmp/events.log \
+              || { echo "::error::a RED assertion did not run: $red"; exit 1; }
+          done
+          # THE SPLIT THAT ITEM 3 OF THE REVISIONS EXISTS FOR. A receipt click
+          # must never land in outbound demand — it is the only number a room
+          # would be right to challenge, and merging inflates it.
+          grep -q 'does NOT land in outbound_room_click' /tmp/events.log \
+            || { echo "::error::the source/outbound split assertion did not run"; exit 1; }
+          # AND THE SILENT ONE. A room event with a null room leaves totals
+          # correct and the ledger empty; nothing else in this repo would notice.
+          grep -q 'NONE of them has a null room' /tmp/events.log \
+            || { echo "::error::the null-room assertion did not run — a broken slug lookup is invisible without it"; exit 1; }
+          # Its positive control: zero orphans is also what an empty table says.
+          grep -q 'all three room-scoped events were produced' /tmp/events.log \
+            || { echo "::error::the null-room control did not run — zero orphans would prove nothing"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/events.log || true)
+          echo "events assertions: $n"
+          # 33 on 2026-08-11, the first run of this gate in CI: 2 preconditions,
+          # 3 on the write path, 12 red/green pairs across the seven names, 4 on
+          # the new outbound producers, 4 on the source/outbound split, 6 on the
+          # row shape, 2 on null rooms.
+          # 34 on 2026-08-11: +1 that the RUNNING PRODUCT writes the device row.
+          # The scratch gate proves the SQL holds first_seen_at still; this is
+          # the different claim that the handler still passes device_id through.
+          [ "$n" -ge 34 ] \
+            || { echo "::error::only $n events assertions ran (expected >= 33) — the suite shrank"; exit 1; }
+
+      # --- GATE 3c: ANALYTICS BREAKS, THE PRODUCT DOES NOT. ---
+      # Starts its own dev servers on a spare port with a DELIBERATELY BROKEN
+      # analytics config — no env var, then an unreachable pool — because that
+      # config cannot be shared with the servers the other gates need.
+      #
+      # This was measured, not assumed, and the measurement changed the code:
+      # the handler answered 503 while logging nothing (a missing env var
+      # invisible to whoever deployed it) and 500 on an unreachable database (a
+      # red line in the console of every reader with devtools open, which
+      # `.catch()` cannot suppress because the browser logs it first). Both are
+      # 204-and-log now.
+      - name: "test:failclosed (analytics down, page unharmed)"
+        run: |
+          set -euo pipefail
+          npm run --silent test:failclosed 2>&1 | tee /tmp/fc.log
+          grep -q '^  0 failed' /tmp/fc.log \
+            || { echo "::error::analytics failing takes something from the reader — see the assertions above"; exit 1; }
+          # BOTH SCENARIOS MUST HAVE RUN. One of them passing is not the claim.
+          grep -q 'A. CID_EVENTS_DATABASE_URL unset' /tmp/fc.log \
+            || { echo "::error::the missing-env-var scenario did not run"; exit 1; }
+          grep -q 'B. the pool is unreachable' /tmp/fc.log \
+            || { echo "::error::the unreachable-pool scenario did not run"; exit 1; }
+          # ⚠️ AND THE SERVER MUST STILL BE TOLD. Quiet for the reader is the
+          # goal; quiet for us is how a broken deploy runs for a month.
+          grep -q 'the server logs the failure' /tmp/fc.log \
+            || { echo "::error::the server-logging assertion did not run — silent-to-everyone is not fail-closed"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/fc.log || true)
+          echo "failclosed assertions: $n"
+          # 12 on 2026-08-11, the first run of this gate: 6 per scenario —
+          # status, empty body, server log, nothing in the reader's console,
+          # nothing thrown, and the outbound click not delayed.
+          [ "$n" -ge 12 ] \
+            || { echo "::error::only $n failclosed assertions ran (expected >= 12) — the suite shrank"; exit 1; }
 
       - name: "test:map (tile requests + painted pixels, observed)"
         env:
