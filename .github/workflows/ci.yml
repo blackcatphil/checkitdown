@@ -265,8 +265,18 @@ jobs:
       - name: "test:prose (insert, idempotence, rewrite — the daily write path)"
         env:
           PSQL: psql
+          # ⚠️ THE DIFFER WRITES TO PRODUCTION UNLESS TOLD OTHERWISE. This probe
+          # spawns the REAL differ with DIFFER_APPLY=1 against the local stack,
+          # which is the whole point of the gate — so it has to say `local` by
+          # name. Unset would mean production and the run refuses for want of
+          # PROD_DATABASE_URL, which is exactly how main went red on 73625e1.
+          # The switch cannot reach production: a non-local DATABASE_URL is
+          # refused. Same rule and same spelling as the ingest's INGEST_TARGET.
+          DIFFER_TARGET: local
         run: |
           set -euo pipefail
+          [ "${DIFFER_TARGET:-}" = "local" ] \
+            || { echo "::error::DIFFER_TARGET is not 'local' — this step drives the differ's WRITE path against the local stack, and without it the differ resolves PRODUCTION"; exit 1; }
           npm run --silent test:prose 2>&1 | tee /tmp/prose.log
           grep -q '0 failed' /tmp/prose.log \
             || { echo "::error::the prose write path did not behave — see the assertions above"; exit 1; }

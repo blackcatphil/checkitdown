@@ -113,7 +113,66 @@ export function prodTarget(script, { writes = false } = {}) {
  * PROD_DATABASE_URL by name and never falls back to DATABASE_URL, because that
  * name means local now.
  */
-export function applyTarget(script, { writing }) {
+export function applyTarget(script, { writing, targetVar }) {
+  /* ═══════════════════════════════════════════════════════════════════
+     ⚠️ THE SAME SWITCH THE TOURNAMENT INGEST HAS, DELIBERATELY IDENTICAL.
+     ═══════════════════════════════════════════════════════════════════
+     ONE SENTENCE, AND IT IS THE WHOLE RULE:
+     UNSET IS PRODUCTION · EXACTLY `local` IS LOCAL · ANYTHING ELSE REFUSES.
+
+     That holds for a read exactly as for a write. The only difference is that
+     writing to production requires PROD_DATABASE_URL by name.
+
+     This is `rails.resolve_db` carried across without variation — same
+     acceptance, same refusals, same reasons — because two switches that mean
+     the same thing and behave differently are worse than either alone. If this
+     ever needs to change, both change together.
+
+     ⚠️ EMPTY REFUSES. `DIFFER_TARGET=$X` with X unset is the realistic way an
+     empty value arrives, inside a command whose whole purpose was to name a
+     target. `!== undefined` rather than a truthiness test is the difference,
+     and production being the fallthrough is why it matters.
+
+     ⚠️ AND NO NORMALISING. Not lowercase, not trimmed. A switch that guesses
+     what you meant can guess wrong, and this one picks the database. */
+  const target = targetVar ? process.env[targetVar] : undefined
+  if (targetVar && target !== undefined && target !== 'local') {
+    const shown = target === ''
+      ? "'' (set but empty — an expansion that came out empty?)"
+      : JSON.stringify(target)
+    console.error(
+      `\n[${script}] REFUSING TO RUN — ${targetVar}=${shown} is not a target this`
+      + `\nunderstands.`
+      + `\n  accepted:  local   (exactly — no capitals, no surrounding spaces)`
+      + `\n  or UNSET:  PRODUCTION, and writing there needs PROD_DATABASE_URL`
+      + `\nRefusing rather than guessing: production is the fallthrough here, so a`
+      + `\nvalue this does not recognise would otherwise be used by whoever was`
+      + `\ntrying to avoid it.\n`,
+    )
+    process.exit(2)
+  }
+
+  /* `local` answers the same whether reading or writing — a rehearsal that read
+     a different database from the one the real run writes to is not a
+     rehearsal. */
+  if (target === 'local') {
+    const url = process.env.DATABASE_URL
+    if (!url) {
+      console.error(`\n[${script}] REFUSING TO RUN — ${targetVar}=local needs DATABASE_URL set.\n`)
+      process.exit(2)
+    }
+    if (!isLocal(url)) {
+      console.error(
+        `\n[${script}] REFUSING TO RUN — ${targetVar}=local, but DATABASE_URL is not a`
+        + `\nlocal database.\n\n  refused: ${describe(url)}\n`
+        + `\nThe one thing this switch promises is that it cannot reach production.\n`,
+      )
+      process.exit(2)
+    }
+    announce(script, writing ? 'local — WILL WRITE' : 'local (read-only)', url)
+    return url
+  }
+
   if (!writing) {
     /* ⚠️ PROD FIRST ON A READ, WHICH IS NOT WHAT `readTarget` DOES — and the
        difference is deliberate. `rails.resolve_db` resolves a dry run as

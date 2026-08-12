@@ -47,9 +47,15 @@ const PSQL = resolvePsql()
    PROD_DATABASE_URL by name; a dry run reads whichever is set and announces it.
    This was `localTarget` for a few hours and would have refused the 05:00 cron
    outright — the sweep classified it from what it does on a laptop rather than
-   from where it actually runs. */
+   from where it actually runs.
+
+   ⚠️ AND `DIFFER_TARGET=local` IS HOW CI WRITES LOCALLY. `test:prose` spawns
+   this file with DIFFER_APPLY=1 against the local Supabase stack, so demanding
+   PROD_DATABASE_URL for every write turned main red the moment it landed. The
+   switch is `rails.resolve_db`'s, carried across unchanged: unset is prod,
+   exactly `local` is local, anything else refuses. */
 const APPLY = process.env.DIFFER_APPLY === '1'
-const DB = applyTarget('differ', { writing: APPLY })
+const DB = applyTarget('differ', { writing: APPLY, targetVar: 'DIFFER_TARGET' })
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 const q1 = (s) => `'${String(s).replace(/'/g, "''")}'`

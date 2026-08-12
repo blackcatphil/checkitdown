@@ -292,12 +292,21 @@ try {
   ok(after3?.writtenAt === TODAY,
     'written_at MOVED to today — new text is newly seen',
     `${BACK} → ${after3?.writtenAt}`)
+  /* ⚠️ THREE, NOT TWO — AND AUTHORSHIP IS THE THIRD. Until 2026-08-12 a rewrite
+     moved `body` and `written_at` and left `author_kind` alone, so partner prose
+     landed on a row still labelled `checkitdown`. That was caught for the three
+     reviews quoting dollar figures (the currency CHECK refused them) and caught
+     by NOTHING for the ones that do not — the row simply attributed a partner's
+     words to us. A body that moves without its authorship leaves a citation
+     describing a different text, so all three travel in one group.
+     This assertion was `+ 2 && 'body,written_at'` and failed the moment
+     authorship started moving, which is the probe doing its job. */
   const fields = sql(`
     select coalesce(field,'-') from public.change_log
-     where target_table = 'room_descriptions' order by applied_at desc limit 2`)
+     where target_table = 'room_descriptions' order by applied_at desc limit 3`)
     .split('\n').sort().join(',')
-  ok(logCount() === logBefore3 + 2 && fields === 'body,written_at',
-    'two change_log entries: the body and the date, applied together',
+  ok(logCount() === logBefore3 + 3 && fields === 'author_kind,body,written_at',
+    'three change_log entries: the body, the date and the AUTHORSHIP, applied together',
     `${logBefore3} → ${logCount()}, fields [${fields}]`)
   /* NOT A FAULT. The differ prints faults in their own section and exits
      non-zero; a rewrite that raised would still leave one row and could sail
