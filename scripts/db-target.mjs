@@ -97,6 +97,55 @@ export function prodTarget(script, { writes = false } = {}) {
 }
 
 /**
+ * For scripts that are GENUINELY BOTH — read anywhere, write only to production.
+ * `scripts/differ.mjs` is the one: a dry run is a report you want against either
+ * database, and `DIFFER_APPLY=1` is how the partner's documents reach the app.
+ *
+ * ⚠️ THIS EXISTS BECAUSE CLASSIFYING THE DIFFER AS `localTarget` WOULD HAVE
+ * BROKEN THE 05:00 CRON. The sweep that split DATABASE_URL into local and
+ * production read each script's INTENT from what it does on a laptop — and the
+ * differ writes to production every morning from `sync.yml`, which no amount of
+ * reading the file locally would have shown. A script's target is decided by
+ * where it RUNS, not by where it is usually run by hand.
+ *
+ * Same one-sentence rule the tournament ingest has, and deliberately the same
+ * words: reading takes either and says which; writing requires
+ * PROD_DATABASE_URL by name and never falls back to DATABASE_URL, because that
+ * name means local now.
+ */
+export function applyTarget(script, { writing }) {
+  if (!writing) {
+    /* ⚠️ PROD FIRST ON A READ, WHICH IS NOT WHAT `readTarget` DOES — and the
+       difference is deliberate. `rails.resolve_db` resolves a dry run as
+       `PROD_DATABASE_URL or DATABASE_URL`, so a rehearsal describes the
+       database the real run would touch. A differ dry run is the rehearsal for
+       a production write, so it follows the ingest rather than `readTarget`,
+       whose scripts (map-measure, source-health) have no production role at all
+       and default to local.
+       Either way it ANNOUNCES, so the answer to "which database was that
+       report about" is on screen rather than inferred. */
+    const url = process.env.PROD_DATABASE_URL ?? process.env.DATABASE_URL ?? LOCAL_DEFAULT
+    announce(script, isLocal(url) ? 'local (read-only)' : 'PRODUCTION (read-only)', url)
+    return url
+  }
+  const url = process.env.PROD_DATABASE_URL
+  if (!url) {
+    console.error(
+      `\n[${script}] REFUSING TO RUN — this run WRITES, and PROD_DATABASE_URL is`
+      + `\nnot set.\n`
+      + `\nIt deliberately does NOT fall back to DATABASE_URL: that variable means`
+      + `\n"local", and one name for two databases is what put migration 017 on`
+      + `\nproduction. If this is a CI or cron run, bind the secret to`
+      + `\nPROD_DATABASE_URL — the secret's NAME does not change, only the`
+      + `\nenvironment variable it lands in.\n`,
+    )
+    process.exit(2)
+  }
+  announce(script, '⚠️  PRODUCTION — WILL WRITE', url)
+  return url
+}
+
+/**
  * For read-only scripts that are happy either way — measurements and health
  * checks that answer a question about whichever database they are pointed at.
  * Still announces, because "which database did that number come from" is the

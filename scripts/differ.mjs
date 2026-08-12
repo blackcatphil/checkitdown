@@ -34,14 +34,21 @@
 import { execFileSync } from 'node:child_process'
 
 import { resolvePsql } from './psql-path.mjs'
-import { localTarget } from './db-target.mjs'
+import { applyTarget } from './db-target.mjs'
 import { batch, parseCsv } from '../lib/differ.ts'
 import { readFloorSheet } from '../lib/floor-sheet.ts'
 import { firstSeenDate, readReviews, storageBlockers } from '../lib/reviews-doc.ts'
 
 const PSQL = resolvePsql()
-const DB = localTarget('differ')
+/* ⚠️ APPLY IS READ FIRST — it decides which database this is even allowed to
+   resolve. `DIFFER_APPLY=1` is how the partner's documents reach production
+   every morning from .github/workflows/sync.yml, so a writing run demands
+   PROD_DATABASE_URL by name; a dry run reads whichever is set and announces it.
+   This was `localTarget` for a few hours and would have refused the 05:00 cron
+   outright — the sweep classified it from what it does on a laptop rather than
+   from where it actually runs. */
 const APPLY = process.env.DIFFER_APPLY === '1'
+const DB = applyTarget('differ', { writing: APPLY })
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 const q1 = (s) => `'${String(s).replace(/'/g, "''")}'`

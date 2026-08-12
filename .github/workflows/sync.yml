@@ -124,8 +124,15 @@ jobs:
       - name: source sync
         env:
           PSQL: psql
+          # ⚠️ PROD_DATABASE_URL, NOT DATABASE_URL — changed 2026-08-12.
+          # The SECRET IS UNCHANGED: CID_PROD_DATABASE_URL still holds the same
+          # credential and was never touched. Only the environment variable it
+          # binds to moved, because `DATABASE_URL` now means "local" everywhere
+          # in this repo and every script that writes demands the production
+          # name explicitly. Binding the production secret to the local name is
+          # exactly the ambiguity that put migration 017 on prod.
           # Must connect as `postgres` — see the role note in the header.
-          DATABASE_URL: ${{ secrets.CID_PROD_DATABASE_URL }}
+          PROD_DATABASE_URL: ${{ secrets.CID_PROD_DATABASE_URL }}
           CID_PARTNER_FLOOR_CSV: ${{ secrets.CID_PARTNER_FLOOR_CSV }}
           CID_PARTNER_FLOOR_DOC: ${{ secrets.CID_PARTNER_FLOOR_DOC }}
           CID_PARTNER_REVIEWS_CSV: ${{ secrets.CID_PARTNER_REVIEWS_CSV }}
@@ -134,6 +141,15 @@ jobs:
           DIFFER_APPLY: '1'
         run: |
           set -euo pipefail
+          # ⚠️ ASSERTED AT THE STEP, NOT DISCOVERED AT 05:00. A script whose
+          # target variable is missing exits 2 with a message nobody is awake to
+          # read; the failure then looks like "the sync did not run" rather than
+          # "the sync was misconfigured". Named here so the step fails on the
+          # cause.
+          [ -n "${PROD_DATABASE_URL:-}" ] \
+            || { echo "::error::PROD_DATABASE_URL is empty — the differ writes to production and will not fall back to DATABASE_URL"; exit 1; }
+          [ "${DIFFER_APPLY:-}" = "1" ] \
+            || { echo "::error::DIFFER_APPLY is not 1 — this step exists to WRITE, and a silent dry run looks like a successful sync"; exit 1; }
           npm run --silent differ 2>&1 | tee /tmp/sync.log
           {
             echo '## Check It Down — source sync'

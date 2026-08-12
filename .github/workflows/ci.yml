@@ -111,8 +111,16 @@ jobs:
           # BEFORE this floor was last touched and never moved it — the floor
           # sat at 243 against a suite of 247, which is the drift these
           # numbered comments exist to stop.
-          [ "${n:-0}" -ge 247 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 247) — a suite that shrinks still exits 0"; exit 1; }
+          # 252 on 2026-08-12: +5 for lib/workflow-env — the guard that reads
+          # .github/workflows/ as TEXT and asserts the relationship between a
+          # script and the workflow that runs it. Nothing else in the suite can
+          # see that relationship, and getting it wrong is what nearly refused
+          # the 05:00 sync: scripts/differ.mjs was classified from what it does
+          # on a laptop, while its only unattended run writes to PRODUCTION from
+          # sync.yml. The assertion that earns its place is that no workflow may
+          # bind a production secret to DATABASE_URL, which now means local.
+          [ "${n:-0}" -ge 252 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
