@@ -119,7 +119,14 @@ jobs:
           # on a laptop, while its only unattended run writes to PRODUCTION from
           # sync.yml. The assertion that earns its place is that no workflow may
           # bind a production secret to DATABASE_URL, which now means local.
-          [ "${n:-0}" -ge 252 ] \
+          # 257 on 2026-08-12: +5 for lib/description-authorship — the rule that
+          # a partner review may replace our prose but never the reverse, and
+          # that authorship travels WITH the body. The assertion that earns its
+          # place is the last one: the three sync failures were caught only
+          # because those reviews quote dollar figures and a CHECK refused the
+          # row. A figureless partner review overwrote our text, kept our label,
+          # and raised nothing at all.
+          [ "${n:-0}" -ge 257 ] \
             || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
@@ -537,7 +544,12 @@ jobs:
           # 34 on 2026-08-11: +1 that the RUNNING PRODUCT writes the device row.
           # The scratch gate proves the SQL holds first_seen_at still; this is
           # the different claim that the handler still passes device_id through.
-          [ "$n" -ge 34 ] \
+          # 35 on 2026-08-12: +1 for the PAGE PRECONDITION. It is not an event
+          # assertion — it is the check that the page can fire events at all.
+          # Without it this suite reported 18 failures for one dead page, and
+          # every RED half PASSED because "counts NOTHING" is trivially true
+          # where nothing can happen.
+          [ "$n" -ge 35 ] \
             || { echo "::error::only $n events assertions ran (expected >= 33) — the suite shrank"; exit 1; }
 
       # --- GATE 3c: ANALYTICS BREAKS, THE PRODUCT DOES NOT. ---

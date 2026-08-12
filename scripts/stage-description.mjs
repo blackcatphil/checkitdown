@@ -18,6 +18,8 @@
  * behind on a page.
  */
 import { execFileSync } from 'node:child_process'
+
+import { authorshipMove } from '../lib/description-authorship.ts'
 import { resolvePsql } from './psql-path.mjs'
 import { localTarget } from './db-target.mjs'
 
@@ -44,6 +46,19 @@ const BODY =
   + 'Its content does not matter; its separation does.'
 
 export function stageDescription(slug) {
+  /* ⚠️ NEVER OVER A PARTNER REVIEW. `on conflict do nothing` already made this
+     impossible, but it made it impossible SILENTLY: the caller could not tell
+     "staged" from "there was already a first-hand review here and I declined to
+     touch it". The rule is now asked out loud, and from the same function the
+     differ uses, so the two cannot drift. See lib/description-authorship.ts. */
+  const held = sql(`select d.author_kind from room_descriptions d
+                      join rooms r on r.id = d.room_id
+                     where r.slug = '${slug.replace(/'/g, "''")}'`)
+  const move = authorshipMove(held || null, 'checkitdown')
+  if (!move.allowed) {
+    console.error(`  refusing to stage a fixture over ${slug}: ${move.reason}`)
+    return false
+  }
   sql(`
     insert into room_descriptions (room_id, body, author_kind, written_at, source_url, fetched_at)
     select id, '${BODY.replace(/'/g, "''")}', 'checkitdown', '2026-08-09',

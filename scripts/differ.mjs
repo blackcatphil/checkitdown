@@ -38,6 +38,7 @@ import { applyTarget } from './db-target.mjs'
 import { batch, parseCsv } from '../lib/differ.ts'
 import { readFloorSheet } from '../lib/floor-sheet.ts'
 import { firstSeenDate, readReviews, storageBlockers } from '../lib/reviews-doc.ts'
+import { authorshipMove } from '../lib/description-authorship.ts'
 
 const PSQL = resolvePsql()
 /* ⚠️ APPLY IS READ FIRST — it decides which database this is even allowed to
@@ -227,6 +228,16 @@ function stageDescription(review, src, sourceId) {
   const url = sql(`select url from public.sources where id = ${q1(sourceId)}`)
   const roomId = sql(`select id from public.rooms where slug = ${q1(review.slug)}`)
   const existing = sql(`select id from public.room_descriptions where room_id = ${q1(roomId)}`)
+  /* ⚠️ WHO WROTE WHAT IS ALREADY THERE. Read before proposing anything: the
+     answer decides both whether this may proceed and what the row's
+     author_kind must become. See lib/description-authorship.ts. */
+  const heldBy = existing === '' ? null
+    : sql(`select author_kind from public.room_descriptions where id = ${q1(existing)}`)
+  const move = authorshipMove(heldBy || null, 'partner')
+  if (!move.allowed) {
+    summary.errors.push(`${review.slug}: ${move.reason}`)
+    return null
+  }
 
   if (existing === '') {
     return sql(`
@@ -250,6 +261,18 @@ function stageDescription(review, src, sourceId) {
         (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
       values ('room_descriptions', ${q1(existing)}, ${q1(roomId)}, 'update', 'body',
               to_jsonb(${bodySql}), 'differ', ${q1(sourceId)}, ${q1(url)})
+      returning id`),
+    /* ⚠️ AUTHORSHIP TRAVELS WITH THE BODY, in the same group. Without this the
+       partner's prose landed on a row still labelled `checkitdown` — which
+       `description_states_no_currency` caught for the three reviews that quote
+       dollar figures, and which nothing caught at all for the ones that do not.
+       Grouped with the body and the date so a row cannot exist saying one
+       author's words came from another's document. */
+    sql(`
+      insert into public.pending_changes
+        (target_table, target_id, room_id, operation, field, new_value, agent, source_id, source_url)
+      values ('room_descriptions', ${q1(existing)}, ${q1(roomId)}, 'update', 'author_kind',
+              ${q1(JSON.stringify(move.carries))}::jsonb, 'differ', ${q1(sourceId)}, ${q1(url)})
       returning id`),
     sql(`
       insert into public.pending_changes
