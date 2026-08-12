@@ -11,7 +11,42 @@ import { timeLabel, vegasParts } from '@/lib/tournaments'
 
 import { supabase } from '@/lib/supabase'
 
-export const revalidate = 300
+/**
+ * ⚠️ THIS ROUTE IS DYNAMIC. THERE IS NO `revalidate` HERE, AND THAT IS THE
+ * HONEST STATE — it used to say `export const revalidate = 300`, which did
+ * nothing at all.
+ *
+ * The page awaits `searchParams` to read the four filter dimensions, and the
+ * Next docs are explicit: "Using `searchParams` opts your page into dynamic
+ * rendering because it requires an incoming request to read the search
+ * parameters from." So the declaration was inert. MEASURED against production
+ * on 2026-08-12, not inferred: 20,504 requests in three hours, every one
+ * `x-vercel-cache: MISS`, every response carrying
+ * `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` —
+ * the header of a route that is never cached. Each request is a function
+ * invocation plus one database query.
+ *
+ * ⚠️ WHY IT WAS DELETED RATHER THAN MADE TRUE, which was the first choice.
+ * The documented fix is to wrap the `searchParams` access in `<Suspense>` so
+ * the shell prerenders and only the filtered part streams. That was tried and
+ * MEASURED: with the split in place the header was still
+ * `no-store, must-revalidate`. It does not work on its own, and the docs say
+ * why — "Without Cache Components, reading cookies(), headers(), or
+ * searchParams opts the WHOLE ROUTE into dynamic rendering."
+ *
+ * Making it true therefore requires `cacheComponents: true`, which is an
+ * APP-WIDE change: it makes data fetching dynamic by default on every route,
+ * replaces `revalidate` with `use cache` and `cacheLife` everywhere, and
+ * requires migrating every route segment config in the project. That is a
+ * migration with its own brief, not a line in this file.
+ *
+ * A declaration that does nothing is worse than no declaration, because the
+ * next person reads it and believes the page is cached. It is not. If this
+ * route's cost matters, the two options are that app-wide migration, or
+ * caching the QUERY rather than the page — the one Supabase read here does not
+ * depend on `searchParams` at all, so it is cacheable independently of the
+ * render. Neither is done here.
+ */
 
 /**
  * A FILTERED VIEW IS NOINDEX, the same ruling `/facts?compare=` and

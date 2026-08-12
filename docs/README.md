@@ -446,6 +446,16 @@ does not.
 both false from `31cc6ca` onward. A build-order marker is a STATE claim — it
 goes stale on the commit that passes it, and no count moves when it does.*
 
+## The migration rule
+
+**Any migration containing an `UPDATE` or a backfill must be proved against a
+scratch database seeded from a production snapshot, because `supabase db reset`
+runs migrations BEFORE the seed** — so a backfill matches zero rows and a
+constraint is checked against an empty table, and both report success without
+being exercised. Migration 018 passed locally and rolled back on production for
+exactly that reason. Follow `scripts/migration-018-gate.mjs`, which follows the
+pattern `scripts/migration-017-gate.mjs` set for permissions.
+
 ## The seeding rule
 
 The research pass lands as **candidate data**: every row carries `source_url` and

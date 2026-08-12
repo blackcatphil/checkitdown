@@ -1332,9 +1332,17 @@ select is(
 -- ─── THE SERIES: MIGRATION 012 AND TRANSCRIPTION FIDELITY ────────────
 -- A wrong blind level is SILENT — nothing about it looks broken — so the shape
 -- of 659 transcribed rows is asserted rather than eyeballed.
+-- ⚠️ SCOPED TO WYNN. This counted the WHOLE TABLE, which was the same number
+-- while Wynn was the only room with a level structure. Bellagio's ingest adds
+-- 124 more, and a global count would then assert that no other room may ever
+-- have levels — a transcription-fidelity check quietly turned into a ceiling on
+-- the dataset. The claim is about Wynn's 22 sheets, so it asks about Wynn.
 select is(
-  (select count(*)::int from tournament_levels), 659,
-  'all 659 levels transcribed — 22 structure sheets, none skipped'
+  (select count(*)::int from tournament_levels l
+     join tournament_templates t on t.id = l.template_id
+     join rooms r on r.id = t.room_id
+    where r.slug = 'wynn-encore'), 659,
+  'all 659 Wynn levels transcribed — 22 structure sheets, none skipped'
 );
 select is(
   (select count(*)::int from tournament_instances), 61,
@@ -1352,12 +1360,17 @@ select is(
    where t.slug = 'wynn-series-horse-400-p14' and l.level_number = 1), 2,
   'a HORSE level 1 holds BOTH its limit and stud rows — impossible under the old primary key'
 );
+-- ⚠️ `ante_mechanic` IS SET SO THE UNIQUE KEY IS WHAT FIRES. Migration 019
+-- refuses an ante figure with no mechanic, and that CHECK (23514) was raising
+-- before the key ever got a chance — so this passed for the wrong reason and
+-- then failed for the wrong reason. The row now satisfies 019 and violates only
+-- the thing this test is about.
 select throws_ok(
-  $$ insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, minutes)
+  $$ insert into tournament_levels (template_id, level_number, game_type, small_blind, big_blind, ante, ante_mechanic, minutes)
      /* A ROW THAT DEMONSTRABLY EXISTS. `limit 1` drew an arbitrary template,
         and a HORSE template has no 'main' levels at all — so the insert
         succeeded and the assertion failed against a working key. */
-     select id, 1, 'main', 1, 2, 0, 30 from tournament_templates
+     select id, 1, 'main', 1, 2, 0, 'none', 30 from tournament_templates
       where slug = 'wynn-series-no-limit-hold-em-400-p4' $$,
   '23505', null, 'and the key still refuses a duplicate (template, level, game)');
 

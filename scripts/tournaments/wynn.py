@@ -555,9 +555,19 @@ def build(db):
             stats['sheets_unchanged'] += 1
             continue
 
+        # ⚠️ THE MECHANIC TRAVELS WITH THE FIGURE (migration 019). Wynn's rule 6:
+        # "All Events will utilize the Big Blind Ante format unless otherwise
+        # noted on the Tournament structure sheet." The stud rounds inside HORSE
+        # and TORSE are the "otherwise" — stud has no blinds to ante from, so
+        # every player posts. Derived from the parsed row rather than defaulted,
+        # because a default here would write the same claim onto a room that
+        # prints something else.
+        mech = (lambda l: 'none' if l['ante'] == 0
+                else 'big_blind' if l['ante'] == l['big_blind']
+                else 'table')
         vals = ','.join(
             f"({l['level_number']},{Q(l['game_type'])},{l['small_blind']},{l['big_blind']},"
-            f"{l['ante']},{s_['minutes']},"
+            f"{l['ante']},{Q(mech(l))}::ante_mechanic,{s_['minutes']},"
             # null::integer, because an untyped NULL in a VALUES list types as
             # text and the insert fails on the first main level.
             f"{l['small_bet'] if l['small_bet'] is not None else 'null'}::integer,"
@@ -567,10 +577,10 @@ def build(db):
         stmts.append(f"""delete from tournament_levels l using tournament_templates t
                  where t.id = l.template_id and t.slug = {Q(s_['slug'])};
                 insert into tournament_levels (template_id, level_number, game_type, small_blind,
-                                               big_blind, ante, minutes, small_bet, big_bet)
+                                               big_blind, ante, ante_mechanic, minutes, small_bet, big_bet)
                 select t.id, v.* from tournament_templates t,
                   (values {vals}) as v(level_number, game_type, small_blind, big_blind, ante,
-                                       minutes, small_bet, big_bet)
+                                       ante_mechanic, minutes, small_bet, big_bet)
                  where t.slug = {Q(s_['slug'])};
                 update tournament_templates set structure_hash = {Q(want)}
                  where slug = {Q(s_['slug'])};
