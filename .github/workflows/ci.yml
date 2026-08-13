@@ -147,7 +147,12 @@ jobs:
           # stopped producer. On 17 Aug the first OVERDUE will be caused by a
           # missing scheduler, and a fault that blames the producer sends
           # somebody to debug analytics that is working.
-          [ "${n:-0}" -ge 274 ] \
+          # 282 on 2026-08-12: +8 for lib/modernist — the console's stylesheet is a
+          # COPY of the design system, and a copy nobody checks is the bug. It
+          # gates every token against the source and asserts the four rules the
+          # skin must not soften: zero radius, no animation, elevation only on
+          # cards, and — outranking the system — no data state carried by hue.
+          [ "${n:-0}" -ge 282 ] \
             || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1

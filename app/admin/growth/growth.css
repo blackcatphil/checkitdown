@@ -1,50 +1,205 @@
-/* ⚠️ SCOPED TO THIS ROUTE, AND NOTHING HERE TOUCHES globals.css.
-   The Modernist design system (docs/design/growth-engine/_ds/) is NOT in the
-   repo, so its tokens are deliberately not reproduced here — the brief was
-   explicit that they must come from that stylesheet rather than be re-derived
-   from prose. This is the app's own admin styling, structured so swapping the
-   real system in is a change to this file alone.
-   The one palette rule that survives regardless: NO DATA STATE IS CARRIED BY
-   COLOUR. An absent cell is dimmer, never a different hue; a fault is the only
-   thing that uses the accent, and a fault is not a data state. */
-.ge { padding: var(--cid-space-8) 0 var(--cid-space-9); display: flex;
-      flex-direction: column; gap: var(--cid-space-6); }
-.ge-head { display: flex; justify-content: space-between; align-items: flex-end;
-           border-bottom: 2px solid var(--cid-line-2); padding-bottom: var(--cid-space-4); }
-.ge-h1 { font: var(--cid-statement); margin: var(--cid-space-3) 0 0; }
-.ge-h2 { font: var(--cid-body-strong); margin: var(--cid-space-6) 0 var(--cid-space-3);
-         border-bottom: 2px solid var(--cid-line-2); padding-bottom: var(--cid-space-2); }
-.ge-asof { font: var(--cid-caption); color: var(--cid-dim); }
-.ge-tabs { display: flex; gap: var(--cid-space-6); border-bottom: 1px solid var(--cid-line-1); }
-.ge-tab { font: var(--cid-tag); letter-spacing: var(--cid-track-nav); color: var(--cid-dim);
-          border-bottom: 2px solid transparent; padding-bottom: var(--cid-space-3); }
-.ge-tab-on { color: var(--cid-text); border-bottom-color: var(--cid-text); }
+/* ══════════════════════════════════════════════════════════════════════════
+   MODERNIST, SCOPED TO THE GROWTH CONSOLE.
+
+   ⚠️ COPIED, NOT IMPORTED — and the copy is GATED.
+
+   The source of truth is
+     docs/design/growth-engine/_ds/modernist-<id>/styles.css
+   and every value below is taken from it verbatim. Two ways to use it and both
+   have a cost:
+
+     IMPORT  ties a shipped admin route to a path under docs/. A docs
+             reorganisation would then break a page at build time, and `docs/`
+             is precisely the directory people reorganise.
+     COPY    drifts silently the day somebody retunes the system.
+
+   So: copy, with the drift made loud. `scripts/check-modernist.mjs` re-reads
+   the source and fails if any token here disagrees — the same shape as
+   `check:worker`, which gates the generated MapLibre worker against
+   node_modules for exactly this reason. A copy nobody checks is the failure;
+   a copy that is checked is just a build artifact.
+
+   ⚠️ SCOPED TO `.ge`, NEVER `:root`. The system declares its tokens on `:root`
+   and restyles bare `body`, `h1`-`h6`, `a`, `p`. Applied globally that would
+   repaint the whole product — this is a LIGHT system and the app is dark. Every
+   token and every element rule below is nested under `.ge`, so nothing outside
+   /admin/growth can see it and globals.css is untouched.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Archivo, as the system specifies. The system's own @import is kept — the
+   weights it names (400/600/800) are the ones it uses. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap');
+
+.ge {
+  /* — tokens, verbatim from the system — */
+  --color-bg: #f3f2f2;
+  --color-surface: #eae9e9;
+  --color-text: #201e1d;
+  --color-accent: #ec3013;
+  --color-accent-2: #e15b47;
+  --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
+
+  --color-neutral-100: #f8f4f4;
+  --color-neutral-200: #eae7e7;
+  --color-neutral-300: #d7d3d3;
+  --color-neutral-400: #bab6b6;
+  --color-neutral-500: #9b9797;
+  --color-neutral-600: #7d7979;
+  --color-neutral-700: #605d5d;
+  --color-neutral-800: #444141;
+  --color-neutral-900: #2d2b2b;
+
+  --color-accent-100: #fff2ef;
+  --color-accent-600: #dd2b0f;
+  --color-accent-700: #ae1800;
+  --color-accent-800: #7c1405;
+
+  --font-heading: "Archivo", system-ui, sans-serif;
+  --font-heading-weight: 800;
+  --font-body: "Archivo", system-ui, sans-serif;
+
+  --space-1: 4.0px;
+  --space-2: 8.0px;
+  --space-3: 12.0px;
+  --space-4: 16.0px;
+  --space-6: 24.0px;
+  --space-8: 32.0px;
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+
+  /* The system restyles `body`; that is applied to this container instead. */
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+
+  padding: var(--space-6) var(--space-4) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  /* ⚠️ NO ANIMATION ANYWHERE — the system declares no transitions and none is
+     added here. A number that fades in is a number you distrust. */
+}
+
+/* The system's type scale, scoped. */
+.ge h1, .ge h2, .ge h3, .ge h4 {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 var(--space-2);
+}
+.ge h1 { font-size: 42px; }
+.ge h2 { font-size: 32px; }
+.ge h3 { font-size: 25px; }
+.ge p  { margin: 0 0 var(--space-3); }
+.ge a  { color: var(--color-accent); text-underline-offset: 3px; }
+.ge :focus { outline: none; }
+.ge :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.ge ::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+.ge .text-muted { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+/* — the system's h6 treatment, used for every label — */
+.ge-kicker {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  line-height: 1.12; margin: 0;
+}
+
+/* — rules: 2px sections, 1px rows, straight from the system — */
+.ge-head {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  border-bottom: 2px solid var(--color-divider); padding-bottom: var(--space-3);
+}
+.ge-h1 { font-size: 42px; margin: var(--space-2) 0 0; }
+.ge-h2 {
+  font-size: 25px; margin: var(--space-6) 0 var(--space-3);
+  border-bottom: 2px solid var(--color-divider); padding-bottom: var(--space-2);
+}
+.ge-asof { font-size: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+/* — navigation, the system's .nav — */
+.ge-tabs {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-3) 0; border-bottom: 2px solid var(--color-divider);
+}
+.ge-tab {
+  color: inherit; text-decoration: none; font-size: 14px;
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  letter-spacing: 0.08em;
+}
+.ge-tab:hover, .ge-tab-on { color: var(--color-accent); }
+
 .ge-section { display: flex; flex-direction: column; }
-.ge-copy { font: var(--cid-body); color: var(--cid-text-2);
-           margin: 0 0 var(--cid-space-3); max-width: var(--cid-measure); }
-.ge-dim { color: var(--cid-dim); font: var(--cid-caption); }
-.ge-empty { color: var(--cid-dim); font-style: normal; }
-.ge-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-           gap: 1px; background: var(--cid-line-1); border: 1px solid var(--cid-line-1); }
-.ge-fig { background: var(--cid-ink-700); padding: var(--cid-space-5);
-          display: flex; flex-direction: column; gap: var(--cid-space-2); }
-.ge-fig-label { font: var(--cid-label); letter-spacing: var(--cid-track-nav); color: var(--cid-dim); }
-.ge-fig-value { font: var(--cid-statement); }
-/* An absence is DIMMER, never a different colour — §6. */
-.ge-fig-absent { font: var(--cid-caption); color: var(--cid-unverified); }
-.ge-fig-why { font: var(--cid-caption); color: var(--cid-dim); }
-/* A FAULT is not a data state, so it may use the accent. */
-.ge-fig-fault { outline: 2px solid var(--cid-gold); }
-.ge-fault, .ge-fault-box { color: var(--cid-gold); font: var(--cid-body-strong); }
-.ge-fault-box { border: 2px solid var(--cid-gold); padding: var(--cid-space-5); margin: 0; }
-.ge-table { width: 100%; border-collapse: collapse; font: var(--cid-caption); }
-.ge-table th { text-align: left; font: var(--cid-label); letter-spacing: var(--cid-track-nav);
-               color: var(--cid-dim); border-bottom: 2px solid var(--cid-line-2);
-               padding: var(--cid-space-3) var(--cid-space-4) var(--cid-space-3) 0; }
-.ge-table td { border-bottom: 1px solid var(--cid-line-1); vertical-align: top;
-               padding: var(--cid-space-3) var(--cid-space-4) var(--cid-space-3) 0; }
-.ge-table .num, .ge-table th.num { text-align: left; font-variant-numeric: tabular-nums; }
-.ge-missing { color: var(--cid-dim); }
-.ge-loop { border-bottom: 1px solid var(--cid-line-1); padding: var(--cid-space-5) 0; }
-.ge-loop-head { display: flex; justify-content: space-between; align-items: baseline;
-                margin-bottom: var(--cid-space-3); }
+.ge-copy { font-size: 14px; margin: 0 0 var(--space-3); max-width: 68ch; }
+.ge-dim { font-size: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+.ge-empty { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+/* — figures, built on the system's .card + .elev-sm — */
+.ge-figs {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+.ge-fig {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3); border-radius: var(--radius-md);
+  background: var(--color-surface);
+  /* Shadows only on cards and the dialog — the system's rule, honoured. */
+  box-shadow: var(--shadow-sm);
+}
+.ge-fig-label {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  /* ⚠️ NOT `--color-accent`. The system's `.card-kicker` is accent-coloured,
+     and on this page the kicker names WHICH METRIC a cell is — which is a data
+     label, and CID §6 forbids colour carrying data state. Neutral instead; the
+     divergence is recorded in docs/design/growth-engine/README.md. */
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+}
+.ge-fig-value {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 32px; line-height: 1.12; font-variant-numeric: tabular-nums;
+}
+/* ⚠️ THE THREE ABSENCE STATES ARE DISTINGUISHED BY FORM, NOT HUE.
+   A number is 32px heading weight; an absence is 14px body weight. Within the
+   absences the em-dash, the date and OVERDUE differ by their TEXT — "—",
+   "first reading Mon 17 Aug", "OVERDUE since …" — which is why they stay
+   legible in greyscale and why the skin cannot make two of them read alike. */
+.ge-fig-absent { font-size: 14px; font-weight: 400; }
+.ge-fig-why { font-size: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+/* ⚠️ THE ONE PLACE THE ACCENT IS ALLOWED. A FAULT IS NOT A DATA STATE — it is
+   the page saying it cannot answer. Movement against a target may use the
+   accent too; verified/unverified/absent may not. */
+.ge-fig-fault { outline: 2px solid var(--color-accent); }
+.ge-fault { color: var(--color-accent); font-family: var(--font-heading);
+            font-weight: var(--font-heading-weight); }
+.ge-fault-box {
+  border: 2px solid var(--color-accent); padding: var(--space-3); margin: 0;
+  font-size: 14px; background: var(--color-accent-100);
+}
+
+/* — tables, the system's .table verbatim — */
+.ge-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ge-table th {
+  text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  padding: var(--space-2); border-bottom: 2px solid var(--color-divider);
+}
+.ge-table td {
+  padding: var(--space-2); border-bottom: 1px solid var(--color-divider);
+  vertical-align: top;
+}
+.ge-table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+.ge-table .num { font-variant-numeric: tabular-nums; }
+.ge-missing { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+
+.ge-loop { border-bottom: 1px solid var(--color-divider); padding: var(--space-4) 0; }
+.ge-loop-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: var(--space-2);
+}
