@@ -55,18 +55,34 @@ globally that would repaint the entire product — it is a light system and the
 app is dark. Everything is nested under `.ge`; `globals.css` is untouched and
 `body` remains `rgb(11,15,20)` on the console route, which is asserted.
 
-### What could not be honoured
+**4. `.btn` is flush left, overriding `styles.css:115`.** Settled 2026-08-12.
 
-**`.btn { justify-content: center }`.** The brief listed "everything flush left
-INCLUDING button labels" as a non-negotiable *from the system*. The system does
-not say that: `.btn` centres its label and only `.btn-block` is
-`justify-content: flex-start`. Since the file is the source of truth, the file
-wins — but the console has no buttons yet, so nothing turns on it today. Worth
-settling before the Tests dialog is built, which is the first thing that needs
-one.
+⚠️ **THE DISCREPANCY IS IN THE SYSTEM, NOT IN OUR READING OF IT** — and whoever
+regenerates Modernist should fix `theme.json`, not rediscover this. The guide
+states flush-left buttons in three places:
 
-**`.dialog-actions { justify-content: flex-end }`** has the same shape and the
-same answer. Recorded now so it is a decision rather than a surprise.
+| where | what it says |
+|---|---|
+| `readme.md:3` | "labels sit flush left (even inside buttons)" |
+| `readme.md:14` | "Button labels are flush left — a button wider than its label starts the text at the left padding edge (trailing icon and all), **never centered**." |
+| `readme.md:51` | "Keep everything flush left — headings, copy, and the labels inside wide buttons." |
+| **`styles.css:115`** | **`justify-content: center`** |
+
+`readme.md:10` settles which side is authoritative: the system is derived from
+`theme.json`, and the guidance must be kept "in step so they don't drift from
+what the CSS actually does". Three statements of intent against one declaration
+is drift in the declaration. The console overrides to `flex-start`.
+
+**`.dialog-actions` is deliberately NOT diverged.** It stays `flex-end` as the
+system has it: that rule aligns a *group* of buttons in a footer, which is a
+layout decision about a row, not the position of a label inside a button. The
+flush-left rule is about the second thing and does not reach the first. Pinned
+by a test so nobody "consistency-fixes" it later.
+
+`lib/modernist.test.mjs` asserts this divergence from **both** sides — that the
+console still holds the override, and that the system still disagrees. If
+Modernist is regenerated with the fix, the second assertion fails and tells us
+to delete the override rather than carry a permanent fork.
 
 ### Still missing
 

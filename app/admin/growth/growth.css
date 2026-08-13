@@ -203,3 +203,53 @@
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: var(--space-2);
 }
+
+/* — buttons —
+   ⚠️ FLUSH LEFT, OVERRIDING styles.css:115. THIS IS NOT THE BRIEF BEATING THE
+   FILE — IT IS THE SYSTEM CONTRADICTING ITSELF, and its own prose is the side
+   that means it.
+
+   The Modernist guide says flush-left buttons in THREE places:
+     readme.md:3   "labels sit flush left (even inside buttons)"
+     readme.md:14  "Button labels are flush left — a button wider than its label
+                    starts the text at the left padding edge (trailing icon and
+                    all), NEVER CENTERED."
+     readme.md:51  "Keep everything flush left — headings, copy, and the labels
+                    inside wide buttons."
+   and styles.css:115 sets `justify-content: center`.
+
+   readme.md:10 says which one to trust: the whole system is derived from
+   `theme.json`, and the guidance must be kept "in step so they don't drift from
+   what the CSS actually does". The prose is the direction; a single CSS
+   declaration contradicting three statements of intent is the drift. So: flush
+   left, and the discrepancy is recorded upstream in
+   docs/design/growth-engine/README.md so whoever regenerates the system fixes
+   `theme.json` rather than rediscovering this.
+
+   ⚠️ `.dialog-actions` IS LEFT AS THE SYSTEM HAS IT (flex-end). That rule
+   aligns a GROUP of buttons within a dialog footer, which is a layout decision
+   about a row — not the position of a label inside a button. The flush-left
+   rule is about the second thing and does not reach the first.
+
+   There are no buttons on the console yet. This is settled before the Tests
+   dialog needs one, not because anything renders wrongly today. */
+.ge .btn {
+  display: inline-flex; align-items: center; justify-content: flex-start; gap: 6px;
+  cursor: pointer; text-decoration: none;
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 14px; line-height: 1.2; color: var(--color-text);
+  background: transparent; border: 1px solid transparent;
+  padding: var(--space-2) calc(var(--space-3) * 1.2);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+.ge .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ge .btn-primary { background: var(--color-accent); color: var(--color-bg); }
+.ge .btn-primary:hover { background: var(--color-accent-600); }
+.ge .btn-primary:active { background: var(--color-accent-700); }
+.ge .btn-secondary { border-color: var(--color-divider); }
+.ge .btn-secondary:hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+.ge .btn-block { width: 100%; margin-top: var(--space-2); justify-content: flex-start; text-align: left; }
+
+/* The system's dialog, unchanged — including flex-end on the action row. */
+.ge .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }

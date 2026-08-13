@@ -152,7 +152,11 @@ jobs:
           # gates every token against the source and asserts the four rules the
           # skin must not soften: zero radius, no animation, elevation only on
           # cards, and — outranking the system — no data state carried by hue.
-          [ "${n:-0}" -ge 282 ] \
+          # 286 on 2026-08-12: +4 for the divergence allowlist in lib/modernist. The
+          # one that earns its place asserts the SYSTEM still disagrees: if
+          # Modernist is regenerated with the fix, the override should be
+          # deleted rather than carried as a permanent fork nobody revisits.
+          [ "${n:-0}" -ge 286 ] \
             || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
