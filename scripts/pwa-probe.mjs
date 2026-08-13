@@ -669,6 +669,7 @@ const inApp = async (ctx, path) => {
   const r = await p.evaluate(() => ({
     text: document.body.textContent ?? '',
     emailInput: document.querySelector('input[type=email]') != null,
+    passwordInput: document.querySelector('input[type=password]') != null,
     marker: document.querySelector('[data-admin]')?.dataset.admin ?? null,
     installMarker: document.querySelector('[data-install]')?.dataset.install ?? null,
   }))
@@ -679,10 +680,22 @@ const inApp = async (ctx, path) => {
 const mqCtx = await standaloneContext('display-mode')
 const appAdmin = await inApp(mqCtx, '/admin')
 ok(appAdmin.marker === 'standalone' && /browser/i.test(appAdmin.text),
-  'the installed app is told to sign in from a browser, and why',
+  'the installed app is told why the emailed link cannot finish here',
   appAdmin.marker ?? 'the standalone branch did not render')
-ok(!appAdmin.emailInput,
-  'and the sign-in form is not offered inside the app — a form that cannot complete invites the loop')
+/* ⚠️ THIS ASSERTION WAS INVERTED ON 2026-08-12, AND ONLY FOR THE PASSWORD.
+   It read `!appAdmin.emailInput` — no form at all — for the reason stated
+   above: a form that cannot complete invites the loop. That reason was about
+   the LINK, which leaves for the browser and lands in a storage partition this
+   app cannot read. A PASSWORD never leaves: it is posted from here and the
+   session is written into THIS partition, so it completes. Withholding it kept
+   the installed app the one place with no way in at all, which is the opposite
+   of the rule's intent. So the rule is now SPECIFIC — the path that cannot
+   complete is withheld, the path that can is offered — and both halves are
+   asserted, because dropping either one restores a bug. */
+ok(appAdmin.passwordInput,
+  'and the PASSWORD form IS offered — it completes inside the app, so the rule above does not reach it')
+ok(!/sign-in link/i.test(appAdmin.text),
+  'while the emailed link is still withheld here — that is the path that cannot complete')
 const appInstall = await inApp(mqCtx, '/install')
 ok(appInstall.installMarker === 'standalone' && /already installed/i.test(appInstall.text),
   '/install says it is already installed rather than offering a prompt that will never fire',
@@ -695,7 +708,7 @@ await mqCtx.close()
    one platform where this trap is unavoidable. */
 const iosCtx = await standaloneContext('ios')
 const iosAdmin = await inApp(iosCtx, '/admin')
-ok(iosAdmin.marker === 'standalone' && !iosAdmin.emailInput,
+ok(iosAdmin.marker === 'standalone' && iosAdmin.passwordInput && !/sign-in link/i.test(iosAdmin.text),
   'the iOS spelling counts too — navigator.standalone, which Safari sets and the media query does not cover',
   iosAdmin.marker ?? 'the standalone branch did not render')
 await iosCtx.close()
