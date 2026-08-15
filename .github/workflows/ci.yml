@@ -166,8 +166,13 @@ jobs:
           # growth console. The leak it caught was a CLASS NAME in the markup,
           # which every existing guard was blind to because they read the
           # stylesheet and the stylesheet was clean.
-          [ "${n:-0}" -ge 290 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 290) — a suite that shrinks still exits 0"; exit 1; }
+          # 294 on 2026-08-15: +4 for lib/growth-spec.test.mjs — the Spec tab
+          # prints what each event fires on, carries and feeds, and a
+          # hand-maintained table of that describes last month. An event added
+          # to the enum with no row leaves the page understating the pipeline
+          # while looking complete, which is worse than an empty tab.
+          [ "${n:-0}" -ge 294 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 294) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:

@@ -168,7 +168,11 @@
    stripe; the shadow goes because the system puts elevation on cards only and
    these have stopped being cards. */
 .ge-figs {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  /* ⚠️ `repeat(4)`, NOT `auto-fit`. auto-fit was survivable while these were
+     cards; once they gained left rules a wrapped seventh cell sat alone on a
+     second row with a rule beside it and none above, which reads as a mistake
+     because it is one. Four cells, four columns (readme.md:134). */
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 2px solid var(--color-divider);
   border-bottom: 2px solid var(--color-divider);
 }
@@ -204,6 +208,47 @@
   font-size: 14px; background: var(--color-accent-100);
 }
 
+/* ══ THE EQUATION GRID (readme.md:132) ═══════════════════════════════════
+   `1fr 52px 1fr 52px 1fr`. The operator columns are fixed at 52px so the two
+   rows' operators line up under each other regardless of what the metric cells
+   contain — which is the whole reason the design fixes them rather than letting
+   them share the fraction. */
+.ge-eq {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr) 52px minmax(0, 1fr);
+  border-top: 2px solid var(--color-divider);
+  /* Row 1 closes with 1px, row 2 with 2px — the pair reads as one block with an
+     internal division rather than as two blocks. */
+  border-bottom: 1px solid var(--color-divider);
+}
+.ge-eq-last { border-top: none; border-bottom: 2px solid var(--color-divider); }
+/* Two 2px rules meeting is a 4px rule, and the system's section weight is 2px.
+   The equation's closing rule serves both blocks. */
+.ge-eq-last + .ge-figs { border-top: none; }
+.ge-eq-cell {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: 22px 24px 22px 0;
+}
+.ge-eq-cell + .ge-eq-cell, .ge-eq-cell-last { padding-left: 24px; }
+.ge-eq-value {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 44px; line-height: 1; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+/* ⚠️ THE OPERATOR CARRIES THE ACCENT, AND IT IS NOT A DATA STATE.
+   `×` and `=` are the equation's SYNTAX: fixed glyphs that never change with
+   the numbers, closer to a rule or a bullet than to a value. Nothing about
+   them tells you whether a figure is verified, absent or moving. The colour
+   guard in lib/modernist.test.mjs is widened to admit this selector by name,
+   with this as the stated reason — which is the sanctioned way to widen it. */
+.ge-eq-op {
+  display: grid; place-items: center;
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 26px; color: var(--color-accent);
+  border-left: 2px solid var(--color-divider);
+  border-right: 2px solid var(--color-divider);
+}
+
 /* — the two-column split: Counted | Not counted (readme.md:182) — */
 .ge-split {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -215,6 +260,72 @@
    — a border on both would double it. */
 .ge-split-cell + .ge-split-cell {
   padding: 24px 0 24px 24px; border-left: 2px solid var(--color-divider);
+}
+
+/* ══ LOOPS: the step chain and the stats row (readme.md:147,148) ══════════ */
+.ge-steps {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  border-top: 2px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+}
+.ge-step {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: 16px 18px; border-left: 2px solid var(--color-divider);
+  /* The design fixes a min-height so cells align when one step's copy is
+     shorter than the rest. */
+  min-height: 132px;
+}
+.ge-step:first-child { border-left: none; padding-left: 0; }
+.ge-step-name {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 15px; line-height: 1.15;
+}
+/* Three stats and the constraint, per readme.md:148 — the constraint takes the
+   wider column because it carries a sentence and the stats carry a number. */
+.ge-loop-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.6fr);
+  border-bottom: 2px solid var(--color-divider);
+}
+.ge-stat {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: 16px 18px; border-left: 2px solid var(--color-divider);
+}
+.ge-stat:first-child { border-left: none; padding-left: 0; }
+.ge-stat-value {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 26px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+.ge-constraint { background: var(--color-surface); }
+.ge-constraint-body { font-size: 14px; }
+
+/* — a section heading with a control on the right — */
+.ge-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-4); flex-wrap: wrap;
+}
+
+/* — the segmented control, the system's `.seg` (readme.md:117) — */
+.ge-seg { display: flex; }
+.ge-seg-opt {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  text-decoration: none; padding: 7px 12px;
+  border: 1px solid var(--color-divider); border-right: none;
+}
+.ge-seg-opt:last-child { border-right: 1px solid var(--color-divider); }
+/* A CONTROL may carry the accent — which of four areas you are looking at is
+   an affordance, not a property of any room. */
+.ge-seg-on { color: var(--color-bg); background: var(--color-accent); }
+
+/* — sortable column heads. The arrow marks the active column only. — */
+.ge-sort { color: inherit; text-decoration: none; }
+.ge-sort:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* — the totals row: heading weight, 2px above, per readme.md:164 — */
+.ge-total td {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  border-top: 2px solid var(--color-divider); border-bottom: none;
 }
 
 /* — tables, the system's .table verbatim — */

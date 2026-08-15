@@ -128,24 +128,49 @@ export default async function Growth({
       )}
 
       {tab === 'engine' && <Engine {...{ rollup, week, prior, metric }} />}
-      {tab === 'loops' && <Loops {...{ metric }} />}
-      {tab === 'rooms' && <Rooms metric={metric} />}
+      {tab === 'loops' && <Loops {...{ metric, week }} />}
+      {tab === 'rooms' && <Rooms metric={metric} q={q} />}
       {tab === 'tests' && <Tests />}
       {tab === 'spec' && <Spec />}
     </main>
   )
 }
 
-/** One figure, rendered by the rule and never by hand. */
-function Fig({ label, cell, note }: { label: string; cell: Cell; note?: string }) {
+/**
+ * One figure, rendered by the rule and never by hand.
+ *
+ * ⚠️ `format` TOUCHES THE NUMBER CASE ONLY. A rate has to read as `22.6%`, but
+ * routing the absences through a formatter would let a caller decide how an
+ * em-dash looks — and the whole point of `render` is that no caller decides
+ * that. So the absent, pending and overdue states still go through `render`
+ * verbatim; `format` is reached only once a number exists.
+ */
+function Fig({ label, cell, note, format }:
+  { label: string; cell: Cell; note?: string; format?: (n: number) => string }) {
   return (
     <div className={isFault(cell) ? 'ge-fig ge-fig-fault' : 'ge-fig'}>
       <span className="ge-fig-label">{label}</span>
       <span className={cell.kind === 'number' ? 'ge-fig-value num' : 'ge-fig-absent'}>
-        {render(cell)}
+        {cell.kind === 'number' && format ? format(cell.value) : render(cell)}
       </span>
       {cell.kind === 'no-producer' && <span className="ge-fig-why">{cell.missing}</span>}
       {cell.kind === 'overdue' && <span className="ge-fig-why">{cell.missing}</span>}
+      {note && <span className="ge-fig-why">{note}</span>}
+    </div>
+  )
+}
+
+/** A metric cell inside the equation grid. Same rule, different frame. */
+function EqCell({ label, cell, note, format, last }:
+  { label: string; cell: Cell; note?: string; format?: (n: number) => string; last?: boolean }) {
+  return (
+    <div className={`ge-eq-cell${last ? ' ge-eq-cell-last' : ''}${isFault(cell) ? ' ge-fig-fault' : ''}`}>
+      <span className="ge-fig-label">{label}</span>
+      <span className={cell.kind === 'number' ? 'ge-eq-value num' : 'ge-fig-absent'}>
+        {cell.kind === 'number' && format ? format(cell.value) : render(cell)}
+      </span>
+      {(cell.kind === 'no-producer' || cell.kind === 'overdue')
+        && <span className="ge-fig-why">{cell.missing}</span>}
       {note && <span className="ge-fig-why">{note}</span>}
     </div>
   )
@@ -171,20 +196,71 @@ function Engine({ rollup, week, prior, metric }:
     ? { kind: 'no-producer', missing: 'no per-click rate set — no room pays for a click yet' }
     : composite([outbound], (v) => v[0] * rate)
 
+  /**
+   * ⚠️ THE DESIGN'S EQUATION IS NOT OUR ARITHMETIC, AND PORTING IT WOULD LIE.
+   *
+   * The prototype reads `New reach × Activation = New active`. Our roll-up has
+   * no such identity: `new_reach` counts devices whose FIRST EVER sighting is
+   * this week, and `activated` counts devices that reached an outbound click —
+   * so multiplying one by a rate does not produce the other, and a grid that
+   * put an `=` between them would be false in a shape that reads as proof.
+   *
+   * These two rows ARE exact, by construction in migration 021:
+   *   weekly_active_people × (activated ÷ weekly_active_people)      = activated
+   *   prior_week_active    × (returned_from_prior ÷ prior_week_active) = returned
+   * Same geometry, our arithmetic. Port geometry, never a cell.
+   */
+  const pct = (n: number) => `${(n * 100).toFixed(1)}%`
+
+  /* A rate needs a denominator. When the denominator is a MEASURED ZERO the
+     rate does not exist — it is not 0%, and saying 0% would report that nobody
+     activates when in fact nobody was there. The why-line carries the cause so
+     this em-dash is not mistaken for a missing producer. */
+  const rateOf = (num: Cell, den: Cell, why: string): Cell =>
+    den.kind === 'number' && den.value === 0
+      ? { kind: 'no-producer', missing: why }
+      : composite([num, den], (v) => v[0] / v[1])
+
+  const activation = rateOf(activated, wap,
+    'no devices were active in this week, so there is no rate to take')
+  const priorActive = metric(true, 2, week?.prior_week_active ?? null)
+  const returnRate = rateOf(returned, priorActive,
+    'nobody was active in the prior week, so there is no rate to take')
+
   return (
     <section className="ge-section">
       <h2 className="ge-h2">The equation</h2>
       <p className="ge-copy">
-        New reach × activation × return = the people who come back. Every term below is
-        a query against the weekly roll-up; none is typed.
+        Every term below is a query against the weekly roll-up; none is typed. The two
+        rows are identities, not estimates — the rate is the product divided by the
+        stock, so the row is true by construction rather than by assumption.
       </p>
 
+      <div className="ge-eq">
+        <EqCell label="WEEKLY ACTIVE PEOPLE" cell={wap}
+          note="distinct devices that reached a decision surface" />
+        <div className="ge-eq-op" aria-hidden="true">×</div>
+        <EqCell label="ACTIVATION" cell={activation} format={pct}
+          note="of those, the share that left for a room's own document" />
+        <div className="ge-eq-op" aria-hidden="true">=</div>
+        <EqCell label="ACTIVATED" cell={activated} last
+          note="devices, not clicks — one busy reader is not ten" />
+      </div>
+      <div className="ge-eq ge-eq-last">
+        <EqCell label="PRIOR-WEEK ACTIVE" cell={priorActive}
+          note="the denominator, carried by the roll-up so nothing computes across rows" />
+        <div className="ge-eq-op" aria-hidden="true">×</div>
+        <EqCell label="7-DAY RETURN" cell={returnRate} format={pct}
+          note="active this week and active the week before" />
+        <div className="ge-eq-op" aria-hidden="true">=</div>
+        <EqCell label="RETURNED" cell={returned} last
+          note="the count the rate is taken from" />
+      </div>
+
+      {/* Four cells, four columns. */}
       <div className="ge-figs">
-        <Fig label="WEEKLY ACTIVE PEOPLE" cell={wap} />
-        <Fig label="NEW REACH" cell={reach} />
-        <Fig label="ACTIVATED" cell={activated} note="reached a room's own document" />
-        <Fig label="RETURNED FROM PRIOR WEEK" cell={returned} />
-        <Fig label="OUTBOUND CLICKS" cell={outbound} />
+        <Fig label="NEW REACH" cell={reach} note="first ever sighting, and a decision in the same week" />
+        <Fig label="OUTBOUND CLICKS" cell={outbound} note="events, not devices" />
         <Fig label="LOOP GAIN" cell={gain} />
         <Fig label="REVENUE" cell={revenue} />
       </div>
@@ -226,22 +302,66 @@ function Engine({ rollup, week, prior, metric }:
   )
 }
 
-function Loops({ metric }: { metric: Metric }) {
+async function Loops({ metric, week }: { metric: Metric; week: Week | null }) {
   /* ⚠️ THE STEP CHAINS AND CONSTRAINTS ARE DESIGN COPY — Phil's analysis, not a
-     measurement, and labelled as such. The GAIN beside each is a query. */
+     measurement, and labelled as such. The GAIN and the STATS beside each are
+     queries or declared absences; nothing between them is estimated.
+
+     ⚠️ AND THE STEPS ARE SPLIT FROM THAT SAME COPY, not authored here. The
+     prototype gives each loop five steps with a gating RATE on each — those
+     rates are invented (readme.md:35) and none of ours is measured, so the
+     step cells carry the stage and nothing else. A rate slot filled with a
+     plausible number is the one thing this console exists to refuse. */
+  const [{ count: pending }, { count: approved }, { data: rows }] = await Promise.all([
+    supabase.from('pending_changes').select('id', { count: 'exact', head: true })
+      .eq('state', 'pending'),
+    supabase.from('change_log').select('id', { count: 'exact', head: true }),
+    supabase.from('rooms').select('slug,area,status,is_seasonal,closed_on,table_count,phone,'
+      + 'min_age,is_24h,hours_note,comp_rate_hourly,verified_at,'
+      + 'cash_games(id,rake_cap,rake_percent,rake_verified_at),'
+      + 'room_amenities(amenity_id,verified_at)'),
+  ])
+  const roster = ((rows ?? []) as unknown as Array<RosterRoom
+    & Parameters<typeof coverageFor>[0]>).filter((r) => inRoster(r))
+  const filled = roster.reduce((n, r) => n + coverageFor(r).filled, 0)
+
+  const num = (v: number): Cell => ({ kind: 'number', value: v })
+  const none = (why: string): Cell => ({ kind: 'no-producer', missing: why })
+
   const LOOPS = [
     { name: 'COVERAGE', chain: 'more rooms → more search surface → more readers → more corrections',
       constraint: 'search indexing latency',
-      gain: { kind: 'no-producer', missing: 'Search Console verified today; no history yet' } as Cell },
+      gain: none('Search Console verified today; no history yet'),
+      stats: [
+        { k: 'ROOMS IN ROSTER', cell: num(roster.length) },
+        { k: 'FIELDS FILLED', cell: num(filled),
+          note: `of ${roster.length * COVERAGE_FIELDS.length} tracked` },
+        { k: 'IMPRESSIONS', cell: none('Search Console has no history yet') },
+      ] },
     { name: 'CORRECTION', chain: 'reader spots an error → submits → fact improves → more trust',
       constraint: 'one person approving the queue',
-      gain: metric(true, 1, null) },
+      gain: metric(true, 1, null),
+      stats: [
+        { k: 'PENDING IN QUEUE', cell: num(pending ?? 0) },
+        { k: 'APPROVED, ALL TIME', cell: num(approved ?? 0) },
+        { k: 'REPORTS THIS WEEK', cell: none('fact_report_submit is not aggregated by the weekly roll-up') },
+      ] },
     { name: 'REFERRAL', chain: 'reader leaves for a room → room sees traffic → room supplies facts',
       constraint: 'no room has been shown its own number yet',
-      gain: metric(true, 1, null) },
+      gain: metric(true, 1, null),
+      stats: [
+        { k: 'OUTBOUND CLICKS', cell: metric(true, 1, week?.outbound_clicks ?? null) },
+        { k: 'DEVICES THAT LEFT', cell: metric(true, 1, week?.activated ?? null) },
+        { k: 'ROOMS SUPPLYING FACTS', cell: none('no room has been given a way to send one') },
+      ] },
     { name: 'SHARE', chain: 'reader shares a room page → new reader arrives',
       constraint: 'there is no share affordance in the product',
-      gain: { kind: 'no-producer', missing: 'nothing fires share_link_copy' } as Cell },
+      gain: none('nothing fires share_link_copy'),
+      stats: [
+        { k: 'SHARES', cell: none('nothing fires share_link_copy') },
+        { k: 'ARRIVALS FROM A SHARE', cell: none('no share to arrive from') },
+        { k: 'K-FACTOR', cell: none('needs both terms above') },
+      ] },
   ]
   return (
     <section className="ge-section">
@@ -258,16 +378,57 @@ function Loops({ metric }: { metric: Metric }) {
               {render(l.gain)}
             </span>
           </div>
-          <p className="ge-copy">{l.chain}</p>
-          <p className="ge-copy ge-dim">constraint — {l.constraint}</p>
           {l.gain.kind === 'no-producer' && <p className="ge-copy ge-dim">{l.gain.missing}</p>}
+
+          {/* The step chain, split from the copy above — grid-auto-flow column
+              so every loop's steps share a row whatever their count. */}
+          <div className="ge-steps">
+            {l.chain.split('→').map((step, i) => (
+              <div key={step} className="ge-step">
+                <span className="ge-fig-label">STEP {i + 1}</span>
+                <span className="ge-step-name">{step.trim()}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="ge-loop-stats">
+            {l.stats.map((st) => (
+              <div key={st.k} className="ge-stat">
+                <span className="ge-fig-label">{st.k}</span>
+                <span className={st.cell.kind === 'number' ? 'ge-stat-value num' : 'ge-fig-absent'}>
+                  {render(st.cell)}
+                </span>
+                {st.cell.kind === 'no-producer' && <span className="ge-fig-why">{st.cell.missing}</span>}
+                {'note' in st && st.note && <span className="ge-fig-why">{st.note}</span>}
+              </div>
+            ))}
+            {/* The constraint sits on the surface, as the design has it. */}
+            <div className="ge-stat ge-constraint">
+              <span className="ge-fig-label">CONSTRAINT</span>
+              <span className="ge-constraint-body">{l.constraint}</span>
+            </div>
+          </div>
         </div>
       ))}
     </section>
   )
 }
 
-async function Rooms({ metric }: { metric: Metric }) {
+/**
+ * ⚠️ SORT AND FILTER TRAVEL IN THE URL, NOT IN STATE.
+ *
+ * This is a Server Component and the roster is a query, so a client-side sort
+ * would mean shipping the rows twice — once as HTML and once as JSON for the
+ * sorter — and then keeping the two in step. A link per column costs nothing,
+ * survives a refresh, and can be pasted to somebody else, which for a working
+ * screen is the point. The prototype uses `setState` because it has no server.
+ */
+const AREAS = ['all', 'strip', 'downtown', 'locals'] as const
+const SORTS = ['name', 'sessions', 'outbound', 'filled', 'verified'] as const
+type Sort = (typeof SORTS)[number]
+
+async function Rooms({ metric, q }:
+  { metric: Metric; q: Record<string, string | undefined> }) {
   const { data } = await supabase
     .from('rooms')
     .select('slug,name,area,status,is_seasonal,closed_on,table_count,phone,min_age,is_24h,'
@@ -280,25 +441,79 @@ async function Rooms({ metric }: { metric: Metric }) {
   const roster = rooms.filter((r) => inRoster(r))
   const counts = await roomEventCounts()
 
+  const area = (AREAS as readonly string[]).includes(q.area ?? '') ? q.area! : 'all'
+  const sort: Sort = (SORTS as readonly string[]).includes(q.sort ?? '')
+    ? (q.sort as Sort) : 'sessions'
+  /* Descending by default on every numeric column, ascending on the name —
+     the same defaults the prototype carries (`dir: -1`, `name` ascending). */
+  const dir = q.dir === 'asc' ? 1 : -1
+
+  const shown = roster
+    .filter((r) => area === 'all' || r.area.replace('_', '-') === area)
+    .map((r) => {
+      const c = counts.get(r.slug) ?? { sessions: 0, outbound: 0 }
+      const cov = coverageFor(r)
+      const ver = verificationFor(r)
+      return { r, cov, ver, sessions: c.sessions, outbound: c.outbound }
+    })
+  shown.sort((a, b) => {
+    if (sort === 'name') return dir * a.r.name.localeCompare(b.r.name)
+    if (sort === 'filled') return dir * (a.cov.filled - b.cov.filled)
+    if (sort === 'verified') return dir * (a.ver.stamped - b.ver.stamped)
+    return dir * (a[sort === 'sessions' ? 'sessions' : 'outbound']
+      - b[sort === 'sessions' ? 'sessions' : 'outbound'])
+  })
+
+  /* ⚠️ TOTALS OVER WHAT IS SHOWN, NOT OVER THE ROSTER. A totals row that
+     ignored the area filter would contradict the rows above it, and the reader
+     would have no way to tell which one was answering their question. */
+  const totals = shown.reduce((t, x) => ({
+    sessions: t.sessions + x.sessions, outbound: t.outbound + x.outbound,
+    filled: t.filled + x.cov.filled, stamped: t.stamped + x.ver.stamped,
+  }), { sessions: 0, outbound: 0, filled: 0, stamped: 0 })
+
+  const href = (next: Partial<{ area: string; sort: Sort; dir: string }>) => {
+    const p = new URLSearchParams({ tab: 'rooms', area, sort, dir: dir === 1 ? 'asc' : 'desc' })
+    for (const [k, v] of Object.entries(next)) p.set(k, String(v))
+    return `/admin/growth?${p.toString()}`
+  }
+  /* The arrow marks the ACTIVE column only, and clicking it flips direction. */
+  const col = (key: Sort, label: string) => (
+    <Link href={href({ sort: key, dir: sort === key && dir === -1 ? 'asc' : 'desc' })}
+      className="ge-sort">
+      {label}{sort === key ? (dir === -1 ? ' \u2193' : ' \u2191') : ''}
+    </Link>
+  )
+
   return (
     <section className="ge-section">
-      <h2 className="ge-h2">Rooms</h2>
+      <div className="ge-section-head">
+        <h2 className="ge-h2">Rooms</h2>
+        <nav className="ge-seg">
+          {AREAS.map((a) => (
+            <Link key={a} href={href({ area: a })}
+              className={a === area ? 'ge-seg-opt ge-seg-on' : 'ge-seg-opt'}>
+              {a.toUpperCase()}
+            </Link>
+          ))}
+        </nav>
+      </div>
       <p className="ge-copy">
-        {roster.length} rooms. FILLED and VERIFIED are separate columns and always will
-        be — holding a figure and having stood in the room are different claims.
-        {' '}A room reading 0 sessions is a FINDING, not an absence: the producer exists
-        and measured nothing.
+        {shown.length} of {roster.length} rooms. FILLED and VERIFIED are separate columns
+        and always will be — holding a figure and having stood in the room are different
+        claims. A room reading 0 sessions is a FINDING, not an absence: the producer
+        exists and measured nothing.
       </p>
       <table className="ge-table">
         <thead>
-          <tr><th>ROOM</th><th>AREA</th><th>FILLED</th><th>VERIFIED</th>
-            <th className="num">SESSIONS 7d</th><th className="num">OUTBOUND 7d</th><th>7d Δ</th></tr>
+          <tr><th>{col('name', 'ROOM')}</th><th>AREA</th>
+            <th>{col('filled', 'FILLED')}</th><th>{col('verified', 'VERIFIED')}</th>
+            <th className="num">{col('sessions', 'SESSIONS 7d')}</th>
+            <th className="num">{col('outbound', 'OUTBOUND 7d')}</th><th>7d Δ</th></tr>
         </thead>
         <tbody>
-          {roster.map((r) => {
-            const cov = coverageFor(r)
-            const ver = verificationFor(r)
-            const c = counts.get(r.slug) ?? { sessions: 0, outbound: 0 }
+          {shown.map(({ r, cov, ver, sessions: sc, outbound: oc }) => {
+            const c = { sessions: sc, outbound: oc }
             /* ⚠️ 0 IS A MEASUREMENT HERE. The producer exists and has run; a
                room with no clicks measured none. An em-dash would hide it. */
             const sessions = metric(true, 0, c.sessions)
@@ -327,6 +542,20 @@ async function Rooms({ metric }: { metric: Metric }) {
             )
           })}
         </tbody>
+        {/* ⚠️ TOTALS ARE SUMS OF MEASURED COUNTS, and the 7d Δ has no total
+            because there is no prior window to difference against — an empty
+            cell rather than a zero, which would be a claim. */}
+        <tfoot>
+          <tr className="ge-total">
+            <td>{shown.length} rooms</td>
+            <td className="ge-dim">{area === 'all' ? 'all areas' : area}</td>
+            <td className="num">{totals.filled}/{shown.length * COVERAGE_FIELDS.length}</td>
+            <td className="num">{totals.stamped} facts</td>
+            <td className="num">{totals.sessions}</td>
+            <td className="num">{totals.outbound}</td>
+            <td />
+          </tr>
+        </tfoot>
       </table>
       <p className="ge-copy ge-dim">
         FILLED counts {COVERAGE_FIELDS.length} tracked fields: {COVERAGE_FIELDS.map((f) => f.label).join(', ')}.
@@ -410,14 +639,21 @@ function Spec() {
 
       <h2 className="ge-h2">Events counted</h2>
       <table className="ge-table">
-        <thead><tr><th>EVENT</th><th>COUNTS TOWARD A DECISION?</th></tr></thead>
+        <thead><tr><th>EVENT</th><th>FIRES WHEN</th><th>PROPERTIES</th>
+          <th>FEEDS</th><th>DECISION?</th></tr></thead>
         <tbody>
-          {SPEC.eventNames.map((e) => (
-            <tr key={e}>
-              <td className="num">{e}</td>
-              <td>{(SPEC.decisionEvents as readonly string[]).includes(e) ? 'yes' : 'no'}</td>
-            </tr>
-          ))}
+          {SPEC.eventNames.map((e) => {
+            const f = SPEC.eventFacts[e]
+            return (
+              <tr key={e}>
+                <td className="num">{e}</td>
+                <td>{f.when}</td>
+                <td className="ge-dim">{f.props}</td>
+                <td className="ge-dim">{f.feeds}</td>
+                <td>{(SPEC.decisionEvents as readonly string[]).includes(e) ? 'yes' : 'no'}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 

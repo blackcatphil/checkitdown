@@ -4,7 +4,7 @@
  * No secrets in this file — it is imported by browser code. The service key and
  * the writing live in `lib/analytics-server.ts`, which is server-only.
  *
- * ⚠️ SIX, NOT SEVEN. `share_link_copy` was specified conditionally — only if a
+ * ⚠️ SEVEN, AND NOT share_link_copy. It was specified conditionally — only if a
  * share affordance exists — and none does: no `navigator.clipboard`, no
  * `navigator.share`, no copy-link control anywhere in `app/`. An event with no
  * producer is a column that is permanently zero, and a permanent zero reads as

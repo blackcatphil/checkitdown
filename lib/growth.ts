@@ -134,8 +134,60 @@ export const REVENUE_PER_CLICK: number | null =
  * so it cannot drift from what is measured. A spec page maintained by hand is a
  * spec page that describes last month's pipeline.
  */
+/**
+ * ⚠️ WHAT EACH EVENT FIRES ON, AND WHAT IT FEEDS — READ OFF THE CODE, NOT
+ * INVENTED.
+ *
+ * `when` restates the doc comment on each name in `lib/analytics-events.ts`;
+ * `feeds` restates what migration 021's roll-up actually does with it. Both are
+ * descriptions of behaviour that already exists, which is the only kind of
+ * prose allowed on this page — the prototype's ten-event table is the
+ * designer's invention (readme.md:35) and none of it crosses.
+ *
+ * A name added to EVENT_NAMES without an entry here fails `growth.test.mjs`,
+ * so the table cannot quietly fall behind the enum.
+ */
+export const EVENT_FACTS: Record<string, { when: string; props: string; feeds: string }> = {
+  room_facts_view: {
+    when: 'a room\u2019s facts grid becomes visible, fired on mount in the browser',
+    props: 'room slug',
+    feeds: 'weekly active people, new reach',
+  },
+  map_filter_apply: {
+    when: 'a filter is applied on the map',
+    props: 'which filter, and its value',
+    feeds: 'nothing — browsing is not a decision',
+  },
+  tournament_row_open: {
+    when: 'a tournament row is opened from /tournaments',
+    props: 'room slug',
+    feeds: 'weekly active people, new reach',
+  },
+  outbound_room_click: {
+    when: 'a reader leaves for the room\u2019s own property — site, directions, phone, PDF',
+    props: 'room slug, which surface',
+    feeds: 'weekly active people, new reach, activated, outbound clicks',
+  },
+  source_link_click: {
+    when: 'a reader opens the source behind a figure — checking our work',
+    props: 'room slug, host_is_room',
+    feeds: 'weekly active people, new reach',
+  },
+  fact_report_submit: {
+    when: 'a correction is submitted, fired after the insert succeeds',
+    props: 'room slug, which field',
+    feeds: 'nothing yet — not aggregated by the weekly roll-up',
+  },
+  install_accept: {
+    when: 'the browser install prompt is accepted, read from userChoice',
+    props: 'none',
+    feeds: 'nothing — an outcome, not a visit',
+  },
+}
+
 export const SPEC = {
   eventNames: EVENT_NAMES,
+  eventFacts: EVENT_FACTS,
   /* Kept in step with `analytics.decision_events()`; the Spec tab prints both
      and the console asserts they match. */
   decisionEvents: ['room_facts_view', 'outbound_room_click',
