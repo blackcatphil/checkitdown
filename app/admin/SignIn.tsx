@@ -43,7 +43,7 @@ export function SignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'password' | 'link'>('password')
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'reset-sent' | 'error'>('idle')
   const [detail, setDetail] = useState('')
   /**
    * THE INSTALLED-APP TRAP, DECIDED BEFORE IT WAS DISCOVERED — 2026-08-11.
@@ -128,6 +128,35 @@ export function SignIn() {
        reader is now past. */
     router.replace('/admin/review')
     router.refresh()
+  }
+
+  /**
+   * THE RECOVERY ROUTE FOR THE PASSWORD.
+   *
+   * ⚠️ `redirectTo` IS NOT DECORATION HERE. Without it GoTrue sends the reader
+   * to the project's Site URL — `https://checkitdown.com`, the homepage, which
+   * reads no token and does nothing with it. That is exactly how this feature
+   * came to have no recovery path at all: the email arrived, the link worked,
+   * and it landed somewhere that ignored it. The token is CONSUMED by that
+   * visit, so the reader cannot even retry.
+   *
+   * `/admin/password` is already on the project's redirect allowlist (any path
+   * on our own origin is), so this needs no dashboard change — measured, not
+   * assumed. See app/admin/password/SetPassword.tsx for why what arrives there
+   * is readable only by a browser.
+   */
+  async function sendReset() {
+    if (!email) { setState('error'); setDetail('Enter your email address first.'); return }
+    setState('sending')
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/admin/password`,
+    })
+    if (error) { setState('error'); setDetail(error.message); return }
+    setState('reset-sent')
   }
 
   async function send(e: React.FormEvent) {
@@ -227,6 +256,43 @@ export function SignIn() {
           ? 'Email me a sign-in link instead'
           : 'Sign in with a password instead'}
       </button>
+      )}
+
+      {/* ⚠️ OFFERED ONLY ON THE PASSWORD PATH, because it is the only path that
+          can lose a credential. On the link path there is nothing to recover —
+          the link IS the recovery. */}
+      {usingPassword && (
+      <button
+        type="button"
+        onClick={sendReset}
+        disabled={state === 'sending'}
+        style={{
+          font: 'var(--cid-caption)', color: 'var(--cid-dim)', background: 'none',
+          border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        Forgot your password?
+      </button>
+      )}
+
+      {/* Same wording as the link branch, for the same reason: a reset is sent
+          to any address that asks, so confirming WHICH addresses exist would
+          turn this button into the allowlist oracle the rest of the form
+          carefully is not. */}
+      {state === 'reset-sent' && (
+        <p style={{ font: 'var(--cid-caption)', color: 'var(--cid-dim)', margin: 0 }}>
+          If that address is on the allowlist, a link to set a new password is
+          on its way.
+          {/* ⚠️ THE RESET IS OFFERED HERE BUT CANNOT COMPLETE HERE, and saying
+              so is the whole difference between a working recovery and the loop
+              this app already documented once: tap link, browser opens, "signed
+              in", switch back, still signed out. The link is usable — just not
+              in this partition — and the new password then works everywhere,
+              which is why the button stays rather than being hidden. */}
+          {standalone && ' Open it in Safari or Chrome, not in this app — '
+            + 'the app and the browser do not share a session. Then come back '
+            + 'here and sign in with the new password.'}
+        </p>
       )}
 
       {/* A link is sent to any address that asks. Saying "sent, IF that address

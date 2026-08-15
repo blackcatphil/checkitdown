@@ -545,6 +545,57 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
+      # --- GATE 3c: THE RECOVERY ROUTE, IN A REAL BROWSER. ---
+      #
+      # ⚠️ THIS GATE NEEDS A BROWSER AND test:auth DID NOT, for a reason worth
+      # stating: a magic link carries `token_hash` in the QUERY, so a route
+      # handler reads it and a bare fetch drives the flow. A RECOVERY link goes
+      # to GoTrue's own /auth/v1/verify, which consumes the token and 303s to us
+      # with the session in the URL FRAGMENT — and a fragment is never sent to a
+      # server. Nothing server-side can act on it, so the page is a client
+      # component and the only honest rig is a browser that receives the hash.
+      #
+      # Until 2026-08-15 the reset email landed on the project's Site URL — the
+      # homepage — which read no token and did nothing, having just spent it.
+      # There was no recovery path for the only admin account.
+      - name: "test:recovery (reset a password, and retire the old one)"
+        env:
+          PSQL: psql
+          BASE_URL: http://127.0.0.1:3000
+        run: |
+          set -euo pipefail
+          npm run --silent test:recovery 2>&1 | tee /tmp/recovery.log
+          grep -q '^  0 failed' /tmp/recovery.log \
+            || { echo "::error::the recovery route did not behave — see the assertions above"; exit 1; }
+          # ⚠️ EACH REFUSAL BY NAME. They are not three spellings of one check:
+          # a spent link, an aged link and a valid link for an address off the
+          # allowlist fail in three different places — the auth server, the auth
+          # server's clock, and our own is_admin(). Pinning only "0 failed"
+          # would let any of them stop running silently, and a reset page that
+          # accepts a consumed token is worse than no reset page at all.
+          grep -q 'PASS  RED — and the page REFUSES a consumed link' /tmp/recovery.log \
+            || { echo "::error::the consumed-link refusal did not run — a spent link becomes a standing key"; exit 1; }
+          grep -q 'PASS  RED — and the page REFUSES an expired link' /tmp/recovery.log \
+            || { echo "::error::the expired-link refusal did not run"; exit 1; }
+          grep -q 'PASS  RED — the page REFUSES a valid link for an address off the allowlist' /tmp/recovery.log \
+            || { echo "::error::the allowlist refusal did not run — a valid token would become admin access"; exit 1; }
+          # A refusal that hides the form and leaves the session live is a form
+          # you re-render from the developer tools.
+          grep -q 'PASS  ...and the refused session is SIGNED OUT' /tmp/recovery.log \
+            || { echo "::error::the sign-out assertion did not run — the refusal above may be cosmetic"; exit 1; }
+          # ⚠️ AND THE ONE THAT MAKES IT A RESET RATHER THAN AN ADDITION.
+          grep -q 'PASS  RED — the OLD password STOPS working' /tmp/recovery.log \
+            || { echo "::error::the old-credential assertion did not run — a reset that leaves the previous password live is not a reset"; exit 1; }
+          # The control it depends on: without it the assertion above is
+          # satisfied by a password that never worked in the first place.
+          grep -q 'PASS  CONTROL: the OLD password works before the reset' /tmp/recovery.log \
+            || { echo "::error::the before-reset control did not run"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/recovery.log || true)
+          # 25 at introduction on 2026-08-15. Raise this when assertions are
+          # added; never lower it to pass a run.
+          [ "$n" -ge 25 ] \
+            || { echo "::error::only $n recovery assertions ran (expected >= 25) — the suite shrank"; exit 1; }
+
       # --- GATE 3b: THE EVENTS, RED BEFORE GREEN, IN A REAL BROWSER. ---
       # Every event is proved twice: once on a page that CARRIES the affordance
       # and was not used (must count nothing), once on the interaction (must
