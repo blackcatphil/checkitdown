@@ -21,21 +21,29 @@ export default async function AdminPage({
   return (
     <main className="cid-page" style={{ padding: 'var(--cid-space-9) 0', display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-6)' }}>
       <span className="cid-label">ADMIN</span>
-      <h1 style={{ font: 'var(--cid-statement)', margin: 0 }}>Review queue</h1>
+      <h1 style={{ font: 'var(--cid-statement)', margin: 0 }}>Admin</h1>
 
       {isAdmin ? (
         <>
           <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-2)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
             Signed in as {email}.
           </p>
-          <Link href="/admin/review" style={{ font: 'var(--cid-body-strong)' }}>Open the queue</Link>
+          {/* A hub, not the queue. Approval stopped being how ordinary data
+              arrives when precedence landed — the partner's documents change
+              and the app updates itself at 05:00. The queue is one thing you
+              might want here, not the thing this page is. */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
+            <Link href="/admin/growth" style={{ font: 'var(--cid-body-strong)' }}>Growth console</Link>
+            <Link href="/admin/ledger" style={{ font: 'var(--cid-body-strong)' }}>Room ledger</Link>
+            <Link href="/admin/review" style={{ font: 'var(--cid-body-strong)' }}>Open the queue</Link>
+          </nav>
         </>
       ) : (
         <>
           <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-2)', margin: 0, maxWidth: 'var(--cid-measure)' }}>
             {email
               ? `${email} is signed in but not on the admin allowlist.`
-              : 'This page is for the people who triage scraper findings. Sign in to continue.'}
+              : 'This page is for the people who run Check It Down. Sign in to continue.'}
           </p>
           <SignIn />
         </>
