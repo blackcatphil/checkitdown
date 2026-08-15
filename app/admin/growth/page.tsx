@@ -221,11 +221,28 @@ function Engine({ rollup, week, prior, metric }:
       ? { kind: 'no-producer', missing: why }
       : composite([num, den], (v) => v[0] / v[1])
 
-  const activation = rateOf(activated, wap,
-    'no devices were active in this week, so there is no rate to take')
+  /* ⚠️ ROW 1 IS THE NEWCOMER FUNNEL, AND THE POPULATIONS LINE UP.
+     It used to read `weekly active × activation = activated`, which is true
+     arithmetic about the wrong question: it measures engagement across
+     everybody, including people who have been here for months. Migration 023
+     adds `new_activated` — devices first seen this week that reached an
+     outbound click — so the row now asks whether NEWCOMERS convert, with the
+     same population on both sides of the ×. */
+  const newActivated = metric(true, 1, week?.new_activated ?? null)
+  const newActivation = rateOf(newActivated, reach,
+    'nobody was seen for the first time this week, so there is no rate to take')
+
   const priorActive = metric(true, 2, week?.prior_week_active ?? null)
   const returnRate = rateOf(returned, priorActive,
     'nobody was active in the prior week, so there is no rate to take')
+
+  /* ⚠️ THREE TERMS, NOT TWO. The prototype's strip reads `new + retained =
+     weekly active` and silently drops everyone who was here before, went quiet
+     for a week, and came back — which on a product people open when deciding
+     where to play tonight is plausibly the largest of the three. Migration 023
+     asserts the identity holds exactly; this renders it. */
+  const reactivated = metric(true, 1, week?.reactivated ?? null)
+  const sum = composite([reach, returned, reactivated], (v) => v[0] + v[1] + v[2])
 
   return (
     <section className="ge-section">
@@ -237,14 +254,14 @@ function Engine({ rollup, week, prior, metric }:
       </p>
 
       <div className="ge-eq">
-        <EqCell label="WEEKLY ACTIVE PEOPLE" cell={wap}
-          note="distinct devices that reached a decision surface" />
+        <EqCell label="NEW REACH" cell={reach}
+          note="first ever sighting, and a decision in the same week" />
         <div className="ge-eq-op" aria-hidden="true">×</div>
-        <EqCell label="ACTIVATION" cell={activation} format={pct}
-          note="of those, the share that left for a room's own document" />
+        <EqCell label="NEW ACTIVATION" cell={newActivation} format={pct}
+          note="of those newcomers, the share that left for a room" />
         <div className="ge-eq-op" aria-hidden="true">=</div>
-        <EqCell label="ACTIVATED" cell={activated} last
-          note="devices, not clicks — one busy reader is not ten" />
+        <EqCell label="NEW ACTIVATED" cell={newActivated} last
+          note="a subset of new reach, by construction" />
       </div>
       <div className="ge-eq ge-eq-last">
         <EqCell label="PRIOR-WEEK ACTIVE" cell={priorActive}
@@ -257,9 +274,40 @@ function Engine({ rollup, week, prior, metric }:
           note="the count the rate is taken from" />
       </div>
 
-      {/* Four cells, four columns. */}
+      {/* ⚠️ THE SUM STRIP, AND ITS THIRD TERM. The connective words carry the
+          accent for the same reason the operators do: they are the sentence's
+          syntax, not a claim about any figure. */}
+      <div className="ge-sum">
+        <span className={reach.kind === 'number' ? 'num' : 'ge-sum-absent'}>{render(reach)}</span>
+        <span className="ge-sum-op">new</span>
+        <span className="ge-sum-op">+</span>
+        <span className={returned.kind === 'number' ? 'num' : 'ge-sum-absent'}>{render(returned)}</span>
+        <span className="ge-sum-op">returned</span>
+        <span className="ge-sum-op">+</span>
+        <span className={reactivated.kind === 'number' ? 'num' : 'ge-sum-absent'}>{render(reactivated)}</span>
+        <span className="ge-sum-op">reactivated</span>
+        <span className="ge-sum-op">=</span>
+        <span className={sum.kind === 'number' ? 'num' : 'ge-sum-absent'}>{render(sum)}</span>
+        <span className="ge-sum-op">weekly active people</span>
+      </div>
+      {/* ⚠️ THE IDENTITY IS ASSERTED IN THE DATABASE, NOT HERE. Migration 023
+          refuses to apply if the three terms do not sum to the total, so this
+          strip cannot show a sum that disagrees with the WAP column — and if it
+          somehow did, the mismatch would be visible rather than reconciled. */}
+      {sum.kind === 'number' && wap.kind === 'number' && sum.value !== wap.value && (
+        <p className="ge-fault-box">
+          The three terms sum to {sum.value} but weekly active people reads {wap.value}.
+          The definitions disagree; migration 023&rsquo;s partition assertion should have
+          caught this before it reached a screen.
+        </p>
+      )}
+
+      {/* ⚠️ FOUR CELLS, FOUR COLUMNS — and weekly active people is NOT among
+          them. It is the sum strip's total, and a figure that appears twice on
+          one screen invites the reader to check whether the two agree. */}
       <div className="ge-figs">
-        <Fig label="NEW REACH" cell={reach} note="first ever sighting, and a decision in the same week" />
+        <Fig label="ACTIVATED, ALL DEVICES" cell={activated}
+          note="devices, not clicks — one busy reader is not ten" />
         <Fig label="OUTBOUND CLICKS" cell={outbound} note="events, not devices" />
         <Fig label="LOOP GAIN" cell={gain} />
         <Fig label="REVENUE" cell={revenue} />

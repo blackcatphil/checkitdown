@@ -1,0 +1,69 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   THE ADMIN FRAME. Modernist, scoped to `.ge-frame`, sharing the console's
+   tokens — `growth.css` defines `.ge` itself and is imported by the console.
+   This file carries only what the FRAME adds.
+   ⚠️ NO `--cid-*` TOKEN MAY APPEAR HERE. lib/modernist.test.mjs reads this file
+   by name and fails the build if one does.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* The `.ge` base — tokens, type scale, rules — lives with the console. Imported
+   here so every admin route gets it, not just /admin/growth. */
+@import url('./growth/growth.css');
+
+/* ⚠️ THE PUBLIC CHROME, HIDDEN — INTERIM, AND THE REASON IS IN layout.tsx.
+   `app/layout.tsx` renders the site header, footer and bottom nav as SIBLINGS
+   of the page, so an admin route cannot escape them without a `(site)` route
+   group. `:has()` does it declaratively: server-rendered, no flash, no JS. The
+   honest cost is that the markup is still in the DOM and still in the payload. */
+/* ⚠️ TARGETED BY ELEMENT, NOT BY CLASS, AND THAT IS DELIBERATE. Naming
+   `.cid-sitehead` here would put a site-system class inside an admin
+   stylesheet — the exact thing the leak guard forbids, and it would have to be
+   excepted, which is how exceptions start. The three chrome elements are the
+   only `header`, `footer` and `nav` that are DIRECT children of `body`; the
+   frame itself is a `div`. So the selector needs no cid name at all. */
+body:has(.ge-frame) > header,
+body:has(.ge-frame) > footer,
+body:has(.ge-frame) > nav { display: none; }
+
+/* The frame owns the page background, since the site's is now hidden. */
+body:has(.ge-frame) { background: var(--color-bg); }
+
+.ge-frame { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* — the header: sticky, 14px 32px, 2px rule (readme.md:117) — */
+.ge-frame-head {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 32px;
+  padding: 14px 32px;
+  background: var(--color-bg);
+  border-bottom: 2px solid var(--color-divider);
+}
+/* ⚠️ `color` STATED, NOT INHERITED. `growth.css` sets `.ge a { color:
+   var(--color-accent) }`, so the brand — an anchor inside `.ge` — came out in
+   accent red, which made the product name read as a control. */
+.ge-brand {
+  display: flex; align-items: baseline; gap: 12px; text-decoration: none;
+  color: var(--color-text);
+}
+.ge-brand-name {
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 18px; letter-spacing: -0.01em;
+}
+/* ⚠️ THE ONE ACCENT IN THE FRAME, and it names the product area rather than any
+   figure — the same category as a section label, not a data state. */
+.ge-brand-kicker {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--color-accent);
+}
+.ge-frame-nav { display: flex; gap: 6px; }
+.ge-frame-weeks { margin-left: auto; }
+
+/* — the ribbon: one line, 11px, the label treatment — */
+.ge-ribbon {
+  display: flex; align-items: center; gap: 14px;
+  padding: 9px 32px;
+  border-bottom: 2px solid var(--color-divider);
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+.ge-ribbon-fields { margin-left: auto; }

@@ -48,8 +48,14 @@ export type Week = {
   weekly_active_people: number
   new_reach: number
   activated: number
+  /** Of the devices first seen this week, those that reached an outbound
+   *  click. A subset of `new_reach` by construction — migration 023. */
+  new_activated: number
   prior_week_active: number
   returned_from_prior: number
+  /** Active this week, seen before, NOT active last week. The third term the
+   *  prototype's two-term sum drops — migration 023. */
+  reactivated: number
   outbound_clicks: number
 }
 
@@ -130,11 +136,6 @@ export const REVENUE_PER_CLICK: number | null =
   process.env.CID_REVENUE_PER_CLICK ? Number(process.env.CID_REVENUE_PER_CLICK) : null
 
 /**
- * WHAT THE SPEC TAB PRINTS — generated from the same constants the queries use,
- * so it cannot drift from what is measured. A spec page maintained by hand is a
- * spec page that describes last month's pipeline.
- */
-/**
  * ⚠️ WHAT EACH EVENT FIRES ON, AND WHAT IT FEEDS — READ OFF THE CODE, NOT
  * INVENTED.
  *
@@ -144,7 +145,7 @@ export const REVENUE_PER_CLICK: number | null =
  * prose allowed on this page — the prototype's ten-event table is the
  * designer's invention (readme.md:35) and none of it crosses.
  *
- * A name added to EVENT_NAMES without an entry here fails `growth.test.mjs`,
+ * A name added to EVENT_NAMES without an entry here fails `growth-spec.test.mjs`,
  * so the table cannot quietly fall behind the enum.
  */
 export const EVENT_FACTS: Record<string, { when: string; props: string; feeds: string }> = {
@@ -166,7 +167,7 @@ export const EVENT_FACTS: Record<string, { when: string; props: string; feeds: s
   outbound_room_click: {
     when: 'a reader leaves for the room\u2019s own property — site, directions, phone, PDF',
     props: 'room slug, which surface',
-    feeds: 'weekly active people, new reach, activated, outbound clicks',
+    feeds: 'weekly active people, new reach, activated, new activated, outbound clicks',
   },
   source_link_click: {
     when: 'a reader opens the source behind a figure — checking our work',
@@ -185,6 +186,11 @@ export const EVENT_FACTS: Record<string, { when: string; props: string; feeds: s
   },
 }
 
+/**
+ * WHAT THE SPEC TAB PRINTS — generated from the same constants the queries use,
+ * so it cannot drift from what is measured. A spec page maintained by hand is a
+ * spec page that describes last month's pipeline.
+ */
 export const SPEC = {
   eventNames: EVENT_NAMES,
   eventFacts: EVENT_FACTS,

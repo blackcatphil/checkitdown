@@ -29,7 +29,8 @@
     "gate:017": "node scripts/migration-017-gate.mjs",
     "gate:017:prod": "node scripts/migration-017-gate-prod.mjs",
     "test:failclosed": "node scripts/failclosed-probe.mjs",
-    "test:recovery": "node scripts/recovery-probe.mjs"
+    "test:recovery": "node scripts/recovery-probe.mjs",
+    "gate:023": "node scripts/migration-023-gate.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

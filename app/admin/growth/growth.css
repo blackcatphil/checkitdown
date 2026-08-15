@@ -262,6 +262,25 @@
   padding: 24px 0 24px 24px; border-left: 2px solid var(--color-divider);
 }
 
+/* ══ THE SUM STRIP (readme.md:133) ═══════════════════════════════════════
+   One flex row, heading weight 24px, 2px bottom rule. Three terms, not two. */
+.ge-sum {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px;
+  padding: 20px 0; border-bottom: 2px solid var(--color-divider);
+  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+  font-size: 24px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+}
+/* ⚠️ THE CONNECTIVE WORDS CARRY THE ACCENT, and they are not a data state —
+   the same argument as `.ge-eq-op`. "new", "+", "returned", "=" are the
+   sentence's syntax: fixed words that never change with the numbers. The
+   colour guard admits this selector by name. */
+.ge-sum-op { color: var(--color-accent); }
+/* An absence inside the strip drops to body size and weight, so the sentence
+   still reads and the missing term is unmistakably not a number. */
+.ge-sum-absent {
+  font-family: var(--font-body); font-weight: 400; font-size: 14px;
+}
+
 /* ══ LOOPS: the step chain and the stats row (readme.md:147,148) ══════════ */
 .ge-steps {
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);

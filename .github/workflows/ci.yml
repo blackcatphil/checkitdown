@@ -501,6 +501,34 @@ jobs:
       # /auth/callback with it, and asks the database who it is over HTTP with
       # the cookies that came back. It needs no dashboard change to run:
       # generate_link returns the same token hash the email template carries.
+      # --- GATE: MIGRATION 023, THE FUNNEL AND THE PARTITION. ---
+      #
+      # ⚠️ 023's OWN `do $$` GUARD IS VACUOUS ON A DATABASE WITHOUT ALL THREE
+      # POPULATIONS — measured, not feared. Applying it with `reactivated`
+      # deliberately broken printed `DO` and passed, because 14 = 14 + 0 + 0 is
+      # a true statement about a broken partition. This gate builds a new
+      # device that converts, a new device that does not, a returning device
+      # and a reactivated one, then asserts the DELTAS each contributes.
+      - name: "gate:023 (new_activated is a funnel, and the three terms partition)"
+        env:
+          PSQL: psql
+        run: |
+          set -euo pipefail
+          npm run --silent gate:023 2>&1 | tee /tmp/g023.log
+          grep -q '^  0 failed' /tmp/g023.log \
+            || { echo "::error::migration 023 does not hold — see the assertions above"; exit 1; }
+          # The assertion that makes the ratio mean anything: if new_activated
+          # were "first seen this week AND reached a decision surface" it would
+          # equal new_reach and the funnel would read 100% forever.
+          grep -q 'PASS  RED — the NEW device that does NOT go outbound' /tmp/g023.log \
+            || { echo "::error::the funnel assertion did not run — new_activated could be a copy of new_reach"; exit 1; }
+          grep -q 'PASS  THE PARTITION HOLDS' /tmp/g023.log \
+            || { echo "::error::the three-term identity did not run — the sum strip could be wrong by however big reactivated is"; exit 1; }
+          n=$(grep -c '^  PASS' /tmp/g023.log || true)
+          # 9 at introduction on 2026-08-15.
+          [ "$n" -ge 9 ] \
+            || { echo "::error::only $n 023 assertions ran (expected >= 9) — the gate shrank"; exit 1; }
+
       - name: "test:auth (sign-in, is_admin, and who may approve)"
         env:
           PSQL: psql
