@@ -31,12 +31,14 @@ type Tab = (typeof TABS)[number]
  * which, and `lib/growth-absence.test.mjs` fails if any of the three is
  * rendered as another.
  *
- * ⚠️ THE DESIGN SYSTEM IS NOT IN THE REPO. `docs/design/growth-engine/_ds/`
- * does not exist, so the Modernist skin is NOT applied here — the brief was
- * explicit that tokens must come from that stylesheet and not be re-derived
- * from prose. This uses the app's existing admin styling, scoped to
- * `/admin/*` in `growth.css`, which touches nothing global. Swapping in the
- * real design system is a CSS-only change against the class names below.
+ * ⚠️ MODERNIST, AND ONLY MODERNIST. The design bundle landed on 2026-08-15 at
+ * `docs/design/growth-engine/`, so the skin IS applied — this comment used to
+ * say the system was not in the repo, which stopped being true the moment it
+ * arrived. Every value comes from that `styles.css`, scoped to `.ge` in
+ * `growth.css`, and nothing here may reach for a `--cid-*` token: the site's
+ * system and this one are different palettes, and one gold label inside a
+ * Modernist page is how a retired palette survives. `lib/modernist.test.mjs`
+ * fails the build if a `cid-` class or token appears in either file.
  */
 export default async function Growth({
   searchParams,
@@ -46,12 +48,17 @@ export default async function Growth({
   const { isAdmin } = await whoAmI()
   if (!isAdmin) {
     /* Identity first, data never — the same shape /admin/ledger uses. Nothing
-       is queried for a stranger, so nothing leaks through the RSC payload. */
+       is queried for a stranger, so nothing leaks through the RSC payload.
+
+       ⚠️ MODERNIST, NOT THE SITE SYSTEM — this block used `.cid-page`,
+       `.cid-label` and five inline `--cid-*` tokens, so a stranger met a
+       half-skinned page and the console's own labels rendered in the site's
+       GOLD inside a Modernist screen. See the leak note in growth.css. */
     return (
-      <main className="cid-page ge" style={{ padding: 'var(--cid-space-9) 0' }}>
-        <span className="cid-label">GROWTH</span>
-        <h1 style={{ font: 'var(--cid-statement)', margin: 'var(--cid-space-4) 0' }}>Not for you</h1>
-        <p style={{ font: 'var(--cid-body)', color: 'var(--cid-text-2)', margin: 0 }}>
+      <main className="ge">
+        <span className="ge-kicker">GROWTH</span>
+        <h1 className="ge-h1">Not for you</h1>
+        <p className="ge-copy">
           This is an internal working screen. <Link href="/admin">Sign in</Link> if it should be.
         </p>
       </main>
@@ -86,10 +93,10 @@ export default async function Growth({
   const prior = rollup.complete.at(-2) ?? null
 
   return (
-    <main className="cid-page ge">
+    <main className="ge">
       <header className="ge-head">
         <div>
-          <span className="cid-label">GROWTH ENGINE</span>
+          <span className="ge-kicker">GROWTH ENGINE</span>
           <h1 className="ge-h1">Console</h1>
         </div>
         <div className="ge-asof">
@@ -246,7 +253,7 @@ function Loops({ metric }: { metric: Metric }) {
       {LOOPS.map((l) => (
         <div key={l.name} className="ge-loop">
           <div className="ge-loop-head">
-            <span className="cid-label">{l.name}</span>
+            <span className="ge-kicker">{l.name}</span>
             <span className={l.gain.kind === 'number' ? 'ge-fig-value num' : 'ge-fig-absent'}>
               {render(l.gain)}
             </span>
@@ -354,6 +361,38 @@ function Spec() {
      from what is measured. A hand-maintained spec describes last month. */
   return (
     <section className="ge-section">
+      <h2 className="ge-h2">Instrumentation</h2>
+      <p className="ge-copy">
+        {SPEC.eventNames.length} events. Every number on the other four tabs resolves to
+        one of them. If a figure cannot be traced to a row here, it does not go on the
+        page — it reads as an absence instead.
+      </p>
+
+      {/* ⚠️ COUNTED SITS BESIDE NOT COUNTED, and the pair is the definition.
+          Only half of it shipped: the page said what it throws away and never
+          said what it keeps, which leaves the reader to infer the denominator
+          of every figure above. Two columns split by a 2px rule, per
+          readme.md:182. */}
+      <div className="ge-split">
+        <div className="ge-split-cell">
+          <span className="ge-kicker">Counted</span>
+          <p className="ge-copy">
+            A device that reaches a decision surface — a room&rsquo;s own document, a
+            tournament row, a source link — inside a Monday–Sunday week. Anonymous and
+            device-scoped: `device_id` is a random token in localStorage, not a
+            fingerprint, and `analytics.devices` keeps one row per device so
+            &ldquo;new&rdquo; means ever rather than this week.
+          </p>
+        </div>
+        <div className="ge-split-cell">
+          <span className="ge-kicker">Not counted</span>
+          <table className="ge-table">
+            <tbody>{SPEC.notCounted.map(([w, why]) => (
+              <tr key={w}><td>{w}</td><td className="ge-dim">{why}</td></tr>))}</tbody>
+          </table>
+        </div>
+      </div>
+
       <h2 className="ge-h2">What the three absences mean</h2>
       <table className="ge-table">
         <thead><tr><th>SHOWS</th><th>MEANS</th></tr></thead>
@@ -380,12 +419,6 @@ function Spec() {
             </tr>
           ))}
         </tbody>
-      </table>
-
-      <h2 className="ge-h2">Not counted</h2>
-      <table className="ge-table">
-        <tbody>{SPEC.notCounted.map(([w, why]) => (
-          <tr key={w}><td>{w}</td><td className="ge-dim">{why}</td></tr>))}</tbody>
       </table>
 
       <h2 className="ge-h2">Sources</h2>

@@ -81,7 +81,12 @@
   line-height: 1.55;
   font-weight: 400;
 
-  padding: var(--space-6) var(--space-4) var(--space-8);
+  /* ⚠️ `0 32px`, THE SYSTEM'S SECTION PADDING (readme.md:119). This was
+     `24px 16px 32px` — half the horizontal inset, which is why every rule and
+     every column stopped short of where the design puts them. The page is
+     full-bleed: no max-width, because the room table needs the width and the
+     design gives it none. */
+  padding: 0 var(--space-8) 48px;
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
@@ -104,21 +109,33 @@
 .ge ::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
 .ge .text-muted { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
 
-/* — the system's h6 treatment, used for every label — */
-.ge-kicker {
-  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
-  font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
-  line-height: 1.12; margin: 0;
+/* ══ THE ONE LABEL TREATMENT ══════════════════════════════════════════════
+   11px · .1em · uppercase · text at 55% — the system's single small-caps label
+   (readme.md:119), and the ONLY label style on this page.
+
+   ⚠️ THERE WERE THREE. `.ge-kicker` at 13px/.08em in the heading font,
+   `.ge-fig-label` at 10px/.1em, and `th` at 11px/.08em — so a figure's name, a
+   section's kicker and a column head were three different sizes at three
+   different trackings, which is most of why the page read as approximate.
+   The design sets no font-family here: labels inherit the body face. */
+.ge-kicker, .ge-fig-label, .ge-table th {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin: 0;
 }
 
 /* — rules: 2px sections, 1px rows, straight from the system — */
 .ge-head {
   display: flex; justify-content: space-between; align-items: flex-end;
-  border-bottom: 2px solid var(--color-divider); padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--color-divider);
+  /* The system's header is `14px 32px`; the horizontal half is on `.ge`. */
+  padding: 14px 0 var(--space-3);
 }
 .ge-h1 { font-size: 42px; margin: var(--space-2) 0 0; }
 .ge-h2 {
-  font-size: 25px; margin: var(--space-6) 0 var(--space-3);
+  /* 32px is the system's h2 (styles.css:88). This read 25px — the h3 size —
+     so every section heading sat one step down the scale. */
+  font-size: 32px; margin: var(--space-6) 0 var(--space-3);
   border-bottom: 2px solid var(--color-divider); padding-bottom: var(--space-2);
 }
 .ge-asof { font-size: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
@@ -141,25 +158,29 @@
 .ge-empty { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
 
 /* — figures, built on the system's .card + .elev-sm — */
+/* ⚠️ RULED CELLS, NOT FLOATING CARDS. The design builds every metric row as a
+   contiguous grid bounded by 2px rules with a 2px rule down the left of each
+   cell (readme.md:132,134,135) — no gap, no surface, no elevation. This was a
+   gapped grid of shadowed cards, which is a different object: a card floats
+   above the page and a ruled cell is cut out of it, and only one of them lines
+   its edges up with the tables underneath.
+   The gap goes because a rule with a gap beside it is not a rule, it is a
+   stripe; the shadow goes because the system puts elevation on cards only and
+   these have stopped being cards. */
 .ge-figs {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-3);
+  border-top: 2px solid var(--color-divider);
+  border-bottom: 2px solid var(--color-divider);
 }
 .ge-fig {
   display: flex; flex-direction: column; gap: var(--space-2);
-  padding: var(--space-3); border-radius: var(--radius-md);
-  background: var(--color-surface);
-  /* Shadows only on cards and the dialog — the system's rule, honoured. */
-  box-shadow: var(--shadow-sm);
+  padding: 20px 22px;
+  border-left: 2px solid var(--color-divider);
 }
-.ge-fig-label {
-  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-  /* ⚠️ NOT `--color-accent`. The system's `.card-kicker` is accent-coloured,
-     and on this page the kicker names WHICH METRIC a cell is — which is a data
-     label, and CID §6 forbids colour carrying data state. Neutral instead; the
-     divergence is recorded in docs/design/growth-engine/README.md. */
-  color: color-mix(in srgb, var(--color-text) 60%, transparent);
-}
+/* ⚠️ `.ge-fig-label` TAKES THE SHARED TREATMENT ABOVE AND ADDS NOTHING. It is
+   NOT `--color-accent`: the system's `.card-kicker` is accent-coloured, and
+   here the kicker names WHICH METRIC a cell is — a data label, which §6
+   forbids colour from carrying. Recorded in CONSUMING.md. */
 .ge-fig-value {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
   font-size: 32px; line-height: 1.12; font-variant-numeric: tabular-nums;
@@ -183,11 +204,23 @@
   font-size: 14px; background: var(--color-accent-100);
 }
 
+/* — the two-column split: Counted | Not counted (readme.md:182) — */
+.ge-split {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border-top: 2px solid var(--color-divider);
+  border-bottom: 2px solid var(--color-divider);
+}
+.ge-split-cell { padding: 24px 24px 24px 0; }
+/* The 2px rule between them is the DIVIDER, so it goes on the second cell only
+   — a border on both would double it. */
+.ge-split-cell + .ge-split-cell {
+  padding: 24px 0 24px 24px; border-left: 2px solid var(--color-divider);
+}
+
 /* — tables, the system's .table verbatim — */
 .ge-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ge-table th {
-  text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  text-align: left;
   padding: var(--space-2); border-bottom: 2px solid var(--color-divider);
 }
 .ge-table td {
@@ -198,7 +231,8 @@
 .ge-table .num { font-variant-numeric: tabular-nums; }
 .ge-missing { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
 
-.ge-loop { border-bottom: 1px solid var(--color-divider); padding: var(--space-4) 0; }
+/* 2px, not 1px: a loop is a major section boundary, and 1px is the row rule. */
+.ge-loop { border-bottom: 2px solid var(--color-divider); padding: 28px 0; }
 .ge-loop-head {
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: var(--space-2);

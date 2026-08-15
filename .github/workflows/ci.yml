@@ -161,8 +161,13 @@ jobs:
           # must be text some script can print. A pin naming a retired
           # assertion cannot match, so the job fails forever rather than
           # protecting anything; that is what reddened main from 12 to 15 Aug.
-          [ "${n:-0}" -ge 289 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 289) — a suite that shrinks still exits 0"; exit 1; }
+          # 290 on 2026-08-15: +1 for the cross-system leak guard in
+          # lib/modernist.test.mjs — no `cid-` class or token may appear in the
+          # growth console. The leak it caught was a CLASS NAME in the markup,
+          # which every existing guard was blind to because they read the
+          # stylesheet and the stylesheet was clean.
+          [ "${n:-0}" -ge 290 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 290) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
