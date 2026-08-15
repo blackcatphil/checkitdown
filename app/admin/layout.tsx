@@ -16,10 +16,12 @@ export const dynamic = 'force-dynamic'
 /**
  * THE ADMIN FRAME.
  *
- * ⚠️ IT WRAPS ALL OF /admin/*, REVIEW AND LEDGER INCLUDED. A Modernist console
- * sitting beside a site-styled ledger is the same inconsistency the `.cid-label`
+ * ⚠️ IT WRAPS ALL OF /admin/*, THE REVIEW QUEUE INCLUDED. A Modernist console
+ * sitting beside a site-styled queue is the same inconsistency the `.cid-label`
  * leak was, one level up: two design systems meeting inside one screen, with
- * nothing structural stopping either from spreading.
+ * nothing structural stopping either from spreading. `/admin/review` is still
+ * site-styled and is the last screen inside this frame that is — see the note
+ * on it in docs/design/growth-engine/CONSUMING.md.
  *
  * ⚠️ THE PUBLIC CHROME IS HIDDEN FROM HERE, AND THIS IS INTERIM. `app/layout.tsx`
  * renders the site header, footer and bottom nav as siblings of `{children}`,
@@ -35,12 +37,16 @@ export const dynamic = 'force-dynamic'
  * the console and nothing else exists. Ours wraps three different screens, so
  * the frame navigates BETWEEN them and the console keeps its own five tabs
  * inside its own page. Putting the console's tabs up here would leave the
- * ledger showing five tabs that all leave it.
+ * review queue showing five tabs that all leave it.
  */
 
+/* ⚠️ TWO, NOT THREE. `/admin/ledger` was retired on 2026-08-15 — the Rooms tab
+   is a strict superset of it — and the route now only redirects. A nav entry
+   pointing at a redirect is a link that flickers through one URL to reach
+   another, and it would keep the retired name alive in the one place everyone
+   reads. */
 const SECTIONS = [
   ['REVIEW', '/admin/review'],
-  ['LEDGER', '/admin/ledger'],
   ['GROWTH', '/admin/growth'],
 ] as const
 

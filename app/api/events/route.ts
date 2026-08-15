@@ -120,7 +120,8 @@ export async function POST(request: Request) {
      the catch would swallow it, every slug would resolve to undefined, and
      every room event would land with `room_id` null. THE ROWS WOULD STILL BE
      THERE AND THE TOTALS WOULD STILL BE RIGHT — only the per-room breakdown
-     would be empty, so the ledger would show nothing and nothing would look
+     would be empty, so the console's Rooms tab would show nothing and nothing
+     would look
      broken. `scripts/events-probe.mjs` asserts no room event has a null room
      precisely because that failure is silent everywhere else. */
   const slugs = [...new Set(

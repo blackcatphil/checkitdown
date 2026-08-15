@@ -683,7 +683,7 @@ jobs:
           grep -q 'does NOT land in outbound_room_click' /tmp/events.log \
             || { echo "::error::the source/outbound split assertion did not run"; exit 1; }
           # AND THE SILENT ONE. A room event with a null room leaves totals
-          # correct and the ledger empty; nothing else in this repo would notice.
+          # correct and the console's Rooms tab empty; nothing else would notice.
           grep -q 'NONE of them has a null room' /tmp/events.log \
             || { echo "::error::the null-room assertion did not run — a broken slug lookup is invisible without it"; exit 1; }
           # Its positive control: zero orphans is also what an empty table says.

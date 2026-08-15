@@ -47,7 +47,7 @@ export default async function Growth({
 }) {
   const { isAdmin } = await whoAmI()
   if (!isAdmin) {
-    /* Identity first, data never — the same shape /admin/ledger uses. Nothing
+    /* Identity first, data never — the same shape /admin/review uses. Nothing
        is queried for a stranger, so nothing leaks through the RSC payload.
 
        ⚠️ MODERNIST, NOT THE SITE SYSTEM — this block used `.cid-page`,

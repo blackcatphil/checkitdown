@@ -66,3 +66,36 @@ delete the fork rather than carry it forever.
 every number is invented (`README.md:35`). So the markup gives no guidance on
 the one thing this console exists to do, and any cell ported from it assumes a
 number is present. Port geometry; never port a cell.
+
+
+## /admin/review is the last site-styled screen inside the frame
+
+The admin frame (`app/admin/layout.tsx`) wraps every `/admin/*` route in
+Modernist. `/admin/review` has not been converted and is the only screen inside
+it still drawn from the site system.
+
+**It is 84 `--cid-*`/`cid-*` references, not 2.** The "2 cid-\* elements"
+measured on 2026-08-15 counted rendered ELEMENTS carrying a `cid-` class; token
+references in inline styles do not appear that way. The real distribution:
+
+| file | references |
+|---|---|
+| `app/admin/review/ReviewRow.tsx` | 45 |
+| `app/admin/review/BulkApprove.tsx` | 20 |
+| `app/admin/review/page.tsx` | 19 |
+
+For comparison, the retired ledger was 115 in one file. Review is not
+meaningfully smaller — it is the same job split three ways, two of which are
+interactive client components.
+
+**Why it waits.** On an empty queue only the shell renders, and the shell is
+where the mismatch shows: a gold `ADMIN` label, a SERIF `Review queue` heading
+and a centred column inside a flush-left Archivo frame. The 65 references that
+matter — the diff rows and the bulk-approve controls — are invisible without
+pending changes, so converting them now would be a rewrite nobody could look at.
+Converting only the shell is worse than leaving it: Archivo headings above serif
+rows reads as a bug rather than as an unconverted screen.
+
+**What it needs:** a seeded pending change so the rows are on screen, then all
+three files in one pass. `scripts/auth-probe.mjs` already creates and cleans up
+a real `pending_changes` row and is the obvious rig.

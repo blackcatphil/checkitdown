@@ -10,11 +10,35 @@
    here so every admin route gets it, not just /admin/growth. */
 @import url('./growth/growth.css');
 
-/* ⚠️ THE PUBLIC CHROME, HIDDEN — INTERIM, AND THE REASON IS IN layout.tsx.
-   `app/layout.tsx` renders the site header, footer and bottom nav as SIBLINGS
-   of the page, so an admin route cannot escape them without a `(site)` route
-   group. `:has()` does it declaratively: server-rendered, no flash, no JS. The
-   honest cost is that the markup is still in the DOM and still in the payload. */
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠️ INTERIM. THIS HIDES THE PUBLIC CHROME; IT DOES NOT REMOVE IT.
+   ══════════════════════════════════════════════════════════════════════════
+   THE REASON: `app/layout.tsx` renders the site header, footer and bottom nav
+   as SIBLINGS of `{children}`. Nothing nested under it can opt out — escaping
+   them needs an `app/(site)/` route group so the chrome moves into a layout
+   that admin routes are not inside. That is a real structural change and it is
+   scheduled as its own pass.
+
+   THE COST, STATED PLAINLY:
+     · The site header, footer and bottom nav are STILL IN THE DOM of every
+       admin page. They ship in the HTML and in the RSC payload on every
+       request, hidden.
+     · They are still in the accessibility tree's source order — `display:none`
+       removes them from it, but any future change to this rule silently
+       restores a public nav above an internal console.
+     · A screen-reader user tabbing from the URL bar meets nothing extra today,
+       and would meet four public links the moment this selector stops matching.
+     · It is a rule that acts at a distance: the frame's own stylesheet reaches
+       up and suppresses markup a different file rendered.
+
+   WHAT IT BUYS: it is declarative, server-rendered and cannot flash — the
+   alternative of hiding with JS would paint the public header on first paint
+   of every admin page, which is the failure `app/layout.tsx` already documents
+   for the bottom nav.
+
+   ⚠️ DELETE THIS BLOCK WHEN THE `(site)` GROUP LANDS. If it survives the move
+   it will be hiding nothing, and a selector that matches nothing is a selector
+   nobody dares remove. */
 /* ⚠️ TARGETED BY ELEMENT, NOT BY CLASS, AND THAT IS DELIBERATE. Naming
    `.cid-sitehead` here would put a site-system class inside an admin
    stylesheet — the exact thing the leak guard forbids, and it would have to be

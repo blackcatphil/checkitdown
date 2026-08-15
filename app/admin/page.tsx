@@ -34,7 +34,9 @@ export default async function AdminPage({
               might want here, not the thing this page is. */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 'var(--cid-space-4)' }}>
             <Link href="/admin/growth" style={{ font: 'var(--cid-body-strong)' }}>Growth console</Link>
-            <Link href="/admin/ledger" style={{ font: 'var(--cid-body-strong)' }}>Room ledger</Link>
+            {/* The ledger was a separate screen until 2026-08-15. It is this
+                tab now, and /admin/ledger redirects here. */}
+            <Link href="/admin/growth?tab=rooms" style={{ font: 'var(--cid-body-strong)' }}>Rooms</Link>
             <Link href="/admin/review" style={{ font: 'var(--cid-body-strong)' }}>Open the queue</Link>
           </nav>
         </>
