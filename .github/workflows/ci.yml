@@ -590,11 +590,26 @@ jobs:
           # satisfied by a password that never worked in the first place.
           grep -q 'PASS  CONTROL: the OLD password works before the reset' /tmp/recovery.log \
             || { echo "::error::the before-reset control did not run"; exit 1; }
+          # ⚠️ THE SHAPE PRODUCTION ACTUALLY SENDS. The first version of this
+          # gate was green while the route could not read a real link: it minted
+          # its links with generate_link, the ADMIN API, which registers no PKCE
+          # challenge and so answers with a session in the fragment. The app's
+          # own button registers one and gets `?code=` in the query. These pin
+          # the section that clicks the button and reads the actual inbox —
+          # the only version of the test that could have failed.
+          grep -q 'PASS  the REAL link lands with a PKCE ?code= in the QUERY' /tmp/recovery.log \
+            || { echo "::error::the real-link shape assertion did not run — a probe that mints its own artefact is testing the rig"; exit 1; }
+          grep -q 'PASS  the real link COMPLETES in the browser that requested it' /tmp/recovery.log \
+            || { echo "::error::the same-browser exchange assertion did not run"; exit 1; }
+          # And the page must not describe a link it cannot use as no link.
+          grep -q 'PASS  ...and it says it IS a reset link that cannot complete HERE' /tmp/recovery.log \
+            || { echo "::error::the honest-refusal assertion did not run — the page would go back to claiming a real link is not there"; exit 1; }
           n=$(grep -c '^  PASS' /tmp/recovery.log || true)
-          # 25 at introduction on 2026-08-15. Raise this when assertions are
-          # added; never lower it to pass a run.
-          [ "$n" -ge 25 ] \
-            || { echo "::error::only $n recovery assertions ran (expected >= 25) — the suite shrank"; exit 1; }
+          # 25 at introduction on 2026-08-15, 36 once the real link was driven
+          # through the app's own button. Raise this when assertions are added;
+          # never lower it to pass a run.
+          [ "$n" -ge 36 ] \
+            || { echo "::error::only $n recovery assertions ran (expected >= 36) — the suite shrank"; exit 1; }
 
       # --- GATE 3b: THE EVENTS, RED BEFORE GREEN, IN A REAL BROWSER. ---
       # Every event is proved twice: once on a page that CARRIES the affordance

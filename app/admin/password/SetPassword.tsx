@@ -49,11 +49,13 @@ import { useEffect, useRef, useState } from 'react'
  * whole reason the password path was added.
  */
 
-/** Whatever the URL fragment was when this page loaded, read once. */
+/** Whatever the URL carried when this page loaded, read once. */
 type Landing =
   | { kind: 'none' }
   | { kind: 'error', code: string, description: string }
   | { kind: 'session', accessToken: string, refreshToken: string }
+  /** A PKCE `?code=` in the QUERY — what production actually sends. */
+  | { kind: 'pkce', code: string }
 
 /**
  * ⚠️ READ SYNCHRONOUSLY, BEFORE ANY SUPABASE CLIENT EXISTS.
@@ -65,6 +67,28 @@ type Landing =
  * here explicitly — the flow is legible in one place rather than split between
  * our code and a library default that could change under us.
  */
+/**
+ * ⚠️ THE QUERY IS READ TOO, AND FOR A WHILE IT WAS NOT.
+ *
+ * A real link from Phil's inbox read `/admin/password?code=<uuid>` — PKCE, in
+ * the QUERY. This page handled the implicit fragment and the token_hash shape,
+ * so it looked at a valid reset link and said "there is no reset link on this
+ * page". It was not wrong about what it could read; it was wrong to describe
+ * that as nothing being there.
+ *
+ * New links are routed through /auth/callback, which exchanges the code
+ * server-side (see SignIn.tsx). This branch is for the ones ALREADY SENT, which
+ * point straight here — and for saying something true when the exchange cannot
+ * be done at all.
+ */
+function readLanding(hash: string, search: string): Landing {
+  const fromHash = readFragment(hash)
+  if (fromHash.kind !== 'none') return fromHash
+  const code = new URLSearchParams(search).get('code')
+  if (code) return { kind: 'pkce', code }
+  return { kind: 'none' }
+}
+
 function readFragment(hash: string): Landing {
   const p = new URLSearchParams(hash.replace(/^#/, ''))
   const error = p.get('error') ?? p.get('error_code')
@@ -119,9 +143,11 @@ export function SetPassword() {
        the address bar. Access and refresh tokens in a URL end up in history,
        in a bookmark, and in any screenshot of the browser — and the reader has
        no idea they are there. */
-    const landing = readFragment(window.location.hash)
-    if (window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    const landing = readLanding(window.location.hash, window.location.search)
+    /* A `code` is a credential too — it buys a session for anyone holding it —
+       so it comes out of the address bar for the same reason the tokens do. */
+    if (window.location.hash || window.location.search) {
+      window.history.replaceState(null, '', window.location.pathname)
     }
 
     const supabase = createBrowserClient(
@@ -159,6 +185,26 @@ export function SetPassword() {
             state: 'refused', standalone: false,
             why: 'That link could not be used.',
             detail: `${setErr.message}. Request a new one from the sign-in page.`,
+          })
+          return
+        }
+      }
+
+      /* 2b. A PKCE CODE. The exchange needs the verifier this browser stored
+             when the reset was requested — @supabase/ssr keeps it in a cookie,
+             so it is here IF this is that browser. It very often is not: the
+             link is opened from a mail app, on a phone, in a webview. That is
+             the failure that got PKCE abandoned for sign-in on 2026-08-09, and
+             it is the reason the email template is still owed a rewrite. */
+      if (landing.kind === 'pkce') {
+        const { error: exErr } = await supabase.auth.exchangeCodeForSession(landing.code)
+        if (exErr) {
+          setGate({
+            state: 'refused', standalone,
+            why: 'That is a reset link, and it cannot be completed in this browser.',
+            detail: 'Password links carry a secret that stays in the browser you '
+              + 'requested the reset from, so it only works there. Open the link in '
+              + 'that browser, or request a new one here and use it on this device.',
           })
           return
         }

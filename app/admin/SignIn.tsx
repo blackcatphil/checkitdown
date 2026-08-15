@@ -140,10 +140,29 @@ export function SignIn() {
    * and it landed somewhere that ignored it. The token is CONSUMED by that
    * visit, so the reader cannot even retry.
    *
-   * `/admin/password` is already on the project's redirect allowlist (any path
-   * on our own origin is), so this needs no dashboard change — measured, not
-   * assumed. See app/admin/password/SetPassword.tsx for why what arrives there
-   * is readable only by a browser.
+   * ⚠️ AND IT POINTS AT /auth/callback, NOT AT /admin/password. Sending it
+   * straight to the page looked simpler and shipped a route that could not read
+   * what production sends. `resetPasswordForEmail` registers a PKCE challenge —
+   * `createBrowserClient` is `flowType: "pkce"` by default — so GoTrue answers
+   * with `?code=<uuid>` in the QUERY, not a session in the fragment. The page
+   * handled the fragment and correctly reported it saw no reset link.
+   *
+   * /auth/callback already exchanges a `code` AND verifies a `token_hash`, has
+   * done since 2026-08-09, and is the one place allowed to write session
+   * cookies. Routing recovery through it means recovery follows the same path
+   * sign-in does instead of a second one that has to be kept in step.
+   *
+   * ⚠️ THE EXCHANGE IS CONDITIONAL, AND THIS IS THE 2026-08-09 BUG AGAIN. PKCE
+   * needs the verifier stored when the reset was REQUESTED. @supabase/ssr keeps
+   * it in a COOKIE rather than localStorage, so the server does receive it — but
+   * only from the browser that asked. Open the mail on your phone and the
+   * exchange fails exactly as it did then. That is why the email template is
+   * still owed a `{{ .TokenHash }}` rewrite: the token_hash branch carries no
+   * browser-held secret and works from any device. This is the belt; the
+   * template is the braces.
+   *
+   * Both this URL and the bare callback are on the project's redirect
+   * allowlist, query string included — measured against production, not assumed.
    */
   async function sendReset() {
     if (!email) { setState('error'); setDetail('Enter your email address first.'); return }
@@ -153,7 +172,7 @@ export function SignIn() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/admin/password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/admin/password`,
     })
     if (error) { setState('error'); setDetail(error.message); return }
     setState('reset-sent')

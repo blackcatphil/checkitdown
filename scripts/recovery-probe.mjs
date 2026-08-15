@@ -27,6 +27,35 @@
  * appeared. And the loop ends by proving the OLD password stops working, which
  * is the difference between a reset and an addition.
  *
+ * ═══ THE RULE THIS PROBE LEARNED THE HARD WAY (2026-08-15) ═══
+ *
+ * ⚠️ A SHAPE MEASURED FROM A FAILING INPUT IS THE FAILURE'S SHAPE, NOT THE
+ * FEATURE'S.
+ *
+ * The first version of this file shipped green while the route could not read
+ * what production sends. Two measurements were at fault, and both looked
+ * rigorous:
+ *
+ *   · The Site URL was measured by following a DELIBERATELY INVALID token. That
+ *     reveals the ERROR redirect (`#error=access_denied…`) and never the success
+ *     redirect. The error shape is a fragment; the success shape is `?code=`.
+ *     Feeding a guard a bad input tells you how it refuses, not what it does.
+ *
+ *   · The end-to-end loop minted its links with `generate_link`, the ADMIN API.
+ *     That path registers no PKCE challenge, so GoTrue answered with a session
+ *     in the fragment. The app's own `resetPasswordForEmail` DOES register one
+ *     — `createBrowserClient` is `flowType: "pkce"` by default — so production
+ *     answers with `?code=<uuid>` in the query. The real link from Phil's inbox
+ *     read `/admin/password?code=1930dec3-…` and the page said there was no
+ *     reset link on it.
+ *
+ * ⚠️ AND THE CORRECTION TO THE OBVIOUS DIAGNOSIS: this was NOT local-versus-
+ * production. Local reproduces the `?code=` shape exactly, measured below. It
+ * was ADMIN API versus THE APP'S OWN BUTTON. A rig that mints its own artefact
+ * is testing the rig. So section 6 clicks the button in a browser and reads the
+ * link out of the mail catcher, which is the only version of this test that
+ * could have failed.
+ *
  * IT CLEANS UP AFTER ITSELF. Both users are deleted and the allowlist row is
  * removed, asserted at the end.
  */
@@ -41,6 +70,9 @@ const PSQL = resolvePsql()
 const DB = localTarget('recovery-probe')
 const APP = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 const API = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
+/* The local stack's mail catcher. Reading the ACTUAL email is the whole point
+   of section 6 — a link this file composed would only prove it can compose. */
+const MAIL = process.env.MAILPIT_URL ?? 'http://127.0.0.1:54324'
 
 const sql = (q) => execFileSync(PSQL, [DB, '-qtAX', '-c', q], { encoding: 'utf8' }).trim()
 
@@ -140,6 +172,23 @@ async function passwordSignIn(email, password) {
   return { status: res.status, session: json, text }
 }
 
+/**
+ * ⚠️ ASK THE APP WHERE IT THINKS IT LIVES, rather than trusting BASE_URL.
+ *
+ * `next dev` builds its redirect origin from the request and answers
+ * `http://localhost:3000` even when it was reached on 127.0.0.1. Those are two
+ * origins to a cookie jar: the callback writes the session on the host it was
+ * called on and then redirects to the other, where the cookie is not sent — so
+ * the page reports no session for a reader holding a perfectly good link. The
+ * whole flow therefore runs on the origin the app itself names. Production has
+ * one host throughout and never sees this; the same trick is in auth-probe for
+ * the same reason.
+ */
+const ORIGIN = await (async () => {
+  const r = await fetch(`${APP}/auth/callback`, { redirect: 'manual' })
+  try { return new URL(r.headers.get('location') ?? '').origin } catch { return APP }
+})()
+
 const browser = await chromium.launch()
 
 /** Load /admin/password with a fragment, and report what the page decided. */
@@ -156,7 +205,7 @@ async function landOn(hash, { standalone = false } = {}) {
     })()`)
   }
   const page = await ctx.newPage()
-  await page.goto(`${APP}/admin/password${hash}`, { waitUntil: 'load' })
+  await page.goto(`${ORIGIN}/admin/password${hash}`, { waitUntil: 'load' })
   /* The gate resolves asynchronously — it calls the auth server and then the
      database. Wait for it to stop saying "checking" rather than for a timeout. */
   await page.waitForFunction(
@@ -326,7 +375,7 @@ try {
     })
     const hash = (await res.json()).hashed_token
     const cb = await fetch(
-      `${APP}/auth/callback?token_hash=${encodeURIComponent(hash)}&type=recovery`
+      `${ORIGIN}/auth/callback?token_hash=${encodeURIComponent(hash)}&type=recovery`
       + `&next=${encodeURIComponent('/admin/password')}`,
       { redirect: 'manual' },
     )
@@ -338,12 +387,15 @@ try {
       .map((c) => c.split(';')[0]).filter((c) => !c.endsWith('='))
       .map((c) => {
         const i = c.indexOf('=')
-        return { name: c.slice(0, i), value: c.slice(i + 1), domain: '127.0.0.1', path: '/' }
+        return {
+          name: c.slice(0, i), value: c.slice(i + 1),
+          domain: new URL(ORIGIN).hostname, path: '/',
+        }
       })
     const ctx = await browser.newContext()
     await ctx.addCookies(jar)
     const page = await ctx.newPage()
-    await page.goto(`${APP}/admin/password`, { waitUntil: 'load' })
+    await page.goto(`${ORIGIN}/admin/password`, { waitUntil: 'load' })
     await page.waitForFunction(
       () => document.querySelector('[data-password]')?.dataset.password !== 'checking',
       null, { timeout: 15_000 },
@@ -404,6 +456,119 @@ try {
       + 'credential live is not a reset',
       withOld.status >= 400 && withOld.session?.access_token == null,
       `${withOld.status} ${withOld.text.slice(0, 70)}`)
+  }
+
+
+  // ─── 6. THE REAL LINK: the app's own button, and the actual inbox ─────
+  /**
+   * ⚠️ THE ONLY SECTION HERE THAT COULD HAVE CAUGHT THE 2026-08-15 BUG.
+   *
+   * Everything above mints its links with `generate_link`. That is convenient,
+   * deterministic — and it registers no PKCE challenge, so it produces a shape
+   * production never sends. This section clicks the button a person clicks and
+   * reads the mail GoTrue actually posted.
+   */
+  {
+    await fetch(`${MAIL}/api/v1/messages`, { method: 'DELETE' })
+
+    /* The browser that REQUESTS the reset is the one holding the PKCE verifier
+       cookie, so it is kept and reused below. That distinction is the entire
+       behaviour of this flow. */
+    const asker = await browser.newContext()
+    const askPage = await asker.newPage()
+    await askPage.goto(`${ORIGIN}/admin`, { waitUntil: 'load' })
+    await askPage.fill('#admin-email', ADMIN_EMAIL)
+    await askPage.click('text=Forgot your password?')
+    await askPage.waitForSelector('text=/link to set a new password/i', { timeout: 15_000 })
+
+    const msgs = await (await fetch(`${MAIL}/api/v1/messages`)).json()
+    const id = msgs.messages?.[0]?.ID
+    ok('clicking "Forgot your password?" actually posts an email',
+      id != null, id ? `message ${id}` : 'the mail catcher is empty')
+    const mail = await (await fetch(`${MAIL}/api/v1/message/${id}`)).json()
+    const links = [...String(mail.HTML || mail.Text || '').matchAll(/https?:\/\/[^\s"'<>]+/g)]
+      .map((m) => m[0].replace(/&amp;/g, '&'))
+    const link = links.find((l) => l.includes('/auth/v1/verify')) ?? links[0]
+
+    /* ⚠️ THE SUCCESS SHAPE, MEASURED FROM A VALID TOKEN. The earlier version of
+       this probe measured it from an invalid one and saw a fragment. */
+    const landedHash = await followLink(link)
+    const landedUrl = new URL(landedHash.location)
+    ok('the REAL link lands with a PKCE ?code= in the QUERY, not a fragment — '
+      + 'this is the shape production sends and the one the page could not read',
+      landedUrl.searchParams.get('code') != null && landedHash.hash === '',
+      `${landedUrl.pathname}?code=${landedUrl.searchParams.get('code') ? '<uuid>' : '(none)'}`)
+    ok('...and it is routed through /auth/callback, which already exchanges a code',
+      landedUrl.pathname === '/auth/callback'
+        && landedUrl.searchParams.get('next') === '/admin/password',
+      `${landedUrl.pathname}?next=${landedUrl.searchParams.get('next')}`)
+
+    /* ─── SAME BROWSER: the verifier cookie is here, so the exchange works ── */
+    const same = await asker.newPage()
+    await same.goto(landedHash.location, { waitUntil: 'load' })
+    await same.waitForFunction(
+      () => document.querySelector('[data-password]')?.dataset.password !== 'checking',
+      null, { timeout: 15_000 },
+    ).catch(() => {})
+    const sameSeen = await same.evaluate(() => ({
+      marker: document.querySelector('[data-password]')?.dataset.password ?? null,
+      url: window.location.pathname + window.location.search,
+      text: document.querySelector('[data-password]')?.textContent ?? '',
+    }))
+    ok('the real link COMPLETES in the browser that requested it',
+      sameSeen.marker === 'ready',
+      `marker=${sameSeen.marker} at ${sameSeen.url} :: ${sameSeen.text.replace(/\s+/g, ' ').slice(0, 150)}`)
+    ok('...and the code is stripped from the address bar — a code buys a session '
+      + 'for anyone holding it',
+      !sameSeen.url.includes('code='), sameSeen.url)
+
+    /* ─── A DIFFERENT BROWSER: no verifier, and this is the 2026-08-09 bug ── */
+    const stranger = await browser.newContext()
+    const other = await stranger.newPage()
+    await other.goto(`${ORIGIN}/admin/password?code=${landedUrl.searchParams.get('code')}`,
+      { waitUntil: 'load' })
+    await other.waitForFunction(
+      () => document.querySelector('[data-password]')?.dataset.password !== 'checking',
+      null, { timeout: 15_000 },
+    ).catch(() => {})
+    const otherSeen = await other.evaluate(() => ({
+      marker: document.querySelector('[data-password]')?.dataset.password ?? null,
+      text: document.querySelector('[data-password]')?.textContent ?? '',
+    }))
+    ok('RED — a ?code= link opened in a DIFFERENT browser is refused',
+      otherSeen.marker === 'refused', `marker=${otherSeen.marker}`)
+    /* ⚠️ THE ASSERTION THIS BRIEF EXISTS FOR. The page used to say "there is no
+       reset link on this page" — false. There is one; it is a shape this
+       browser cannot complete, and it has to say which. */
+    ok('...and it says it IS a reset link that cannot complete HERE, rather '
+      + 'than claiming there is no link at all',
+      /is a reset link/i.test(otherSeen.text)
+        && /cannot be completed in this browser/i.test(otherSeen.text)
+        && !/no reset link on this page/i.test(otherSeen.text),
+      otherSeen.text.replace(/\s+/g, ' ').slice(-135))
+    await stranger.close()
+
+    /* ─── AND THE LOOP, ON THE REAL LINK ─────────────────────────────────── */
+    const before = await passwordSignIn(ADMIN_EMAIL, NEW_PASSWORD)
+    ok('CONTROL: the password set in section 5 works before this second reset',
+      before.session?.access_token != null, `${before.status}`)
+
+    const FINAL = 'cid-recovery-FINAL-p4ssw0rd!'
+    await same.fill('#new-password', FINAL)
+    await same.fill('#confirm-password', FINAL)
+    await same.click('button[type=submit]')
+    await same.waitForURL(/\/admin\/review/, { timeout: 15_000 }).catch(() => {})
+    ok('the real link sets a password and lands on the queue', /\/admin\/review/.test(same.url()),
+      same.url())
+    await asker.close()
+
+    const withFinal = await passwordSignIn(ADMIN_EMAIL, FINAL)
+    ok('the password set through the REAL link signs in',
+      withFinal.session?.access_token != null, `${withFinal.status}`)
+    const withPrev = await passwordSignIn(ADMIN_EMAIL, NEW_PASSWORD)
+    ok('RED — and the previous password dies, through the real link too',
+      withPrev.status >= 400 && withPrev.session?.access_token == null,
+      `${withPrev.status} ${withPrev.text.slice(0, 60)}`)
   }
 
 } finally {

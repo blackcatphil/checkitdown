@@ -160,7 +160,19 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# ⚠️ localhost AND 127.0.0.1 ARE DIFFERENT ORIGINS TO A COOKIE JAR, and this
+# list has to cover the one the app actually answers with. `next dev` builds its
+# redirect origin from the request and answers `http://localhost:3000` even when
+# it was reached on 127.0.0.1 — so a recovery link sent to 127.0.0.1/auth/callback
+# has its session cookie written on one host and read on another, and the page
+# reports no session for a reader holding a good link. Production never sees this
+# (one host, checkitdown.com, throughout); it is a local-rig hazard only, and it
+# cost an afternoon of blaming the PKCE exchange, which works.
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "http://localhost:3000/**",
+  "http://127.0.0.1:3000/**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
