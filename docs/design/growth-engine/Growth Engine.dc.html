@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/modernist-4286b72e-0341-4302-a3fc-860038664147/styles.css">
+  <script src="_ds/modernist-4286b72e-0341-4302-a3fc-860038664147/_ds_bundle.js"></script>
+  <style>
+    html, body { margin: 0; background: #f3f2f2; }
+  </style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+
+  <header style="position:sticky;top:0;z-index:30;background:var(--color-bg);display:flex;align-items:center;gap:32px;padding:14px 32px;border-bottom:2px solid var(--color-divider)">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div style="font-family:var(--font-heading);font-weight:800;font-size:18px;letter-spacing:-.01em">CHECK IT DOWN</div>
+      <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent)">Growth engine</div>
+    </div>
+    <nav style="display:flex;gap:6px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+        <button class="btn {{ t.cls }}" onClick="{{ t.go }}" style="text-transform:uppercase;letter-spacing:.06em;font-size:12px">{{ t.label }}</button>
+      </sc-for>
+    </nav>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:16px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Week</div>
+      <div class="seg">
+        <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="3">
+          <label class="seg-opt"><input type="radio" name="wk" checked="{{ w.on }}" onChange="{{ w.pick }}"><span>{{ w.label }}</span></label>
+        </sc-for>
+      </div>
+    </div>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:14px;padding:9px 32px;border-bottom:2px solid var(--color-divider);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">
+    <span>17 rooms</span><span>·</span><span>Median verify {{ ribbon.verify }}</span><span>·</span><span>{{ ribbon.stale }} stale</span><span>·</span><span>{{ ribbon.week }} 2026</span>
+    <span class="tag tag-outline" style="margin-left:auto;letter-spacing:.08em">Modelled data</span>
+  </div>
+
+  <!-- ══ ENGINE ══ -->
+  <sc-if value="{{ isEngine }}" hint-placeholder-val="{{ true }}">
+    <section style="padding:0 32px">
+
+      <div style="display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);border-bottom:2px solid var(--color-divider)">
+        <div style="padding:36px 40px 36px 0">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">North star</div>
+          <div style="display:flex;align-items:baseline;gap:20px;margin-top:14px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:104px;line-height:.86;letter-spacing:-.04em">{{ ns.value }}</div>
+            <div>
+              <div style="font-family:var(--font-heading);font-weight:800;font-size:22px;color:{{ ns.color }}">{{ ns.delta }}</div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">vs {{ ns.prev }}</div>
+            </div>
+          </div>
+          <h4 style="margin:18px 0 6px">Weekly active players</h4>
+          <p style="font-size:14px;max-width:52ch;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 78%,transparent)">A unique device that reaches a decision surface — a room's live facts, a tournament filter result, a promo — inside a Mon–Sun week. That is {{ ns.pen }} of the ~61,000 people who sit down in a valley poker room in a given week.</p>
+          <sc-if value="{{ showTargets }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:22px;border-top:1px solid var(--color-divider);padding-top:14px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">
+                <span>Q3 target · {{ pace.target }}</span><span>{{ pace.left }} weeks left</span>
+              </div>
+              <div style="height:10px;background:var(--color-neutral-300);margin-top:8px;display:flex">
+                <div style="width:{{ pace.pct }};background:var(--color-accent)"></div>
+              </div>
+              <div style="margin-top:8px;font-size:13px">Needs <strong>{{ pace.need }}/wk</strong> · running <strong style="color:{{ pace.color }}">{{ pace.actual }}/wk</strong> · {{ pace.verdict }}</div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="padding:36px 0 36px 40px;border-left:2px solid var(--color-divider);display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">
+            <span>Weekly active players · {{ chart.span }}</span><span>Peak {{ chart.peak }}</span>
+          </div>
+          <div style="flex:1;min-height:200px;display:flex;align-items:flex-end;gap:5px;margin-top:16px">
+            <sc-for list="{{ chart.bars }}" as="b" hint-placeholder-count="14">
+              <div style="flex:1;height:{{ b.h }};background:{{ b.bg }}"></div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:5px;margin-top:8px;border-top:2px solid var(--color-divider);padding-top:6px">
+            <sc-for list="{{ chart.labels }}" as="l" hint-placeholder-count="14">
+              <div style="flex:1;font-size:9px;letter-spacing:.06em;color:color-mix(in srgb,var(--color-text) 45%,transparent)">{{ l }}</div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- equation -->
+      <div style="padding:28px 0 0">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">The machine · how the number is made</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr) 52px minmax(0,1fr);border-bottom:1px solid var(--color-divider);margin-top:18px">
+        <div style="padding:22px 24px 22px 0">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">New reach</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:8px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1">{{ eq.newV }}</div>
+            <div style="font-size:13px;font-weight:600;color:{{ eq.newC }}">{{ eq.newD }}</div>
+          </div>
+          <div style="height:26px;display:flex;align-items:flex-end;gap:3px;margin-top:14px">
+            <sc-for list="{{ eq.newBars }}" as="b" hint-placeholder-count="8">
+              <div style="flex:1;height:{{ b.h }};background:{{ b.bg }}"></div>
+            </sc-for>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:color-mix(in srgb,var(--color-text) 70%,transparent)">{{ eq.impr }} impressions × {{ eq.ctr }} CTR · {{ eq.pages }} pages indexed</div>
+        </div>
+        <div style="display:grid;place-items:center;font-family:var(--font-heading);font-weight:800;font-size:26px;color:var(--color-accent);border-left:2px solid var(--color-divider);border-right:2px solid var(--color-divider)">×</div>
+        <div style="padding:22px 24px">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Activation</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:8px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1">{{ eq.act }}</div>
+            <div style="font-size:13px;font-weight:600;color:{{ eq.actC }}">{{ eq.actD }}</div>
+          </div>
+          <div style="height:26px;display:flex;align-items:flex-end;gap:3px;margin-top:14px">
+            <sc-for list="{{ eq.actBars }}" as="b" hint-placeholder-count="8">
+              <div style="flex:1;height:{{ b.h }};background:{{ b.bg }}"></div>
+            </sc-for>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:color-mix(in srgb,var(--color-text) 70%,transparent)">Smallest multiplier in the equation. Ceiling on comparable utility maps ≈ 28%.</div>
+        </div>
+        <div style="display:grid;place-items:center;font-family:var(--font-heading);font-weight:800;font-size:26px;color:var(--color-accent);border-left:2px solid var(--color-divider);border-right:2px solid var(--color-divider)">=</div>
+        <div style="padding:22px 0 22px 24px">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">New active</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:8px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1">{{ eq.newAct }}</div>
+            <div style="font-size:13px;font-weight:600;color:{{ eq.newActC }}">{{ eq.newActD }}</div>
+          </div>
+          <div style="margin-top:26px;font-size:12px;color:color-mix(in srgb,var(--color-text) 70%,transparent)">{{ eq.newShare }} of the north star. Fed by the coverage loop.</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr) 52px minmax(0,1fr);border-bottom:2px solid var(--color-divider)">
+        <div style="padding:22px 24px 22px 0">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Prior-week active</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:8px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1">{{ eq.prior }}</div>
+            <div style="font-size:13px;font-weight:600;color:{{ eq.priorC }}">{{ eq.priorD }}</div>
+          </div>
+          <div style="height:26px;display:flex;align-items:flex-end;gap:3px;margin-top:14px">
+            <sc-for list="{{ eq.priorBars }}" as="b" hint-placeholder-count="8">
+              <div style="flex:1;height:{{ b.h }};background:{{ b.bg }}"></div>
+            </sc-for>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:color-mix(in srgb,var(--color-text) 70%,transparent)">The stock. Everything shipped in the last eight weeks is still in here.</div>
+        </div>
+        <div style="display:grid;place-items:center;font-family:var(--font-heading);font-weight:800;font-size:26px;color:var(--color-accent);border-left:2px solid var(--color-divider);border-right:2px solid var(--color-divider)">×</div>
+        <div style="padding:22px 24px">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">7-day return</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:8px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1">{{ eq.ret }}</div>
+            <div style="font-size:13px;font-weight:600;color:{{ eq.retC }}">{{ eq.retD }}</div>
+          </div>
+          <div style="height:26px;display:flex;align-items:flex-end;gap:3px;margin-top:14px">
+            <sc-for list="{{ eq.retBars }}" as="b" hint-placeholder-count="8">
+              <div style="flex:1;height:{{ b.h }};background:{{ b.bg }}"></div>
+            </sc-for>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:color-mix(in srgb,var(--color-text) 70%,transparent)">Moves with median verify age, not with features. The reports loop is the retention lever.</div>
+        </div>
+        <div style="display:grid;place-items:center;font-family:var(--font-heading);font-weight:800;font-size:26px;color:var(--color-accent);border-left:2px solid var(--color-divider);border-right:2px solid var(--color-divider)">=</div>
+        <div style="padding:22px 0 22px 24px">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Retained</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:8px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1">{{ eq.retained }}</div>
+            <div style="font-size:13px;font-weight:600;color:{{ eq.retainedC }}">{{ eq.retainedD }}</div>
+          </div>
+          <div style="margin-top:26px;font-size:12px;color:color-mix(in srgb,var(--color-text) 70%,transparent)">{{ eq.retShare }} of the north star. Fed by the reports loop.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:14px;padding:20px 0;border-bottom:2px solid var(--color-divider);font-family:var(--font-heading);font-weight:800;font-size:24px;letter-spacing:-.01em">
+        <span>{{ eq.newAct }}</span><span style="color:var(--color-accent)">new</span>
+        <span style="color:var(--color-accent)">+</span>
+        <span>{{ eq.retained }}</span><span style="color:var(--color-accent)">retained</span>
+        <span style="color:var(--color-accent)">=</span>
+        <span>{{ ns.value }}</span><span style="color:var(--color-accent)">weekly active players</span>
+        <span style="margin-left:auto;font-family:var(--font-body);font-weight:400;font-size:13px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">{{ eq.out }} of them clicked through to a room this week</span>
+      </div>
+
+      <div style="padding:28px 0 14px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Revenue · this week</div>
+        <div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Three lines, all priced off the same weekly active player.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+        <sc-for list="{{ rev.lines }}" as="r" hint-placeholder-count="3">
+          <div style="padding:20px 22px;border-left:2px solid var(--color-divider)">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">{{ r.k }}</div>
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:30px;letter-spacing:-.02em;margin-top:6px">{{ r.v }}</div>
+            <div style="font-size:12px;color:{{ r.c }}">{{ r.d }}</div>
+            <div style="font-size:12px;margin-top:8px;color:color-mix(in srgb,var(--color-text) 62%,transparent);text-wrap:pretty">{{ r.note }}</div>
+          </div>
+        </sc-for>
+        <div style="padding:20px 22px;border-left:2px solid var(--color-divider);background:var(--color-surface)">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">Per weekly active player</div>
+          <div style="font-family:var(--font-heading);font-weight:800;font-size:30px;letter-spacing:-.02em;margin-top:6px">{{ rev.arpu }}</div>
+          <div style="font-size:12px;margin-top:8px;color:color-mix(in srgb,var(--color-text) 70%,transparent);text-wrap:pretty">{{ rev.total }} a week, and flat for six weeks. The machine is compounding players, not yet dollars — placement is the only line that grows without more traffic.</div>
+        </div>
+      </div>
+
+      <!-- loop gain -->
+      <div style="padding:28px 0 14px;display:flex;align-items:baseline;gap:16px">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Loop gain</div>
+        <div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Players out ÷ players in, per cycle. Above 1.00 the loop compounds on its own.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+        <sc-for list="{{ loops }}" as="lp" hint-placeholder-count="4">
+          <div style="padding:20px 22px;border-left:2px solid var(--color-divider);display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">{{ lp.num }} · {{ lp.cycle }}</div>
+            <div style="display:flex;align-items:baseline;gap:10px">
+              <div style="font-family:var(--font-heading);font-weight:800;font-size:38px;letter-spacing:-.03em;line-height:1;color:{{ lp.gainColor }}">{{ lp.gain }}</div>
+              <div style="font-family:var(--font-heading);font-weight:800;font-size:15px">{{ lp.name }}</div>
+            </div>
+            <div style="height:8px;background:var(--color-neutral-300);display:flex">
+              <div style="width:{{ lp.health }};background:{{ lp.gainColor }}"></div>
+            </div>
+            <div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 70%,transparent);text-wrap:pretty">{{ lp.headline }}</div>
+            <button class="btn btn-ghost" onClick="{{ goLoops }}" style="align-self:flex-start;padding-left:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase">Open loop →</button>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- read -->
+      <div style="padding:28px 0 14px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">This week's read · Monday, 20 minutes</div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+        <sc-for list="{{ read }}" as="r" hint-placeholder-count="3">
+          <div style="padding:22px 24px;border-left:2px solid var(--color-divider)">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">{{ r.kicker }}</div>
+            <h4 style="margin:10px 0 8px">{{ r.title }}</h4>
+            <p style="font-size:13px;margin:0;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 78%,transparent)">{{ r.body }}</p>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- cadence -->
+      <div style="padding:28px 0 14px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Operating cadence · the machine only runs if this runs</div>
+      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider);margin-bottom:48px">
+        <sc-for list="{{ cadence }}" as="c" hint-placeholder-count="5">
+          <div style="padding:18px 20px;border-left:2px solid var(--color-divider)">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:15px;color:var(--color-accent)">{{ c.day }}</div>
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin-top:6px">{{ c.act }}</div>
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-top:6px;color:color-mix(in srgb,var(--color-text) 45%,transparent)">{{ c.who }}</div>
+            <div style="font-size:12px;margin-top:6px;color:color-mix(in srgb,var(--color-text) 70%,transparent);text-wrap:pretty">{{ c.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- ══ LOOPS ══ -->
+  <sc-if value="{{ isLoops }}" hint-placeholder-val="{{ false }}">
+    <section style="padding:32px 32px 48px">
+      <div style="display:flex;align-items:flex-end;gap:24px;border-bottom:2px solid var(--color-divider);padding-bottom:20px">
+        <h2 style="margin:0;max-width:18ch">Four loops. One is doing the work.</h2>
+        <p style="margin:0 0 4px;font-size:14px;max-width:56ch;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 75%,transparent)">Every loop is written as input → mechanism → output, with the conversion that gates each step and the constraint that caps the whole thing. Fix the constraint or the rest is decoration.</p>
+      </div>
+
+      <sc-for list="{{ loops }}" as="lp" hint-placeholder-count="4">
+        <div style="border-bottom:2px solid var(--color-divider);padding:28px 0">
+          <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:13px;color:var(--color-accent);letter-spacing:.1em">{{ lp.num }}</div>
+            <h3 style="margin:0">{{ lp.name }}</h3>
+            <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+              <span class="tag tag-neutral">Cycle {{ lp.cycle }}</span>
+              <span class="tag tag-neutral">Owner {{ lp.owner }}</span>
+              <span class="tag tag-accent">Gain {{ lp.gain }}</span>
+            </div>
+          </div>
+          <p style="margin:12px 0 22px;font-size:14px;max-width:88ch;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 78%,transparent)">{{ lp.headline }}</p>
+
+          <div style="display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border-top:2px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">
+            <sc-for list="{{ lp.steps }}" as="s" hint-placeholder-count="5">
+              <div style="padding:16px 18px;border-left:2px solid var(--color-divider);display:flex;flex-direction:column;gap:8px;min-height:132px">
+                <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);min-height:16px">{{ s.rate }}</div>
+                <div style="font-family:var(--font-heading);font-weight:800;font-size:15px;line-height:1.15;text-wrap:pretty">{{ s.name }}</div>
+                <div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 65%,transparent);text-wrap:pretty">{{ s.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.6fr);border-bottom:2px solid var(--color-divider)">
+            <sc-for list="{{ lp.stats }}" as="st" hint-placeholder-count="3">
+              <div style="padding:16px 18px;border-left:2px solid var(--color-divider)">
+                <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">{{ st.k }}</div>
+                <div style="font-family:var(--font-heading);font-weight:800;font-size:26px;margin-top:6px;letter-spacing:-.02em">{{ st.v }}</div>
+                <div style="font-size:12px;color:{{ st.c }}">{{ st.d }}</div>
+              </div>
+            </sc-for>
+            <div style="padding:16px 18px;border-left:2px solid var(--color-divider);background:var(--color-surface)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">Constraint</div>
+              <div style="font-size:14px;margin-top:8px;text-wrap:pretty">{{ lp.constraint }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+  </sc-if>
+
+  <!-- ══ ROOMS ══ -->
+  <sc-if value="{{ isRooms }}" hint-placeholder-val="{{ false }}">
+    <section style="padding:32px 32px 48px">
+      <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;border-bottom:2px solid var(--color-divider);padding-bottom:18px">
+        <h2 style="margin:0">Room ledger</h2>
+        <p style="margin:0 0 4px;font-size:14px;max-width:52ch;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 75%,transparent)">Coverage and freshness per room, against the demand each one actually pulls. Stale rooms are the leak.</p>
+        <div class="seg" style="margin-left:auto">
+          <sc-for list="{{ areas }}" as="a" hint-placeholder-count="4">
+            <label class="seg-opt"><input type="radio" name="area" checked="{{ a.on }}" onChange="{{ a.pick }}"><span>{{ a.label }}</span></label>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:2px solid var(--color-divider)">
+        <sc-for list="{{ roomStats }}" as="s" hint-placeholder-count="4">
+          <div style="padding:18px 20px;border-left:2px solid var(--color-divider)">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">{{ s.k }}</div>
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:30px;letter-spacing:-.02em;margin-top:6px">{{ s.v }}</div>
+            <div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 62%,transparent)">{{ s.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,2fr) 84px 92px 74px 94px 128px 88px 92px;align-items:center;padding:10px 0;border-bottom:2px solid var(--color-divider);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 60%,transparent)">
+        <div onClick="{{ sortName }}" style="cursor:pointer;padding:0 8px">Room{{ arr.name }}</div>
+        <div style="padding:0 8px">Area</div>
+        <div onClick="{{ sortSessions }}" style="cursor:pointer;padding:0 8px;text-align:right">Sessions{{ arr.sessions }}</div>
+        <div style="padding:0 8px;text-align:right">7d Δ</div>
+        <div onClick="{{ sortOut }}" style="cursor:pointer;padding:0 8px;text-align:right">Outbound{{ arr.out }}</div>
+        <div onClick="{{ sortCov }}" style="cursor:pointer;padding:0 8px">Fact coverage{{ arr.cov }}</div>
+        <div onClick="{{ sortVer }}" style="cursor:pointer;padding:0 8px;text-align:right">Verified{{ arr.ver }}</div>
+        <div style="padding:0 8px">Status</div>
+      </div>
+
+      <sc-for list="{{ roomRows }}" as="r" hint-placeholder-count="17">
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) 84px 92px 74px 94px 128px 88px 92px;align-items:center;padding:11px 0;border-bottom:1px solid var(--color-divider);font-size:14px" style-hover="background:color-mix(in srgb,var(--color-text) 4%,transparent)">
+          <div style="padding:0 8px;font-family:var(--font-heading);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+          <div style="padding:0 8px;font-size:12px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">{{ r.area }}</div>
+          <div style="padding:0 8px;text-align:right">{{ r.sessions }}</div>
+          <div style="padding:0 8px;text-align:right;font-size:13px;color:{{ r.dc }}">{{ r.dl }}</div>
+          <div style="padding:0 8px;text-align:right">{{ r.out }}</div>
+          <div style="padding:0 8px;display:flex;align-items:center;gap:10px">
+            <div style="flex:1;height:8px;background:var(--color-neutral-300);display:flex"><div style="width:{{ r.covW }};background:{{ r.covC }}"></div></div>
+            <div style="font-size:12px;width:34px;text-align:right">{{ r.cov }}</div>
+          </div>
+          <div style="padding:0 8px;text-align:right;color:{{ r.hrsC }}">{{ r.hrs }}</div>
+          <div style="padding:0 8px"><span class="tag {{ r.tag }}">{{ r.status }}</span></div>
+        </div>
+      </sc-for>
+
+      <div style="display:grid;grid-template-columns:minmax(0,2fr) 84px 92px 74px 94px 128px 88px 92px;align-items:center;padding:14px 0;border-bottom:2px solid var(--color-divider);font-family:var(--font-heading);font-weight:800;font-size:14px">
+        <div style="padding:0 8px">{{ totals.count }} rooms</div>
+        <div style="padding:0 8px;font-weight:400;font-size:12px;font-family:var(--font-body);color:color-mix(in srgb,var(--color-text) 60%,transparent)">{{ totals.ctr }} CTR</div>
+        <div style="padding:0 8px;text-align:right">{{ totals.sessions }}</div>
+        <div></div>
+        <div style="padding:0 8px;text-align:right">{{ totals.out }}</div>
+        <div style="padding:0 8px;font-weight:400;font-size:12px;font-family:var(--font-body);color:color-mix(in srgb,var(--color-text) 60%,transparent)">Mean {{ totals.cov }}</div>
+        <div style="padding:0 8px;text-align:right">{{ totals.hrs }}</div>
+        <div></div>
+      </div>
+
+      <div style="margin-top:24px;background:var(--color-surface);padding:22px 24px;max-width:96ch">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">Read</div>
+        <p style="margin:10px 0 0;font-size:14px;text-wrap:pretty">The four rooms below 70% coverage pull 6% of sessions and 3% of outbound clicks — the ledger says they are not worth a page until the sweep is automated. Boulder Station has been unverified for 67 hours; every hour past 48 costs about a point of 7-day return on the players who touch it.</p>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- ══ TESTS ══ -->
+  <sc-if value="{{ isTests }}" hint-placeholder-val="{{ false }}">
+    <section style="padding:32px 32px 48px">
+      <div style="display:flex;align-items:flex-end;gap:24px;border-bottom:2px solid var(--color-divider);padding-bottom:18px">
+        <h2 style="margin:0">Experiment engine</h2>
+        <p style="margin:0 0 4px;font-size:14px;max-width:56ch;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 75%,transparent)">One test ships every Wednesday, aimed at whichever multiplier in the equation is smallest. Nothing enters Running without a declared guardrail.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:2px solid var(--color-divider)">
+        <sc-for list="{{ testStats }}" as="s" hint-placeholder-count="4">
+          <div style="padding:18px 20px;border-left:2px solid var(--color-divider)">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">{{ s.k }}</div>
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:30px;letter-spacing:-.02em;margin-top:6px">{{ s.v }}</div>
+            <div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 62%,transparent)">{{ s.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:0">
+        <sc-for list="{{ board }}" as="col" hint-placeholder-count="4">
+          <div style="border-left:2px solid var(--color-divider);padding:18px 18px 28px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:baseline;gap:8px">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:{{ col.color }}">{{ col.name }}</div>
+              <div style="font-size:11px;color:color-mix(in srgb,var(--color-text) 45%,transparent)">{{ col.count }}</div>
+            </div>
+            <sc-for list="{{ col.items }}" as="t" hint-placeholder-count="2">
+              <div class="card elev-sm" onClick="{{ t.open }}" style="cursor:pointer;gap:8px" style-hover="box-shadow:var(--shadow-md)">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <div class="card-kicker">{{ t.id }} · {{ t.loop }}</div>
+                  <div style="font-size:11px;color:color-mix(in srgb,var(--color-text) 50%,transparent)">ICE {{ t.ice }}</div>
+                </div>
+                <div class="card-title" style="text-wrap:pretty">{{ t.title }}</div>
+                <div class="card-body" style="margin:0">{{ t.metric }}</div>
+                <div class="card-meta" style="justify-content:space-between">
+                  <span>{{ t.note }}</span>
+                  <span class="tag {{ t.tag }}">{{ t.flag }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- ══ SPEC ══ -->
+  <sc-if value="{{ isSpec }}" hint-placeholder-val="{{ false }}">
+    <section style="padding:32px 32px 48px">
+      <div style="display:flex;align-items:flex-end;gap:24px;border-bottom:2px solid var(--color-divider);padding-bottom:18px">
+        <h2 style="margin:0">Instrumentation</h2>
+        <p style="margin:0 0 4px;font-size:14px;max-width:56ch;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 75%,transparent)">Ten events. Every number on the other four tabs resolves to one of them. If a metric can't be traced to a row here, it doesn't go on the wall.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:2px solid var(--color-divider)">
+        <div style="padding:24px 24px 24px 0">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">Counted</div>
+          <p style="margin:10px 0 0;font-size:14px;text-wrap:pretty">A unique device that opens Check It Down and reaches a decision surface — a room's live fact panel, a tournament filter result, or a promo detail — inside a Monday–Sunday week. Anonymous, device-scoped, no login. Deduped on a first-party id with a 400-day life.</p>
+        </div>
+        <div style="padding:24px 0 24px 24px;border-left:2px solid var(--color-divider)">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Not counted</div>
+          <p style="margin:10px 0 0;font-size:14px;text-wrap:pretty">A bounce on the map with no filter and no room opened. Bot and preview traffic. Our own sweep sessions — verification runs are tagged and stripped before the roll-up, or the freshness loop measures itself.</p>
+        </div>
+      </div>
+
+      <div style="padding:28px 0 14px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Sources · three, and no third-party analytics</div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+        <sc-for list="{{ sources }}" as="s" hint-placeholder-count="3">
+          <div style="padding:20px 22px;border-left:2px solid var(--color-divider)">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:15px">{{ s.k }}</div>
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);margin-top:6px">{{ s.role }}</div>
+            <p style="margin:8px 0 0;font-size:13px;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 78%,transparent)">{{ s.v }}</p>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,1.3fr) 168px;padding:10px 0;border-bottom:2px solid var(--color-divider);margin-top:32px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 60%,transparent)">
+        <div style="padding:0 8px">Event</div>
+        <div style="padding:0 8px">Fires when</div>
+        <div style="padding:0 8px">Properties</div>
+        <div style="padding:0 8px">Feeds</div>
+      </div>
+      <sc-for list="{{ events }}" as="e" hint-placeholder-count="10">
+        <div style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,1.3fr) 168px;padding:11px 0;border-bottom:1px solid var(--color-divider);font-size:13px;align-items:baseline" style-hover="background:color-mix(in srgb,var(--color-text) 4%,transparent)">
+          <div style="padding:0 8px;font-family:var(--font-heading);font-weight:800;font-size:13px">{{ e.name }}</div>
+          <div style="padding:0 8px;color:color-mix(in srgb,var(--color-text) 80%,transparent)">{{ e.when }}</div>
+          <div style="padding:0 8px;color:color-mix(in srgb,var(--color-text) 60%,transparent);font-size:12px">{{ e.props }}</div>
+          <div style="padding:0 8px"><span class="tag {{ e.tag }}">{{ e.feeds }}</span></div>
+        </div>
+      </sc-for>
+
+      <div style="padding:32px 0 14px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Guardrails · checked on every test before it reads out</div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+        <sc-for list="{{ guards }}" as="g" hint-placeholder-count="3">
+          <div style="padding:22px 24px;border-left:2px solid var(--color-divider)">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:15px">{{ g.k }}</div>
+            <p style="margin:10px 0 0;font-size:13px;text-wrap:pretty;color:color-mix(in srgb,var(--color-text) 78%,transparent)">{{ g.v }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-if>
+
+  <footer style="margin-top:auto;background:var(--color-accent);color:var(--color-bg);padding:52px 32px">
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.75">Operating principle</div>
+    <div style="font-family:var(--font-heading);font-weight:800;font-size:46px;line-height:1.02;letter-spacing:-.025em;max-width:24ch;margin-top:18px;text-wrap:pretty">Accuracy is the product. A test that degrades a verified fact is a loss, whatever the metric says.</div>
+  </footer>
+
+  <sc-if value="{{ openTest }}" hint-placeholder-val="{{ false }}">
+    <div class="dialog-backdrop" onClick="{{ closeTest }}" style="z-index:60">
+      <div class="dialog" style="width:min(660px,100%);gap:0;padding:0;max-height:calc(100vh - 32px)">
+        <div style="padding:22px 24px;border-bottom:2px solid var(--color-divider);display:flex;align-items:baseline;gap:12px;flex:none">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">{{ openTest.id }} · {{ openTest.loop }} · {{ openTest.owner }}</div>
+          <div style="margin-left:auto;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">ICE {{ openTest.ice }}</div>
+        </div>
+        <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;min-height:0">
+          <h3 style="margin:0;text-wrap:pretty">{{ openTest.title }}</h3>
+          <div>
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Hypothesis</div>
+            <p style="margin:6px 0 0;font-size:14px;text-wrap:pretty">{{ openTest.hyp }}</p>
+          </div>
+          <div>
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Design</div>
+            <p style="margin:6px 0 0;font-size:14px;text-wrap:pretty">{{ openTest.design }}</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+            <div style="padding:14px 0">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Metric</div>
+              <div style="font-family:var(--font-heading);font-weight:800;font-size:14px;margin-top:6px">{{ openTest.metric }}</div>
+            </div>
+            <div style="padding:14px 16px;border-left:2px solid var(--color-divider)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">MDE</div>
+              <div style="font-family:var(--font-heading);font-weight:800;font-size:14px;margin-top:6px">{{ openTest.mde }}</div>
+            </div>
+            <div style="padding:14px 16px;border-left:2px solid var(--color-divider)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Guardrail</div>
+              <div style="font-family:var(--font-heading);font-weight:800;font-size:14px;margin-top:6px">{{ openTest.guard }}</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">{{ openTest.st }}</div>
+            <p style="margin:6px 0 0;font-size:14px;text-wrap:pretty">{{ openTest.result }}</p>
+          </div>
+        </div>
+        <div style="padding:16px 24px;border-top:2px solid var(--color-divider);display:flex;justify-content:flex-end;gap:10px;flex:none">
+          <button class="btn btn-secondary" onClick="{{ closeTest }}">Close</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;engine&quot;,&quot;loops&quot;,&quot;rooms&quot;,&quot;tests&quot;,&quot;spec&quot;],&quot;default&quot;:&quot;engine&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Console&quot;},&quot;chartWeeks&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:14,&quot;min&quot;:6,&quot;max&quot;:14,&quot;step&quot;:1,&quot;unit&quot;:&quot;wk&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Console&quot;},&quot;showTargets&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Targets&quot;},&quot;targetWap&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:12500,&quot;min&quot;:6000,&quot;max&quot;:25000,&quot;step&quot;:500,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Targets&quot;}}">
+class Component extends DCLogic {
+  state = { tab: null, wk: 13, sort: 'sessions', dir: -1, area: 'All', test: null };
+
+  ser(a, b) {
+    const N = [0, -0.019, 0.013, -0.007, 0.022, -0.015, 0.005, 0.018, -0.021, 0.01, -0.006, 0.015, -0.012, 0];
+    return N.map((n, i) => (a + (b - a) * Math.pow(i / 13, 0.92)) * (1 + n));
+  }
+  M() {
+    if (!this._M) this._M = {
+      newV: this.ser(9800, 14200),
+      act: this.ser(0.181, 0.226),
+      prior: this.ser(11900, 16400),
+      ret: this.ser(0.302, 0.349),
+      sessions: this.ser(16100, 22400),
+      impr: this.ser(214000, 388000),
+      outRate: this.ser(0.178, 0.206),
+      subs: this.ser(2140, 4820),
+      verify: this.ser(26, 9),
+      pages: this.ser(268, 412),
+      shares: this.ser(310, 612)
+    };
+    return this._M;
+  }
+  wap(i) { const m = this.M(); return Math.round(m.newV[i] * m.act[i]) + Math.round(m.prior[i] * m.ret[i]); }
+  n(v) { return Math.round(v).toLocaleString('en-US'); }
+  pc(v, d) { return (v * 100).toFixed(d == null ? 1 : d) + '%'; }
+  dl(cur, prev, invert) {
+    const p = (cur - prev) / prev * 100;
+    const good = invert ? p < 0 : p > 0;
+    return { txt: (p >= 0 ? '+' : '\u2212') + Math.abs(p).toFixed(1) + '%', color: good ? 'var(--color-accent-700)' : 'var(--color-neutral-700)' };
+  }
+  dpt(cur, prev) {
+    const p = (cur - prev) * 100;
+    return { txt: (p >= 0 ? '+' : '\u2212') + Math.abs(p).toFixed(1) + 'pt', color: p >= 0 ? 'var(--color-accent-700)' : 'var(--color-neutral-700)' };
+  }
+  bars(sv, count, wk) {
+    const start = Math.max(0, 14 - count);
+    const s = sv.slice(start);
+    const max = Math.max.apply(null, s), min = Math.min.apply(null, s) * 0.78;
+    return s.map((v, i) => ({
+      h: (10 + 90 * (v - min) / ((max - min) || 1)).toFixed(1) + '%',
+      bg: (i + start) === wk ? 'var(--color-accent)' : ((i + start) < wk ? 'var(--color-neutral-500)' : 'var(--color-neutral-300)')
+    }));
+  }
+  wkLabel(i) { return 'W' + (19 + i); }
+
+  roomData() {
+    return [
+      ['Bellagio', 'Strip', 2140, 318, 4, 98, 7.4],
+      ['Aria', 'Strip', 1980, 286, 6, 96, 5.1],
+      ['Wynn', 'Strip', 1610, 240, 7, 94, 9.8],
+      ['Venetian', 'Strip', 1520, 214, 9, 92, 2.2],
+      ['Resorts World', 'Strip', 1180, 166, 11, 90, 14.6],
+      ['The Orleans', 'Locals', 1240, 181, 6, 95, 8.7],
+      ['South Point', 'Locals', 1060, 152, 10, 91, 4.4],
+      ['Caesars Palace', 'Strip', 960, 131, 14, 88, -1.8],
+      ['Red Rock', 'Locals', 940, 138, 13, 89, 11.2],
+      ['Golden Nugget', 'Downtown', 880, 124, 8, 93, 6.3],
+      ['MGM Grand', 'Strip', 820, 108, 18, 84, 3.0],
+      ['Green Valley Ranch', 'Locals', 610, 84, 26, 74, -2.6],
+      ['Planet Hollywood', 'Strip', 540, 66, 22, 78, -4.2],
+      ['Santa Fe Station', 'Locals', 430, 52, 41, 62, -6.7],
+      ['Sunset Station', 'Locals', 360, 44, 53, 58, -3.3],
+      ['Westgate', 'Strip', 330, 39, 58, 55, -9.1],
+      ['Boulder Station', 'Locals', 290, 33, 67, 49, -11.4]
+    ];
+  }
+
+  testData() {
+    return [
+      { id: 'T-31', st: 'Backlog', title: 'Drive-time from where you are, on every room page', loop: 'Coverage', ice: 7.8, metric: 'Activation', note: 'Ready to build', flag: 'Next up', tag: 'tag-accent',
+        hyp: 'The unanswered question on a room page is not "what are the stakes" but "can I be there before the list closes". Adding live drive-time should turn browsing into a decision.',
+        design: 'Geolocation-permission prompt on second room view. Drive-time chip above the fact panel for all 17 rooms.',
+        mde: '+2.5pt activation', guard: 'Permission-denial rate under 40%', result: 'Sequenced first because activation is the smallest multiplier in the equation and the furthest from its ceiling.' },
+      { id: 'T-33', st: 'Backlog', title: 'WSOP Circuit series hub', loop: 'Coverage', ice: 7.1, metric: 'New reach', note: 'Seasonal window', flag: 'Q3', tag: 'tag-neutral',
+        hyp: 'Series queries spike four weeks out and we own none of them. One hub page per series, with every valley event in one schedule, should catch the long tail.',
+        design: 'Programmatic hub per series, built from the tournaments table. Ships with the schedule already verified.',
+        mde: '+8% organic sessions', guard: 'No fact ships unsourced', result: 'Blocked on the schedule scraper. Worth doing before the autumn circuit stop, worthless after it.' },
+      { id: 'T-34', st: 'Backlog', title: 'Verified date inside the search snippet', loop: 'Reports', ice: 6.4, metric: 'Organic CTR', note: 'Schema change', flag: '', tag: 'tag-neutral',
+        hyp: 'The freshness advantage is invisible in search results. Exposing dateModified and a verified-on line should lift CTR against forum threads from 2019.',
+        design: 'Structured data on all room and tournament pages, plus a verified-on line in the meta description.',
+        mde: '+0.6pt CTR', guard: 'No indexation loss', result: 'Cheap, slow to read out. Needs four weeks of Search Console before it says anything.' },
+      { id: 'T-28', st: 'Running', title: 'Seat-open push for followed games', loop: 'Reports', ice: 8.6, metric: '7-day return', note: 'Day 4 of 14', flag: 'Live', tag: 'tag-accent',
+        hyp: 'Players decide where to play in the forty minutes before they leave the house. A push the moment a seat opens at a game they follow beats any scheduled send.',
+        design: 'Followers of at least one room, split 50/50. Push on seat-open events between 4pm and 11pm, capped at two a day.',
+        mde: '+3.0pt on 7-day return', guard: 'Unsubscribe under 1.5%', result: '3,100 devices in cell. Return tracking +2.1pt, unsubscribes at 0.9%. Reads out Thursday.' },
+      { id: 'T-29', st: 'Running', title: 'Add-to-home-screen prompt on the second visit', loop: 'Retention', ice: 8.1, metric: '7-day return', note: 'Day 9 of 14', flag: 'Live', tag: 'tag-accent',
+        hyp: 'This is a phone-in-hand product used standing in a poker room. An installed icon removes the search step that currently gates every return visit.',
+        design: 'Custom prompt after the second session in seven days, held until the player has opened a room fact panel.',
+        mde: '+4.0pt on 7-day return', guard: 'Bounce rate flat', result: 'Install accept rate 11.4%. Installed cohort returning at 51% against 34.9% baseline — small n, holding to full read-out.' },
+      { id: 'T-26', st: 'Reading out', title: 'Promos digest at 3pm instead of 9am', loop: 'Retention', ice: 7.5, metric: 'Click-to-app', note: 'Result in', flag: 'Ship', tag: 'tag-accent',
+        hyp: 'The digest arrives before the decision it should influence. Moving it to mid-afternoon puts it inside the window when the evening plan is actually made.',
+        design: 'Send-time split on the weekly promos digest, 4,820 subscribers, two sends each arm.',
+        mde: '+5% click-to-app', guard: 'Open rate flat', result: 'Click-to-app +14.2%, opens flat at 41.2%. Ships Wednesday and the send time becomes the default for every future list.' },
+      { id: 'T-30', st: 'Reading out', title: 'Report-a-change prompt on the fact itself', loop: 'Reports', ice: 6.9, metric: 'Corrections/wk', note: 'Result in', flag: 'Extend', tag: 'tag-accent-2',
+        hyp: 'Players fix a wrong fact if they are asked where they notice it, not on a contact form two clicks away.',
+        design: 'Inline prompt on any fact older than 24 hours, half of sessions. Two taps: still right, or changed to.',
+        mde: '+30% corrections', guard: 'False-report rate under 10%', result: 'Corrections +38%, but a third could not be confirmed against a source and confirming is manual. Extending two weeks with auto-confirm on a second matching report before it ships.' },
+      { id: 'T-35', st: 'Backlog', title: 'Room-supplied schedule feed', loop: 'Partnerships', ice: 7.4, metric: 'Partner updates', note: 'Needs the partner form', flag: '', tag: 'tag-neutral',
+        hyp: 'Claimed rooms already text us their changes. A structured form that writes into the facts table cuts sweep cost and gives the room a reason to link back.',
+        design: 'Partner login for the 11 claimed rooms, writing a pending change that a human confirms. Bundled with the embeddable schedule widget.',
+        mde: '60% of updates partner-sourced', guard: 'Nothing publishes unconfirmed', result: 'The only test on the board that touches the partnership loop and the sweep constraint at the same time.' },
+      { id: 'T-22', st: 'Shipped', title: 'Tournament filter defaults to tonight', loop: 'Coverage', ice: 7.2, metric: 'Activation', note: 'W28', flag: '+9.4%', tag: 'tag-accent',
+        hyp: 'The default view showed a week of events when almost every visit is about the next six hours.',
+        design: 'Tonight-first default with a one-tap widen to the week.',
+        mde: '+3% activation', guard: 'No drop in tournament page depth', result: 'Activation +9.4%, held for four weeks. Biggest single win of the quarter and it was a default, not a feature.' },
+      { id: 'T-19', st: 'Shipped', title: 'Verified-today badge above the fold', loop: 'Reports', ice: 6.8, metric: '7-day return', note: 'W24', flag: '+6.1%', tag: 'tag-accent',
+        hyp: 'Trust is the reason to come back and it was buried at the bottom of the fact panel.',
+        design: 'Badge with the verification timestamp at the top of every room card and page.',
+        mde: '+2pt return', guard: 'Accuracy of the badge itself', result: '7-day return +6.1%. Also raised the cost of a missed sweep — the badge is now the thing players check first.' }
+    ];
+  }
+
+  loopData(wk) {
+    const m = this.M();
+    const pages = m.pages[wk], subs = m.subs[wk], verify = m.verify[wk], shares = m.shares[wk];
+    return [
+      { num: 'Loop 01', name: 'Coverage', gain: '1.18', health: '62%', cycle: '9 days', owner: 'Eng',
+        headline: 'Every verified room becomes a page, every page catches long-tail queries no forum thread answers, and the traffic produces the reports that verify the next room.',
+        steps: [
+          { rate: '', name: 'Room verified in the sweep', note: 'Facts, stakes, hours, rake — each with a source' },
+          { rate: '\u2192 1 page per room, game, stake', name: 'Page generated', note: this.n(pages) + ' pages indexed' },
+          { rate: '\u2192 38% query coverage', name: 'Long-tail query matched', note: 'Avg position 8.4, rising' },
+          { rate: '\u2192 ' + this.pc(m.sessions[wk] / m.impr[wk]) + ' CTR', name: 'Organic session', note: '61% of new reach' },
+          { rate: '\u2192 1 per 214 sessions', name: 'Player report', note: 'Feeds the next sweep' }
+        ],
+        stats: [
+          { k: 'Pages indexed', v: this.n(pages), d: this.dl(pages, m.pages[wk - 1]).txt + ' this week', c: this.dl(pages, m.pages[wk - 1]).color },
+          { k: 'Query coverage', v: '38%', d: '+2.1pt', c: 'var(--color-accent-700)' },
+          { k: 'Impressions', v: this.n(m.impr[wk]), d: this.dl(m.impr[wk], m.impr[wk - 1]).txt, c: this.dl(m.impr[wk], m.impr[wk - 1]).color }
+        ],
+        constraint: 'Pages ship faster than facts get verified. Four rooms carry pages under 70% coverage, and a thin page teaches the crawler the whole site is thin.' },
+      { num: 'Loop 02', name: 'Reports', gain: '1.24', health: '82%', cycle: '24 hours', owner: 'Community',
+        headline: 'Players who notice a wrong fact fix it. The correction refreshes the verified badge, the badge is why the next player trusts the page, and that trust is what brings both of them back to notice the next one.',
+        steps: [
+          { rate: '', name: 'Fact ages past 24h', note: 'Flagged in the app database, no human needed' },
+          { rate: '\u2192 asked at the point of doubt', name: 'Report prompt on the fact', note: 'Two taps: still right / changed to' },
+          { rate: '\u2192 1 per 96 actives', name: 'Correction submitted', note: '94 last week' },
+          { rate: '\u2192 68% confirmable', name: 'Confirmed against a source', note: 'Median ' + Math.round(verify) + 'h to verified' },
+          { rate: '\u2192 ' + this.pc(m.ret[wk]) + ' return', name: 'Badge refreshes, player comes back', note: 'And reports again' }
+        ],
+        stats: [
+          { k: 'Corrections a week', v: '94', d: '+11.9%', c: 'var(--color-accent-700)' },
+          { k: 'Median verify age', v: Math.round(verify) + 'h', d: this.dl(verify, m.verify[wk - 1], true).txt, c: this.dl(verify, m.verify[wk - 1], true).color },
+          { k: '7-day return', v: this.pc(m.ret[wk]), d: this.dpt(m.ret[wk], m.ret[wk - 1]).txt, c: this.dpt(m.ret[wk], m.ret[wk - 1]).color }
+        ],
+        constraint: 'A third of reports cannot be confirmed against a source, and confirming is manual. This loop reaches 24 rooms only if a second independent report on the same fact auto-confirms it.' },
+      { num: 'Loop 03', name: 'Partnerships', gain: '1.11', health: '38%', cycle: '21 days', owner: 'Partnerships',
+        headline: 'A room that ranks for its own name starts to care about the page. It claims the listing, sends changes directly, and once the schedule widget ships it links back \u2014 which is the half of the loop that actually returns players.',
+        steps: [
+          { rate: '', name: 'Room page ranks for the room', note: 'Average position 8.4 and rising' },
+          { rate: '\u2192 11 of 17 claimed', name: 'Room claims the listing', note: 'Free, no placement attached' },
+          { rate: '\u2192 41% of updates', name: 'Room sends changes first', note: 'Halves sweep time on claimed rooms' },
+          { rate: '\u2192 3 of 11 embedded', name: 'Schedule widget on the room site', note: 'Also where placement gets sold' },
+          { rate: '\u2192 620 sessions', name: 'Inbound players', note: 'Activating at 31%, our best source' }
+        ],
+        stats: [
+          { k: 'Rooms claimed', v: '11 / 17', d: '+2 this month', c: 'var(--color-accent-700)' },
+          { k: 'Partner-sourced updates', v: '41%', d: '+6.0pt', c: 'var(--color-accent-700)' },
+          { k: 'Inbound sessions', v: '620', d: 'from 3 embeds', c: 'var(--color-neutral-700)' }
+        ],
+        constraint: 'Claimed rooms send updates but not links, so today this is a cheaper sweep rather than a growth loop. It compounds only when the widget is on their site \u2014 the ' + this.n(subs) + '-name digest list is the fallback channel until then.' },
+      { num: 'Loop 04', name: 'Table', gain: '1.04', health: '22%', cycle: '3 days', owner: 'Community',
+        headline: 'The word-of-mouth loop. A player shares a room or a tournament with the people they play with, and some of them stay.',
+        steps: [
+          { rate: '', name: 'Player finds the answer', note: 'Usually a tournament or a promo' },
+          { rate: '\u2192 2.7% share', name: 'Link shared', note: this.n(shares) + ' shares a week' },
+          { rate: '\u2192 61% open', name: 'Friend opens it', note: 'Mostly group chats' },
+          { rate: '\u2192 19% activate', name: 'Friend activates', note: 'Below the 22.6% baseline' },
+          { rate: '\u2192 k = 0.12', name: '118 new players', note: 'Does not sustain itself yet' }
+        ],
+        stats: [
+          { k: 'Shares', v: this.n(shares), d: this.dl(shares, m.shares[wk - 1]).txt, c: this.dl(shares, m.shares[wk - 1]).color },
+          { k: 'k-factor', v: '0.12', d: 'needs 1.0 to self-sustain', c: 'var(--color-neutral-700)' },
+          { k: 'Players from shares', v: '118', d: '+6.0%', c: 'var(--color-accent-700)' }
+        ],
+        constraint: 'A shared link opens the map, not the thing that was shared. Shared traffic activates at 19% against a 22.6% baseline — the loop is leaking at the one step we fully control.' }
+    ];
+  }
+
+  eventData() {
+    return [
+      { name: 'room_facts_view', when: 'A room\u2019s fact panel is opened', props: 'room_id, verified_age_h, source, surface', feeds: 'Activation', tag: 'tag-accent' },
+      { name: 'map_filter_apply', when: 'Any filter changes the visible set', props: 'filter_type, value, result_count', feeds: 'Activation', tag: 'tag-accent' },
+      { name: 'tournament_row_open', when: 'A tournament row expands', props: 'room_id, buyin, start_ts, day_part', feeds: 'Activation', tag: 'tag-accent' },
+      { name: 'promo_detail_view', when: 'A promo is opened from any surface', props: 'room_id, promo_type, expires_at', feeds: 'Activation', tag: 'tag-accent' },
+      { name: 'outbound_room_click', when: 'A link leaves the site for a room', props: 'room_id, surface, position, sponsored', feeds: 'Revenue', tag: 'tag-neutral' },
+      { name: 'fact_report_submit', when: 'A player submits a correction', props: 'room_id, field, agrees_with_current', feeds: 'Freshness loop', tag: 'tag-neutral' },
+      { name: 'verify_complete', when: 'An operator finishes a room in the sweep', props: 'room_id, fields_checked, minutes, source', feeds: 'Freshness loop', tag: 'tag-neutral' },
+      { name: 'digest_subscribe', when: 'The subscribe form completes', props: 'surface, prompt_variant, visit_number', feeds: 'Digest loop', tag: 'tag-neutral' },
+      { name: 'share_link_copy', when: 'Share sheet or copy-link fires', props: 'object_type, object_id, channel', feeds: 'Table loop', tag: 'tag-neutral' },
+      { name: 'install_accept', when: 'The app is added to the home screen', props: 'visit_number, days_since_first', feeds: 'Retention', tag: 'tag-accent' }
+    ];
+  }
+
+  renderVals() {
+    const p = this.props || {};
+    const tab = this.state.tab || p.defaultTab || 'engine';
+    const wk = this.state.wk;
+    const m = this.M();
+    const count = Math.max(6, Math.min(14, p.chartWeeks || 14));
+    const target = p.targetWap || 12500;
+    const showTargets = p.showTargets !== false;
+
+    const wapNow = this.wap(wk), wapPrev = this.wap(wk - 1);
+    const nsD = this.dl(wapNow, wapPrev);
+    const wapSeries = m.newV.map((v, i) => this.wap(i));
+
+    const newAct = Math.round(m.newV[wk] * m.act[wk]);
+    const newActPrev = Math.round(m.newV[wk - 1] * m.act[wk - 1]);
+    const retained = Math.round(m.prior[wk] * m.ret[wk]);
+    const retainedPrev = Math.round(m.prior[wk - 1] * m.ret[wk - 1]);
+    const out = Math.round(wapNow * m.outRate[wk]);
+    const outPrev = Math.round(wapPrev * m.outRate[wk - 1]);
+    const revTotal = 970 + out * 0.85 + 580;
+
+    const weeksLeft = Math.max(1, 39 - (19 + wk));
+    const need = Math.pow(target / wapNow, 1 / weeksLeft) - 1;
+    const actual = (wapNow - wapPrev) / wapPrev;
+
+    const tabs = [['engine', 'Engine'], ['loops', 'Loops'], ['rooms', 'Rooms'], ['tests', 'Tests'], ['spec', 'Spec']].map(t => ({
+      label: t[1],
+      cls: tab === t[0] ? 'btn-primary' : 'btn-secondary',
+      go: () => this.setState({ tab: t[0] })
+    }));
+
+    const weeks = [11, 12, 13].map(i => ({
+      label: this.wkLabel(i), on: wk === i, pick: () => this.setState({ wk: i })
+    }));
+
+    const areas = ['All', 'Strip', 'Downtown', 'Locals'].map(a => ({
+      label: a, on: this.state.area === a, pick: () => this.setState({ area: a })
+    }));
+
+    const scale = m.sessions[wk] / m.sessions[13];
+    let rooms = this.roomData().map(r => {
+      const sessions = Math.round(r[2] * scale), o = Math.round(r[3] * scale);
+      const hrs = Math.round(r[4] * (m.verify[wk] / m.verify[13]));
+      return { name: r[0], area: r[1], sessions: sessions, out: o, hrs: hrs, cov: r[5], dlv: r[6] };
+    });
+    if (this.state.area !== 'All') rooms = rooms.filter(r => r.area === this.state.area);
+    const key = this.state.sort, dir = this.state.dir;
+    rooms.sort((a, b) => key === 'name' ? dir * a.name.localeCompare(b.name) : dir * (a[key] - b[key]));
+
+    const tot = rooms.reduce((s, r) => ({ s: s.s + r.sessions, o: s.o + r.out, c: s.c + r.cov, h: s.h + r.hrs }), { s: 0, o: 0, c: 0, h: 0 });
+    const hrsSorted = rooms.map(r => r.hrs).sort((a, b) => a - b);
+    const medHrs = hrsSorted.length ? hrsSorted[Math.floor(hrsSorted.length / 2)] : 0;
+
+    const roomRows = rooms.map(r => ({
+      name: r.name, area: r.area, sessions: this.n(r.sessions), out: this.n(r.out),
+      ctr: this.pc(r.out / r.sessions),
+      dl: (r.dlv >= 0 ? '+' : '\u2212') + Math.abs(r.dlv).toFixed(1) + '%',
+      dc: r.dlv >= 0 ? 'var(--color-accent-700)' : 'var(--color-neutral-700)',
+      cov: r.cov + '%', covW: r.cov + '%',
+      covC: r.cov >= 85 ? 'var(--color-neutral-700)' : (r.cov >= 70 ? 'var(--color-neutral-500)' : 'var(--color-accent)'),
+      hrs: r.hrs + 'h',
+      hrsC: r.hrs > 48 ? 'var(--color-accent-700)' : 'inherit',
+      status: r.hrs <= 12 ? 'Verified' : (r.hrs <= 48 ? 'Ageing' : 'Stale'),
+      tag: r.hrs <= 12 ? 'tag-neutral' : (r.hrs <= 48 ? 'tag-accent-2' : 'tag-outline')
+    }));
+
+    const arrow = k => key === k ? (dir === -1 ? ' \u2193' : ' \u2191') : '';
+    const setSort = k => () => this.setState(s => ({ sort: k, dir: s.sort === k ? -s.dir : (k === 'name' ? 1 : -1) }));
+
+    const tests = this.testData();
+    const OWNER = { Coverage: 'Eng', Reports: 'Community', Partnerships: 'BD', Retention: 'Editor', Table: 'Community' };
+    const opened = tests.find(t => t.id === this.state.test) || null;
+    const board = [['Backlog', 'color-mix(in srgb,var(--color-text) 55%,transparent)'], ['Running', 'var(--color-accent)'], ['Reading out', 'var(--color-accent)'], ['Shipped', 'color-mix(in srgb,var(--color-text) 55%,transparent)']].map(c => {
+      const items = tests.filter(t => t.st === c[0]).map(t => Object.assign({}, t, { open: () => this.setState({ test: t.id }) }));
+      return { name: c[0], color: c[1], count: items.length, items: items };
+    });
+
+    const staleCount = this.roomData().filter(r => Math.round(r[4] * (m.verify[wk] / m.verify[13])) > 48).length;
+
+    return {
+      tabs: tabs, weeks: weeks, areas: areas,
+      isEngine: tab === 'engine', isLoops: tab === 'loops', isRooms: tab === 'rooms', isTests: tab === 'tests', isSpec: tab === 'spec',
+      goLoops: () => this.setState({ tab: 'loops' }),
+      showTargets: showTargets,
+      ribbon: { verify: Math.round(m.verify[wk]) + 'h', week: this.wkLabel(wk), stale: staleCount + ' rooms' },
+      ns: {
+        value: this.n(wapNow), delta: nsD.txt, color: nsD.color, prev: this.wkLabel(wk - 1),
+        pen: this.pc(wapNow / 61000)
+      },
+      pace: {
+        target: this.n(target), left: weeksLeft, pct: Math.min(100, wapNow / target * 100).toFixed(1) + '%',
+        need: '+' + (need * 100).toFixed(1) + '%', actual: (actual >= 0 ? '+' : '\u2212') + Math.abs(actual * 100).toFixed(1) + '%',
+        color: actual >= need ? 'var(--color-accent-700)' : 'var(--color-neutral-700)',
+        verdict: actual >= need ? 'on pace' : 'behind pace'
+      },
+      chart: {
+        bars: this.bars(wapSeries, count, wk),
+        labels: wapSeries.slice(14 - count).map((v, i) => (i % 2 === 0 ? this.wkLabel(i + 14 - count) : '')),
+        span: this.wkLabel(14 - count) + '\u2013' + this.wkLabel(13),
+        peak: this.n(Math.max.apply(null, wapSeries))
+      },
+      eq: {
+        newV: this.n(m.newV[wk]), newD: this.dl(m.newV[wk], m.newV[wk - 1]).txt, newC: this.dl(m.newV[wk], m.newV[wk - 1]).color,
+        newBars: this.bars(m.newV, 8, wk),
+        impr: this.n(m.impr[wk]), ctr: this.pc(m.sessions[wk] / m.impr[wk]), pages: this.n(m.pages[wk]),
+        act: this.pc(m.act[wk]), actD: this.dpt(m.act[wk], m.act[wk - 1]).txt, actC: this.dpt(m.act[wk], m.act[wk - 1]).color,
+        actBars: this.bars(m.act, 8, wk),
+        newAct: this.n(newAct), newActD: this.dl(newAct, newActPrev).txt, newActC: this.dl(newAct, newActPrev).color,
+        newShare: this.pc(newAct / wapNow, 0),
+        prior: this.n(m.prior[wk]), priorD: this.dl(m.prior[wk], m.prior[wk - 1]).txt, priorC: this.dl(m.prior[wk], m.prior[wk - 1]).color,
+        priorBars: this.bars(m.prior, 8, wk),
+        ret: this.pc(m.ret[wk]), retD: this.dpt(m.ret[wk], m.ret[wk - 1]).txt, retC: this.dpt(m.ret[wk], m.ret[wk - 1]).color,
+        retBars: this.bars(m.ret, 8, wk),
+        retained: this.n(retained), retainedD: this.dl(retained, retainedPrev).txt, retainedC: this.dl(retained, retainedPrev).color,
+        retShare: this.pc(retained / wapNow, 0),
+        out: this.n(out), rev: '$' + this.n(out * 1.5)
+      },
+      rev: {
+        arpu: '$' + (revTotal / wapNow).toFixed(2),
+        total: '$' + this.n(revTotal),
+        lines: [
+          { k: 'Featured placement', v: '$' + this.n(970), d: 'flat six weeks', c: 'var(--color-neutral-700)', note: '3 of 17 rooms hold the top slot on the map' },
+          { k: 'Referral & affiliate', v: '$' + this.n(out * 0.85), d: this.dl(out, outPrev).txt, c: this.dl(out, outPrev).color, note: this.n(out) + ' outbound clicks at $0.85' },
+          { k: 'Promo sponsorship', v: '$' + this.n(580), d: '+$120', c: 'var(--color-accent-700)', note: '2 promos boosted in the weekly digest' }
+        ]
+      },
+      sources: [
+        { k: 'Google Search Console', role: 'Reach · weekly pull', v: 'Impressions, CTR and position per query and per page. The only input in the reach half of the equation we do not own, and the reason the coverage loop is measured at query level rather than page level.' },
+        { k: 'App database · Postgres', role: 'Source of truth', v: 'Every event below writes here. The north star is a SQL view over it, so any number on this wall can be audited row by row and recomputed when a definition changes.' },
+        { k: 'Email platform', role: 'Digest · joined on subscriber id', v: 'Sends, opens and clicks, joined back to sessions on a hashed subscriber id. Nothing about a player leaves the database to get that join done.' }
+      ],
+      loops: this.loopData(wk).map(l => Object.assign({}, l, {
+        gainColor: parseFloat(l.gain) >= 1.15 ? 'var(--color-accent)' : 'var(--color-neutral-600)'
+      })),
+      read: [
+        { kicker: 'Moved', title: 'The reports loop is carrying retention', body: 'Median verify age fell from 26h to ' + Math.round(m.verify[wk]) + 'h over eight weeks, 94 of those corrections came from players rather than the sweep, and 7-day return rose ' + this.dpt(m.ret[wk], m.ret[7]).txt + ' with it. It is the only input with a clean correlation to retention.' },
+        { kicker: 'Stuck', title: 'The share loop leaks', body: this.n(m.shares[wk]) + ' shares produced 118 players, k = 0.12. Shared links open the map instead of the tournament that was shared, so friends land on a screen that answers a question they were not asking.' },
+        { kicker: 'Next', title: 'Ship T-31, drive-time', body: 'Activation at ' + this.pc(m.act[wk]) + ' is the smallest multiplier in the equation and sits five points under the ceiling for utility maps. It is the cheapest point of leverage on the board.' }
+      ],
+      cadence: [
+        { day: 'Mon', act: 'Read', who: 'Everyone · 20 min', body: 'This page. One number, four loops, one decision.' },
+        { day: 'Wed', act: 'Ship', who: 'Eng', body: 'One test into whichever loop has the lowest gain.' },
+        { day: 'Thu', act: 'Read out', who: 'Editor', body: 'Running tests hit 14 days. Ship, kill, or extend once.' },
+        { day: 'Fri', act: 'Sweep', who: 'Community', body: 'Every room verified before the weekend, when demand triples.' },
+        { day: 'Sun', act: 'Digest', who: 'Editor', body: 'Promos and the week\u2019s tournaments out at 3pm.' }
+      ],
+      roomStats: [
+        { k: 'Room-page sessions', v: this.n(tot.s), note: this.pc(tot.s / m.sessions[wk], 0) + ' of all sessions' },
+        { k: 'Outbound clicks', v: this.n(tot.o), note: this.pc(tot.o / tot.s) + ' click rate' },
+        { k: 'Median verify age', v: medHrs + 'h', note: staleCount + ' rooms past 48h' },
+        { k: 'Under 70% coverage', v: rooms.filter(r => r.cov < 70).length + ' rooms', note: 'Thin pages, weak crawl' }
+      ],
+      roomRows: roomRows,
+      totals: {
+        count: rooms.length, sessions: this.n(tot.s), out: this.n(tot.o),
+        ctr: tot.s ? this.pc(tot.o / tot.s) : '\u2014',
+        cov: rooms.length ? Math.round(tot.c / rooms.length) + '%' : '\u2014',
+        hrs: medHrs + 'h'
+      },
+      sortName: setSort('name'), sortSessions: setSort('sessions'), sortOut: setSort('out'), sortCov: setSort('cov'), sortVer: setSort('hrs'),
+      arr: { name: arrow('name'), sessions: arrow('sessions'), out: arrow('out'), cov: arrow('cov'), ver: arrow('hrs') },
+      testStats: [
+        { k: 'Running now', v: '2', note: 'Cap is two at this traffic' },
+        { k: 'Win rate', v: '38%', note: '8 of 21 shipped this year' },
+        { k: 'Median cycle', v: '11 days', note: 'Idea to read-out' },
+        { k: 'Shipped this quarter', v: '5', note: '+21.6% compounded on the north star' }
+      ],
+      board: board,
+      openTest: opened ? Object.assign({}, opened, { owner: OWNER[opened.loop] || 'Eng' }) : null,
+      closeTest: () => this.setState({ test: null }),
+      events: this.eventData(),
+      guards: [
+        { k: 'Sourced or it does not ship', v: 'Every fact carries a source and a verified timestamp. A test that raises a metric by loosening that rule is recorded as a loss.' },
+        { k: 'Sponsored is labelled', v: 'Outbound clicks are never dressed as facts. Paid placement is marked in the interface and in the event stream, or it is not sold.' },
+        { k: 'Two guardrails on every test', v: 'Verified-fact accuracy and 7-day return are checked on all four loops before any winner is called, whatever the primary metric did.' }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>
