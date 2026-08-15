@@ -156,8 +156,13 @@ jobs:
           # one that earns its place asserts the SYSTEM still disagrees: if
           # Modernist is regenerated with the fix, the override should be
           # deleted rather than carried as a permanent fork nobody revisits.
-          [ "${n:-0}" -ge 286 ] \
-            || { echo "::error::test:unit ran $n tests (expected >= 252) — a suite that shrinks still exits 0"; exit 1; }
+          # 289 on 2026-08-15: +3 for the workflow-pin guard in
+          # lib/workflow-env.test.mjs — every PASS/RED string a workflow pins
+          # must be text some script can print. A pin naming a retired
+          # assertion cannot match, so the job fails forever rather than
+          # protecting anything; that is what reddened main from 12 to 15 Aug.
+          [ "${n:-0}" -ge 289 ] \
+            || { echo "::error::test:unit ran $n tests (expected >= 289) — a suite that shrinks still exits 0"; exit 1; }
 
       - uses: supabase/setup-cli@v1
         with:
@@ -225,7 +230,7 @@ jobs:
           # reach" counts every returning reader as new. Silent, one-way, and
           # upward. Red-proved by injection, not reasoned about.
           [ "$n" -ge 22 ] \
-            || { echo "::error::only $n 017 assertions ran (expected >= 18) — the gate shrank"; exit 1; }
+            || { echo "::error::only $n 017 assertions ran (expected >= 22) — the gate shrank"; exit 1; }
 
       # --- GATE 2: RLS + grants, against the real roles. ---
       - name: "test:rls (RLS + grants — the floor is asserted below)"
@@ -519,8 +524,13 @@ jobs:
           # 21 on 2026-08-09: +1, a guard that a web-ranked room exists to test
           # authorisation against — the seed sync re-sourced the row it used to draw.
           # legitimate-next control that stops "refuse everything" passing.
-          [ "$n" -ge 21 ] \
-            || { echo "::error::only $n auth assertions ran (expected >= 21) — the suite shrank"; exit 1; }
+          # +9 on 2026-08-15: section 4 drives the PASSWORD path — a stranger
+          # signing in, is_admin() false, the not-on-the-allowlist screen, the
+          # refusal, and the admin's positive control through the same door.
+          # Measured at 30 on run 31658975819; the floor still read 21, so nine
+          # assertions could have been deleted without the gate noticing.
+          [ "$n" -ge 30 ] \
+            || { echo "::error::only $n auth assertions ran (expected >= 30) — the suite shrank"; exit 1; }
 
       - name: lint
         run: npm run lint
@@ -590,7 +600,7 @@ jobs:
           # every RED half PASSED because "counts NOTHING" is trivially true
           # where nothing can happen.
           [ "$n" -ge 35 ] \
-            || { echo "::error::only $n events assertions ran (expected >= 33) — the suite shrank"; exit 1; }
+            || { echo "::error::only $n events assertions ran (expected >= 35) — the suite shrank"; exit 1; }
 
       - name: "test:map (tile requests + painted pixels, observed)"
         env:
@@ -774,8 +784,21 @@ jobs:
             || { echo "::error::the dead-button assertion did not run"; exit 1; }
           grep -q 'PASS  dismissing REMOVES the button' /tmp/pwa.log \
             || { echo "::error::the re-arm assertion did not run — a second tap on a consumed event throws"; exit 1; }
-          grep -q 'PASS  and the sign-in form is not offered inside the app' /tmp/pwa.log \
-            || { echo "::error::the installed-app trap assertion did not run — that session can never arrive"; exit 1; }
+          # ⚠️ TWO PINS, BECAUSE THE ASSERTION BECAME TWO CLAIMS.
+          # This pinned one line: 'and the sign-in form is not offered inside
+          # the app'. When the password path landed, that split into a withheld
+          # LINK and an offered PASSWORD — and the pin was not moved with it, so
+          # main was red from 2026-08-12 on a guard naming a string nothing
+          # printed. A guard pinning a retired name does not protect anything;
+          # it fails forever.
+          # Both halves are pinned because the split is the whole point: the
+          # path that cannot complete inside the app is withheld, the path that
+          # can is offered. One pin would let the other claim go silent, which
+          # is the same class of hole the split was made to close.
+          grep -q 'PASS  and the PASSWORD form IS offered' /tmp/pwa.log \
+            || { echo "::error::the installed-app assertion did not run — the app would be the one place with no way in"; exit 1; }
+          grep -q 'PASS  while the emailed link is still withheld here' /tmp/pwa.log \
+            || { echo "::error::the withheld-link assertion did not run — that session can never arrive"; exit 1; }
           # ⚠️ THE TAB ICON IS OURS. app/favicon.ico was the NEXT.JS DEFAULT —
           # Vercel's black-disc-and-triangle — served as this site's identity in
           # every browser tab since launch, past every structural check here:
@@ -815,8 +838,12 @@ jobs:
           # +5 on 2026-08-11: the share card — dimensions, that it is drawn on
           # our ink rather than a default canvas, blue and gold actually in the
           # pixels, and that X gets the same image without a second file.
-          [ "$n" -ge 58 ] \
-            || { echo "::error::only $n pwa assertions ran (expected >= 58) — check the SKIP lines above"; exit 1; }
+          # +1 on 2026-08-15: the installed-app assertion became two — the
+          # PASSWORD form offered, the emailed LINK still withheld. Measured at
+          # 59 on run 31658975819; the floor was left at 58 in the same commit
+          # that split it, which is how it stayed silent.
+          [ "$n" -ge 59 ] \
+            || { echo "::error::only $n pwa assertions ran (expected >= 59) — check the SKIP lines above"; exit 1; }
 
       - name: "test:palette (every text node clears its floor, opacity composited)"
         env:
